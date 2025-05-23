@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixelAdvant Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: row;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .sidebar h1 {
+            font-size: 24px;
+            color: green;
+        }
+
+        .sidebar ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .sidebar ul li {
+            margin: 15px 0;
+            position: relative;
+        }
+
+        .sidebar ul li a {
+            text-decoration: none;
+            color: #333;
+            display: block;
+            padding: 10px;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+
+        .sidebar ul li a:hover {
+            background-color: #ddd;
+        }
+
+        /* Highlight selected menu */
+        .sidebar ul li a.active {
+            background-color: #28a745;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Initially hide sub-menus */
+        .sub-menu {
+            list-style-type: none;
+            padding-left: 20px;
+            display: none;
+        }
+
+        .sidebar ul li.active .sub-menu {
+            display: block;
+        }
+
+        .logout {
+            color: red;
+            margin-top: 20px;
+        }
+
+        .main {
+            flex-grow: 1;
+            padding: 20px;
+            background-color: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 28px;
+            color: #333;
+        }
+
+        /* Popup styling */
+        .popup {
+            display: none;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: white;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.3);
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .popup.show {
+            display: block;
+        }
+
+    </style>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let menuItems = document.querySelectorAll(".sidebar ul li a");
+            let planningToggle = document.querySelector(".planning");
+            let requisitionToggle = document.querySelector(".requisition");
+
+            menuItems.forEach(item => {
+                item.addEventListener("click", function (event) {
+                    // Prevent immediate navigation for expandable menus
+                    event.preventDefault();
+
+                    // Remove 'active' class from all menu items
+                    menuItems.forEach(menu => menu.classList.remove("active"));
+
+                    // Add 'active' class to clicked item
+                    this.classList.add("active");
+
+                    // Toggle submenu visibility if clicked item has one
+                    let submenu = this.nextElementSibling;
+                    if (submenu && submenu.classList.contains("sub-menu")) {
+                        submenu.style.display = (submenu.style.display === "block") ? "none" : "block";
+                    }
+                });
+            });
+
+            let popups = document.querySelectorAll(".popup-trigger");
+            popups.forEach(button => {
+                button.addEventListener("click", function () {
+                    let popup = document.getElementById("popup-box");
+                    popup.innerHTML = `Work in Processing ${this.innerText}...`;
+                    popup.classList.add("show");
+
+                    setTimeout(() => {
+                        popup.classList.remove("show");
+                    }, 2000);
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>PixelAdvant</h1>
+            <ul>
+                <li><a href="#" class="menu-item">Reporting</a></li>
+                <li>
+                    <a href="#" class="menu-item planning">Planning</a>
+                    <ul class="sub-menu requisition-menu">
+                        <li>
+                            <a href="#" class="menu-item requisition">Requisition Management</a>
+                            <ul class="sub-menu requisition-submenu">
+                                <li><a href="#" class="menu-item popup-trigger">Create Job Requisition</a></li>
+                                <li><a href="#" class="menu-item popup-trigger">Roles and Requirements</a></li>
+                                <li><a href="#" class="menu-item popup-trigger">Job Specification</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li><a href="#" class="menu-item">Hiring</a></li>
+            </ul>
+            <div class="logout"><a href="/logout/">Logout</a></div>
+        </div>
+        <div class="main">
+            <h2>Dashboard</h2>
+        </div>
+    </div>
+
+    <div id="popup-box" class="popup">Work in Processing...</div>
+</body>
+</html>
