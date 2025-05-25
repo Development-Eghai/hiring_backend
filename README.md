@@ -37,9 +37,9 @@ Import Database File (.sql)
 - Open a terminal or command prompt and log in to MySQL:
 - mysql -u root -p
 - Create a new database (replace hiring_db with your preferred name):
-- CREATE DATABASE hiring_db;
+- CREATE DATABASE  recruitingdb;
 - Exit MySQL and import the .sql file
-- mysql -u root -p hiring_db < /path/to/database.sql
+- mysql -u root -p  recruitingdb < /path/to/database.sql
 
 Docker Setup
 - Build the Docker image:
