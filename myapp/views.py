@@ -1,4 +1,6 @@
 # Import necessary modules and models
+import os
+from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
@@ -6,6 +8,36 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from .models import *
 from django.contrib.auth import logout
+from django.db import connection
+from django.conf import settings
+
+
+
+def submit_candidate(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        resume = request.FILES.get('resume')
+
+        if name and email and resume:
+            resume_filename = resume.name
+            resume_path = os.path.join(settings.MEDIA_ROOT, resume_filename)
+
+            # Save file to media directory
+            with open(resume_path, 'wb+') as destination:
+                for chunk in resume.chunks():
+                    destination.write(chunk)
+            try:
+                with connection.cursor() as cursor:
+                    sql = "INSERT INTO candidates (Name, Email, Resume) VALUES (%s, %s, %s)"
+                    cursor.execute(sql, (name, email, resume_filename))
+                    connection.commit()
+
+                return render(request, 'dashboard.html', {'message': 'Candidate details submitted successfully!'})
+            except Exception as e:
+                return HttpResponse(f"Error: {str(e)}")
+
+    return render(request, 'dashboard.html')
 
 
 # Define a view function for the home page
@@ -25,38 +57,17 @@ def login_page(request):
     if request.method == "POST":
         username = request.POST.get('username')
         password = request.POST.get('password')
-        print(username)
-        # Check if a user with the provided username exists
-        # if not User.objects.filter(username=username).exists():
-        #     # Display an error message if the username does not exist
-        #     messages.error(request, 'Invalid Username')
-        #     return redirect('/login/')
-        
-        # Authenticate the user with the provided username and password
-        # user = authenticate(username=username, password=password)
-        
-        if username == "pixel" and password == "1234":
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT PasswordHash FROM users WHERE Email = %s", [username])
+            user_data = cursor.fetchone()
+
+        if user_data and user_data[0] == password:  # Compare passwords
+            request.session["username"] = username
             return redirect("/dashboard/")
-
-        
-        user = authenticate(username=username, password=password)
-        if user is not None:
-            login(request, user)
-            return redirect("/home/")
-        else:
-            return render(request, "login.html", {"error": "Invalid username or password"})
+            
+        return render(request, "login.html", {"error": "Invalid username or password"})
 
 
-        # if user is None:
-        #     # Display an error message if authentication fails (invalid password)
-        #     messages.error(request, "Invalid Password")
-        #     return redirect('/login/')
-        # else:
-        #     # Log in the user and redirect to the home page upon successful login
-        #     login(request, user)
-        #     return redirect('/home/')
-    
-    # Render the login page template (GET request)
     return render(request, 'login.html')
 
 # Define a view function for the registration page
