@@ -11,9 +11,9 @@ Features
 
 Tech Stack
 - Backend: Django, Django REST Framework
-- Database: PostgreSQL / SQLite / MySQL
+- Database:  MySQL
 - Authentication: Django's built-in authentication, JWT
-- Deployment: Docker, Gunicorn, Nginx, AWS
+- Deployment: Docker
 
 Installation
 Local Setup
