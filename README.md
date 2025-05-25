@@ -18,21 +18,21 @@ Tech Stack
 Installation
 Local Setup
 - Clone this repository:
-  git clone https://github.com/Development-Eghai/hiring_backend.git
-  cd hiring_backend
-  python -m venv venv
-  source venv/bin/activate  # For Mac/Linux
-  venv\Scripts\activate  # For Windows
-  pip install -r requirements.txt
-  python manage.py migrate
-  python manage.py runserver
+- git clone https://github.com/Development-Eghai/hiring_backend.git
+- cd hiring_backend
+- python -m venv venv
+- source venv/bin/activate  # For Mac/Linux
+- venv\Scripts\activate  # For Windows
+- pip install -r requirements.txt
+- python manage.py migrate
+- python manage.py runserver
 
 Docker Setup
 - Build the Docker image:
-docker build -t hiring-backend .
-docker run -d -p 8000:8000 --name hiring-backend-container hiring-backend
-docker stop hiring-backend-container
-docker rm hiring-backend-container
+- docker build -t hiring-backend .
+- docker run -d -p 8000:8000 --name hiring-backend-container hiring-backend
+- docker stop hiring-backend-container
+- docker rm hiring-backend-container
 
 
   
