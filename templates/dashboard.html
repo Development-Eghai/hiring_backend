@@ -40,7 +40,6 @@
 
         .sidebar ul li {
             margin: 15px 0;
-            position: relative;
         }
 
         .sidebar ul li a {
@@ -56,14 +55,12 @@
             background-color: #ddd;
         }
 
-        /* Highlight selected menu */
         .sidebar ul li a.active {
             background-color: #28a745;
             color: white;
             font-weight: bold;
         }
 
-        /* Initially hide sub-menus */
         .sub-menu {
             list-style-type: none;
             padding-left: 20px;
@@ -87,72 +84,29 @@
             align-items: center;
             justify-content: center;
             text-align: center;
+            position: relative;
         }
 
-        h2 {
-            font-size: 28px;
-            color: #333;
-        }
-
-        /* Popup styling */
-        .popup {
+        .form-container {
             display: none;
-            position: fixed;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            padding: 20px;
             background: white;
+            padding: 20px;
             box-shadow: 0px 0px 10px rgba(0,0,0,0.3);
             border-radius: 5px;
             text-align: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
 
-        .popup.show {
+        .form-container input, .form-container button {
             display: block;
+            margin: 10px auto;
+            padding: 8px;
+            width: 80%;
         }
-
     </style>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            let menuItems = document.querySelectorAll(".sidebar ul li a");
-            let planningToggle = document.querySelector(".planning");
-            let requisitionToggle = document.querySelector(".requisition");
-
-            menuItems.forEach(item => {
-                item.addEventListener("click", function (event) {
-                    // Prevent immediate navigation for expandable menus
-                    event.preventDefault();
-
-                    // Remove 'active' class from all menu items
-                    menuItems.forEach(menu => menu.classList.remove("active"));
-
-                    // Add 'active' class to clicked item
-                    this.classList.add("active");
-
-                    // Toggle submenu visibility if clicked item has one
-                    let submenu = this.nextElementSibling;
-                    if (submenu && submenu.classList.contains("sub-menu")) {
-                        submenu.style.display = (submenu.style.display === "block") ? "none" : "block";
-                    }
-                });
-            });
-
-            let popups = document.querySelectorAll(".popup-trigger");
-            popups.forEach(button => {
-                button.addEventListener("click", function () {
-                    let popup = document.getElementById("popup-box");
-                    popup.innerHTML = `Work in Processing ${this.innerText}...`;
-                    popup.classList.add("show");
-
-                    setTimeout(() => {
-                        popup.classList.remove("show");
-                    }, 2000);
-                });
-            });
-        });
-    </script>
 </head>
 <body>
     <div class="container">
@@ -173,15 +127,74 @@
                         </li>
                     </ul>
                 </li>
-                <li><a href="#" class="menu-item">Hiring</a></li>
+                <li><a href="#" class="menu-item hiring">Hiring</a></li>
             </ul>
             <div class="logout"><a href="/logout/">Logout</a></div>
         </div>
         <div class="main">
             <h2>Dashboard</h2>
+            <div id="form-container" class="form-container">
+            <h2>Hiring Form</h2>
+                {% if message %}
+                    <p class="success-message">{{ message }}</p>
+                {% endif %}
+             <form action="{% url 'submit_candidate' %}" method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="text" name="name" placeholder="Enter Name" required>
+                    <input type="email" name="email" placeholder="Enter Email ID" required>
+                    <input type="file" name="resume" accept=".pdf,.doc,.docx" required>
+                    <button type="submit">Submit</button>
+
+            </form>
+            </div>
+            </div>
         </div>
     </div>
 
     <div id="popup-box" class="popup">Work in Processing...</div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let menuItems = document.querySelectorAll(".sidebar ul li a");
+            let hiringMenu = document.querySelector(".menu-item.hiring");
+            let formContainer = document.getElementById("form-container");
+            let mainTitle = document.querySelector(".main h2");
+
+            menuItems.forEach(item => {
+                item.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    menuItems.forEach(menu => menu.classList.remove("active"));
+                    this.classList.add("active");
+
+                    let submenu = this.nextElementSibling;
+                    if (submenu && submenu.classList.contains("sub-menu")) {
+                        submenu.style.display = (submenu.style.display === "block") ? "none" : "block";
+                    }
+                });
+            });
+
+            if (hiringMenu) {
+                hiringMenu.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    
+                    mainTitle.style.display = "none";
+                    formContainer.style.display = "block";
+                });
+            }
+
+            let popups = document.querySelectorAll(".popup-trigger");
+            popups.forEach(button => {
+                button.addEventListener("click", function () {
+                    let popup = document.getElementById("popup-box");
+                    popup.innerHTML = `Work in Processing ${this.innerText}...`;
+                    popup.classList.add("show");
+
+                    setTimeout(() => {
+                        popup.classList.remove("show");
+                    }, 2000);
+                });
+            });
+        });
+    </script>
 </body>
 </html>
