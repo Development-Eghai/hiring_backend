@@ -27,6 +27,20 @@ Local Setup
 - python manage.py migrate
 - python manage.py runserver
 
+Setting Up MySQL Database
+Install MySQL
+- Download and install MySQL from the official site: MySQL Download.
+- Follow the installation process and ensure MySQL Server is running.
+- Set up your root password during installation.
+Import Database File (.sql)
+- Place your MySQL file (recruitingdb.sql) in a known directory.
+- Open a terminal or command prompt and log in to MySQL:
+- mysql -u root -p
+- Create a new database (replace hiring_db with your preferred name):
+- CREATE DATABASE  recruitingdb;
+- Exit MySQL and import the .sql file
+- mysql -u root -p  recruitingdb < /path/to/recruitingdb.sql
+
 Docker Setup
 - Build the Docker image:
 - docker build -t hiring-backend .
