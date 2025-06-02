@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Job Requisition</title>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .form-container {
+            background: white;
+            padding: 20px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.3);
+            border-radius: 5px;
+            display: inline-block;
+        }
+
+        input, select, button {
+            display: block;
+            width: 80%;
+            margin: 10px auto;
+            padding: 8px;
+        }
+
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Create Job Requisition</h2>
+    
+    <div class="form-container">
+        <form action="{% url 'create_job_requisition' %}" method="POST">
+            {% csrf_token %}
+            
+            <label for="date">Date:</label>
+            <input type="date" id="date" name="date" required>
+
+            <label for="openings">Number of Openings:</label>
+            <input type="number" id="openings" name="openings" min="1" required>
+
+            <label for="recruiter">Recruiter Name:</label>
+            <select id="recruiter" name="recruiter" required>
+                <option value="">Select Recruiter</option>
+                <option value="John Doe">John Doe</option>
+                <option value="Jane Smith">Jane Smith</option>
+            </select>
+
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+
+</body>
+</html>

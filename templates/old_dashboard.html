@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PixelAdvant Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      display: flex;
+      flex-direction: row;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: 250px;
+      background-color: #fff;
+      padding: 20px;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+    .sidebar h1 {
+      font-size: 24px;
+      color: green;
+    }
+    .sidebar ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    .sidebar ul li {
+      margin: 15px 0;
+    }
+    .sidebar ul li a {
+      text-decoration: none;
+      color: #333;
+      display: block;
+      padding: 10px;
+      transition: background 0.3s;
+      cursor: pointer;
+    }
+    .sidebar ul li a:hover {
+      background-color: #ddd;
+    }
+    /* Active menu highlighting */
+    .sidebar ul li a.active {
+      background-color: #28a745;
+      color: white;
+      font-weight: bold;
+    }
+    .sub-menu {
+      list-style-type: none;
+      padding-left: 20px;
+      display: none;
+    }
+    .sidebar ul li.active .sub-menu {
+      display: block;
+    }
+    .logout {
+      color: red;
+      margin-top: 20px;
+    }
+    /* Main container hidden initially; will be set to flex by JS */
+    .main {
+      flex-grow: 1;
+      padding: 20px;
+      background-color: #e9ecef;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+    }
+    .form-container {
+      background: white;
+      padding: 20px;
+      box-shadow: 0px 0px 10px rgba(0,0,0,0.3);
+      border-radius: 5px;
+      text-align: center;
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+    #job-table-container {
+      display: none;
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      border: 1px solid black;
+      padding: 8px;
+      text-align: center;
+    }
+    /* Modal Popup Styles */
+    .popup-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+    .popup-modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 5px;
+      z-index: 1000;
+      box-shadow: 0px 0px 10px rgba(0,0,0,0.5);
+      width: 300px;
+    }
+    .popup-modal input,
+    .popup-modal select,
+    .popup-modal button {
+      display: block;
+      margin: 10px auto;
+      padding: 8px;
+      width: 90%;
+    }
+  </style>
+  <script>
+    // Utility: Get CSRF token from the cookie.
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== "") {
+        let cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          let cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + "=")) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      // --- ACTIVE MENU HIGHLIGHTING ---
+      document.querySelectorAll(".sidebar a.menu-item").forEach(item => {
+        item.addEventListener("click", function(e) {
+          e.preventDefault();
+          document.querySelectorAll(".sidebar a.menu-item").forEach(el => el.classList.remove("active"));
+          this.classList.add("active");
+        });
+      });
+
+      // --- Content Toggle Elements ---
+      let mainContainer = document.querySelector(".main");
+      let hiringMenu = document.querySelector(".menu-item.hiring");
+      let planningMenu = document.querySelector(".menu-item.planning");
+      let jobTableContainer = document.getElementById("job-table-container");
+      let hiringFormContainer = document.getElementById("form-container");
+
+      // --- Popup Modal Elements ---
+      let popupOverlay = document.getElementById("popup-overlay");
+      let popupModal = document.getElementById("job-popup");
+      let jobForm = document.getElementById("job-form");
+
+      if (!mainContainer || !hiringFormContainer || !jobTableContainer || !popupOverlay || !popupModal || !jobForm) {
+        console.error("Error: Missing required elements in the HTML!");
+        return;
+      }
+
+      // Initially hide main container and its child elements.
+      mainContainer.style.display = "none";
+      jobTableContainer.style.display = "none";
+      hiringFormContainer.style.display = "none";
+
+      // --- "Hiring" Menu Click Handler ---
+      hiringMenu.addEventListener("click", function (event) {
+        event.preventDefault();
+        console.log("Hiring clicked!");
+        mainContainer.style.display = "flex";
+        hiringFormContainer.style.display = "block";
+        jobTableContainer.style.display = "none";
+        popupOverlay.style.display = "none";
+        popupModal.style.display = "none";
+      });
+
+      // --- "Planning" Menu Handler (toggle submenu) ---
+      planningMenu.addEventListener("click", function (event) {
+        event.preventDefault();
+        console.log("Planning clicked!");
+        let submenu = this.nextElementSibling;
+        if (submenu && submenu.classList.contains("sub-menu")) {
+          submenu.style.display = (submenu.style.display === "block") ? "none" : "block";
+        }
+      });
+
+      // --- "Requisition Management" Submenu Handler ---
+      let requisitionMenu = document.querySelector(".menu-item.requisition");
+      if (requisitionMenu) {
+        requisitionMenu.addEventListener("click", function (event) {
+          event.preventDefault();
+          console.log("Requisition Management clicked!");
+          let requisitionSubmenu = this.nextElementSibling;
+          if (requisitionSubmenu && requisitionSubmenu.classList.contains("sub-menu")) {
+            requisitionSubmenu.style.display = (requisitionSubmenu.style.display === "block") ? "none" : "block";
+          }
+        });
+      }
+
+      // --- "Create Job Requisition" Click Handler ---
+      document.querySelectorAll(".popup-trigger").forEach(button => {
+        button.addEventListener("click", function (event) {
+          event.preventDefault();
+          console.log("Job requisition clicked!");
+          mainContainer.style.display = "flex";
+          popupOverlay.style.display = "block";
+          popupModal.style.display = "block";
+          hiringFormContainer.style.display = "none";
+          jobTableContainer.style.display = "none";
+        });
+      });
+
+      // --- Popup Modal "Add Job" Button Handler ---
+      document.getElementById("job-add-btn").addEventListener("click", function (event) {
+        event.preventDefault();
+        // Retrieve inputs and log their values.
+        let title = document.getElementById("job-title").value;
+        let positions = document.getElementById("job-positions").value;
+        let recruiter = document.getElementById("job-recruiter").value;
+
+
+        console.log("job_title:", title);
+        console.log("positions:", positions);
+        console.log("recruiter:", recruiter);
+
+        // Basic validation.
+        if (title.trim() === "" || positions === "" || recruiter.trim() === "") {
+          alert("Please fill in all fields.");
+          return;
+        }
+
+        // Prepare FormData.
+        let formData = new FormData();
+        formData.append("job_title", title);
+        formData.append("positions", positions);
+        formData.append("recruiter", recruiter);
+        formData.append("status", status);
+
+        let csrfToken = getCookie("csrftoken");
+
+        fetch("/create-job-requisition/", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrfToken
+          },
+          body: formData
+        })
+        .then(response => {
+          if (!response.ok) {
+            console.error("Network response not ok");
+            throw new Error("Network response was not ok.");
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log("Server response:", data);
+          let job = data.job;
+          let jobTableBody = document.getElementById("job-table-body");
+          let newRow = document.createElement("tr");
+          newRow.innerHTML = `
+            <td>${jobTableBody.children.length + 1}</td>
+            <td>${job.PositionTitle}</td>
+            <td>${job.Positions}</td>
+            <td>${job.recruiter}</td>
+            <td>${job.Status}</td>
+          `;
+          jobTableBody.appendChild(newRow);
+  
+          popupOverlay.style.display = "none";
+          popupModal.style.display = "none";
+          jobForm.reset();
+          jobTableContainer.style.display = "block";
+        })
+        .catch(error => {
+          console.error("Error:", error);
+          alert("There was an error adding the job.");
+        });
+      });
+
+      // --- Popup Modal "Cancel" Button Handler ---
+      document.getElementById("job-cancel-btn").addEventListener("click", function (event) {
+        event.preventDefault();
+        popupOverlay.style.display = "none";
+        popupModal.style.display = "none";
+        jobForm.reset();
+      });
+
+      // --- Hide popup if overlay is clicked ---
+      popupOverlay.addEventListener("click", function (event) {
+        event.preventDefault();
+        popupOverlay.style.display = "none";
+        popupModal.style.display = "none";
+        jobForm.reset();
+      });
+    });
+  </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+  let recruiterDropdown = document.getElementById("job-recruiter");
+
+  // Fetch recruiters from the server
+  fetch("/get-recruiters/")
+    .then(response => response.json())
+    .then(data => {
+      // Clear the dropdown and add a default option
+      recruiterDropdown.innerHTML = '<option value="">Select Recruiter</option>';
+      data.forEach(recruiter => {
+        console.log(recruiter.Name);
+        // Set both value and displayed text to the recruiter name.
+        recruiterDropdown.innerHTML += `<option value="${recruiter.Name}">${recruiter.Name}</option>`;
+      });
+    })
+    .catch(error => console.error("Error fetching recruiters:", error));
+
+  // Add a change event listener to capture the selected recruiter name
+  recruiterDropdown.addEventListener("change", function() {
+    // "this.value" contains the selected recruiter's name.
+    let selectedRecruiter = this.value;
+    console.log("Selected recruiter:", selectedRecruiter);
+    // You can perform additional actions with the selectedRecruiter value here.
+  });
+});
+
+  </script>
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h1>PixelAdvant</h1>
+      <ul>
+        <li><a href="#" class="menu-item">Reporting</a></li>
+        <li>
+          <a href="#" class="menu-item planning">Planning</a>
+          <ul class="sub-menu">
+            <li>
+              <a href="#" class="menu-item requisition">Requisition Management</a>
+              <ul class="sub-menu">
+                <li><a href="#" class="menu-item popup-trigger">Create Job Requisition</a></li>
+                <li><a href="#" class="menu-item popup-trigger">Roles and Requirements</a></li>
+                <li><a href="#" class="menu-item popup-trigger">Job Specification</a></li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+        <li><a href="#" class="menu-item hiring">Hiring</a></li>
+      </ul>
+      <div class="logout"><a href="/logout/">Logout</a></div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main">
+      <!-- Job Requisition Table -->
+      <div id="job-table-container">
+        <h2>Job Requisition List</h2>
+        <table border="1" width="100%">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Job Title</th>
+              <th>No. of Positions</th>
+              <th>Recruiter Assigned</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="job-table-body">
+            <!-- Dynamically filled rows will be inserted here -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Hiring Form -->
+      <div id="form-container" class="form-container">
+        <h2>Hiring Form</h2>
+        <form action="{% url 'candidate' %}" method="POST" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input type="text" name="Name" placeholder="Enter Name" required>
+          <input type="email" name="Email" placeholder="Enter Email ID" required>
+          <input type="file" name="Resume" accept=".pdf,.doc,.docx" required>
+          <button type="submit">Submit</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Popup Modal for Create Job Requisition -->
+  <div id="popup-overlay" class="popup-overlay"></div>
+  <div id="job-popup" class="popup-modal">
+    <h2>Create Job Requisition</h2>
+    <form id="job-form">
+      <input type="text" id="job-title" placeholder="Job Title" required>
+      <input type="number" id="job-positions" placeholder="No. of Positions" required>
+      <!-- Ensure that for HiringManagerID, you enter a number if your view expects an integer -->
+      <!-- <input type="text" id="job-recruiter" placeholder="Recruiter Assigned" required> -->
+       <select id="job-recruiter" required>
+    <option value="">Select Recruiter</option>
+    <!-- Options will be dynamically populated via JavaScript -->
+  </select>
+      <button id="job-add-btn">Add Job</button>
+      <button id="job-cancel-btn">Cancel</button>
+    </form>
+  </div>
+</body>
+</html>

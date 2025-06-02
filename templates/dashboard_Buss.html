@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PixelAdvant Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      display: flex;
+      flex-direction: row;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: 250px;
+      background: #2c3e50;
+      color: white;
+      min-height: 100vh;
+      padding: 20px;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+    .sidebar h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+    }
+    .sidebar ul li {
+      margin: 15px 0;
+    }
+    .sidebar ul li a {
+      text-decoration: none;
+      color: white;
+      padding: 10px;
+      display: block;
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+    .sidebar ul li a:hover,
+    .sidebar ul li a.active {
+      background: #16a085;
+    }
+    .sidebar ul li ul.sub-menu {
+      margin-top: 5px;
+      padding-left: 15px;
+      list-style: disc;
+      display: none;
+    }
+    .logout {
+      color: white;
+      margin-top: 20px;
+    }
+    .main {
+      flex-grow: 1;
+      padding: 20px;
+      background-color: #e9ecef;
+      position: relative;
+    }
+    /* A basic table style */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: white;
+    }
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f8f8f8;
+    }
+    /* Hide dropdown by default */
+    .status-dropdown {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h1>PixelAdvant</h1>
+      <ul>
+        <li><a href="#" class="menu-item active" id="req-management">Requisition Management</a></li>
+      </ul>
+      <div class="menu-item"><a href="/logout/" style="color: white;">Logout</a></div>
+    </div>
+    <!-- Main content area -->
+    <div class="main" id="main-content">
+      <h2>Bussiness OP</h2>
+      <!-- Container for the job requisitions table -->
+      <div id="table-container" style="display: none;">
+        <h3>Job Requisitions</h3>
+        <table id="jobrequisition-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Position Title</th>
+              <th>No. of Positions</th>
+              <th>Recruiter Assigned</th>
+              <th>Status</th>
+              <th>Created Date</th>
+              <th>Extra Details</th>
+            </tr>
+          </thead>
+          <tbody id="jobrequisition-table-body">
+            <!-- Rows will be inserted here via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Utility: get CSRF token from cookie
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.startsWith(name + "=")) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // Function to fetch job requisitions including extra details and display them
+    function loadJobRequisitions() {
+      const tableContainer = document.getElementById("table-container");
+      tableContainer.style.display = "block";
+
+      fetch("/get-job-requisitions/")
+        .then(response => response.json())
+        .then(data => {
+          console.log("Job Requisition Data:", data);
+          const tableBody = document.getElementById("jobrequisition-table-body");
+          tableBody.innerHTML = ""; // Clear previous rows
+
+          data.forEach(job => {
+            // Construct extra details string using fields from the extra details table.
+            let extraDetails = "";
+            if (job.extra_details) {
+              // Customize which extra fields to show
+              extraDetails = "Legal Entity: " + job.extra_details.LegalEntity +
+                             ", Location: " + job.extra_details.PrimaryLocation +
+                             ", Division: " + job.extra_details.Division;
+            }
+
+            // Build the row HTML.
+            const row = `
+              <tr data-id="${job.RequisitionID}">
+                <td>${job.RequisitionID}</td>
+                <td>${job.PositionTitle}</td>
+                <td>${job.No_of_positions}</td>
+                <td>${job.recruiter}</td>
+                <td class="status-cell">
+                  <span>${job.Status}</span>
+                  <select class="status-dropdown">
+                    <option value="Draft">Draft</option>
+                    <option value="Pending Approval">Pending Approval</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Posted">Posted</option>
+                  </select>
+                </td>
+                <td>${job.CreatedDate}</td>
+                <td>${extraDetails}</td>
+              </tr>
+            `;
+            tableBody.innerHTML += row;
+          });
+
+          // Attach event listeners for updating status.
+          addStatusListeners();
+        })
+        .catch(error => console.error("Error fetching requisitions:", error));
+    }
+
+    // Attach event listeners to each status cell for dropdown visibility and updates.
+    function addStatusListeners() {
+      const statusCells = document.querySelectorAll(".status-cell");
+      statusCells.forEach(cell => {
+        cell.addEventListener("click", function () {
+          const span = this.querySelector("span");
+          const dropdown = this.querySelector("select.status-dropdown");
+          span.style.display = "none";
+          dropdown.style.display = "inline-block";
+          dropdown.value = span.textContent;
+          dropdown.addEventListener("change", updateStatus);
+          dropdown.addEventListener("blur", updateStatus);
+        });
+      });
+    }
+
+    // Function to update the status both visually and on the server.
+    function updateStatus(event) {
+      const dropdown = event.target;
+      const newStatus = dropdown.value;
+      const cell = dropdown.parentElement;
+      const span = cell.querySelector("span");
+      span.textContent = newStatus;
+      span.style.display = "inline-block";
+      dropdown.style.display = "none";
+
+      // Update the status on the server.
+      const row = cell.parentElement; // The TR element.
+      const requisitionID = row.getAttribute("data-id");
+
+      fetch("/update-job-status/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify({
+          RequisitionID: requisitionID,
+          Status: newStatus
+        })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Status update failed.");
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("Status updated successfully:", data);
+      })
+      .catch(error => console.error("Error updating status:", error));
+    }
+
+    // Automatically load job requisitions when the DOM content is loaded.
+    document.addEventListener("DOMContentLoaded", function () {
+      loadJobRequisitions();
+
+      // Optionally, if you have sidebar navigation, attach listeners here.
+      const menuItems = document.querySelectorAll(".sidebar ul li a");
+      menuItems.forEach(item => {
+        item.addEventListener("click", function (event) {
+          event.preventDefault();
+          menuItems.forEach(menu => menu.classList.remove("active"));
+          this.classList.add("active");
+          if (this.id === "req-management") {
+            loadJobRequisitions();
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

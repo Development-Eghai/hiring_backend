@@ -1,200 +1,454 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PixelAdvant Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: row;
-            min-height: 100vh;
-        }
-
-        .sidebar {
-            width: 250px;
-            background-color: #fff;
-            padding: 20px;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            flex-shrink: 0;
-        }
-
-        .sidebar h1 {
-            font-size: 24px;
-            color: green;
-        }
-
-        .sidebar ul {
-            list-style-type: none;
-            padding: 0;
-        }
-
-        .sidebar ul li {
-            margin: 15px 0;
-        }
-
-        .sidebar ul li a {
-            text-decoration: none;
-            color: #333;
-            display: block;
-            padding: 10px;
-            transition: background 0.3s;
-            cursor: pointer;
-        }
-
-        .sidebar ul li a:hover {
-            background-color: #ddd;
-        }
-
-        .sidebar ul li a.active {
-            background-color: #28a745;
-            color: white;
-            font-weight: bold;
-        }
-
-        .sub-menu {
-            list-style-type: none;
-            padding-left: 20px;
-            display: none;
-        }
-
-        .sidebar ul li.active .sub-menu {
-            display: block;
-        }
-
-        .logout {
-            color: red;
-            margin-top: 20px;
-        }
-
-        .main {
-            flex-grow: 1;
-            padding: 20px;
-            background-color: #e9ecef;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            position: relative;
-        }
-
-        .form-container {
-            display: none;
-            background: white;
-            padding: 20px;
-            box-shadow: 0px 0px 10px rgba(0,0,0,0.3);
-            border-radius: 5px;
-            text-align: center;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .form-container input, .form-container button {
-            display: block;
-            margin: 10px auto;
-            padding: 8px;
-            width: 80%;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard - PixelAdvant</title>
+  <style>
+    /* Basic Reset and Body Setup */
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+    }
+    /* Container for sidebar and main content */
+    .container {
+      display: flex;
+    }
+    /* Sidebar styling */
+    .sidebar {
+      width: 250px;
+      background: #2c3e50;
+      color: white;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .sidebar h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+    }
+    .sidebar ul li {
+      margin: 15px 0;
+    }
+    .sidebar ul li a {
+      text-decoration: none;
+      color: white;
+      padding: 10px;
+      display: block;
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+    .sidebar ul li a:hover,
+    .sidebar ul li a.active {
+      background: #16a085;
+    }
+    .sidebar ul li ul.sub-menu {
+      margin-top: 5px;
+      padding-left: 15px;
+      list-style: disc;
+      display: none;
+    }
+    /* Main content styling */
+    .main {
+      flex: 1;
+      background: #ecf0f1;
+      padding: 20px;
+    }
+    /* Tabs styling */
+    .tabs {
+      margin-bottom: 20px;
+    }
+    .tabs button {
+      margin-right: 10px;
+      padding: 10px 20px;
+      border: none;
+      background: #bdc3c7;
+      color: #2c3e50;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .tabs button.active {
+      background: #16a085;
+      color: white;
+    }
+    /* Table styling */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    table, th, td {
+      border: 1px solid #bdc3c7;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background: #95a5a6;
+      color: white;
+    }
+    /* Form styling */
+    .form-container {
+      background: white;
+      padding: 20px;
+      border: 1px solid #bdc3c7;
+      border-radius: 4px;
+    }
+    .form-container label {
+      margin-bottom: 5px;
+      display: block;
+    }
+    .form-container input,
+    .form-container select,
+    .form-container textarea {
+      width: calc(100% - 22px);
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #bdc3c7;
+      border-radius: 4px;
+    }
+    .form-container button {
+      padding: 10px 20px;
+      background: #16a085;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    /* Simple utility class to hide elements */
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="sidebar">
-            <h1>PixelAdvant</h1>
-            <ul>
-                <li><a href="#" class="menu-item">Reporting</a></li>
-                <li>
-                    <a href="#" class="menu-item planning">Planning</a>
-                    <ul class="sub-menu requisition-menu">
-                        <li>
-                            <a href="#" class="menu-item requisition">Requisition Management</a>
-                            <ul class="sub-menu requisition-submenu">
-                                <li><a href="#" class="menu-item popup-trigger">Create Job Requisition</a></li>
-                                <li><a href="#" class="menu-item popup-trigger">Roles and Requirements</a></li>
-                                <li><a href="#" class="menu-item popup-trigger">Job Specification</a></li>
-                            </ul>
-                        </li>
-                    </ul>
-                </li>
-                <li><a href="#" class="menu-item hiring">Hiring</a></li>
-            </ul>
-            <div class="logout"><a href="/logout/">Logout</a></div>
-        </div>
-        <div class="main">
-            <h2>Dashboard</h2>
-            <div id="form-container" class="form-container">
-            <h2>Hiring Form</h2>
-                {% if message %}
-                    <p class="success-message">{{ message }}</p>
-                {% endif %}
-             <form action="{% url 'submit_candidate' %}" method="POST" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <input type="text" name="name" placeholder="Enter Name" required>
-                    <input type="email" name="email" placeholder="Enter Email ID" required>
-                    <input type="file" name="resume" accept=".pdf,.doc,.docx" required>
-                    <button type="submit">Submit</button>
-
-            </form>
-            </div>
-            </div>
-        </div>
+  <div class="container">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+      <h1>PixelAdvant</h1>
+      <ul>
+        <li><a href="#" class="menu-item active" id="dashboard-menu">Dashboard</a></li>
+        <li><a href="#" class="menu-item hiring" id="hiring-menu">Hiring</a></li>
+        <li>
+          <a href="#" class="menu-item planning" id="planning-menu">Planning</a>
+          <ul class="sub-menu" id="planning-submenu">
+            <li><a href="#" class="menu-item requisition" id="requisition-menu">Requisition Management</a></li>
+          </ul>
+        </li>
+        <li><a href="/logout" class="menu-item">Logout</a></li>
+      </ul>
     </div>
+    
+    <!-- Main Content Area -->
+    <div class="main">
+      <!-- Tab Navigation -->
+      <div class="tabs">
+        <button id="requisition-list-tab" class="active">Job Requisition List</button>
+        <button id="create-requisition-tab">Create Job Requisition</button>
+      </div>
+      
+      <!-- Requisition List View -->
+      <div id="requisition-list" class="tab-content">
+        <h2>Job Requisition List</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Job Title</th>
+              <th>Positions</th>
+              <th>Recruiter</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="job-table-body">
+            <!-- Job rows will be dynamically added -->
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Create Job Requisition Form View -->
+      <div id="create-requisition" class="tab-content hidden">
+        <h2>Create Job Requisition</h2>
+        <div class="form-container">
+          <form id="job-form">
+  <label for="job-title">Job Title:</label>
+  <input type="text" id="job-title" value="Software Engineer" required>
 
-    <div id="popup-box" class="popup">Work in Processing...</div>
+  <label for="job-positions">No. of Positions:</label>
+  <input type="number" id="job-positions" value="3" required>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            let menuItems = document.querySelectorAll(".sidebar ul li a");
-            let hiringMenu = document.querySelector(".menu-item.hiring");
-            let formContainer = document.getElementById("form-container");
-            let mainTitle = document.querySelector(".main h2");
+  <label for="job-recruiter">Recruiter Assigned:</label>
+  <select id="job-recruiter" required>
+    <option value="">Select Recruiter</option>
+    <!-- Options will be dynamically populated via JavaScript -->
+  </select>
 
-            menuItems.forEach(item => {
-                item.addEventListener("click", function (event) {
-                    event.preventDefault();
-                    menuItems.forEach(menu => menu.classList.remove("active"));
-                    this.classList.add("active");
+  <label for="legal-entity">Legal Entity:</label>
+  <input type="text" id="legal-entity" value="ABC Corp" required>
 
-                    let submenu = this.nextElementSibling;
-                    if (submenu && submenu.classList.contains("sub-menu")) {
-                        submenu.style.display = (submenu.style.display === "block") ? "none" : "block";
-                    }
-                });
-            });
+  <label for="primary-location">Primary Location:</label>
+  <input type="text" id="primary-location" value="New York, USA" required>
 
-            if (hiringMenu) {
-                hiringMenu.addEventListener("click", function (event) {
-                    event.preventDefault();
-                    
-                    mainTitle.style.display = "none";
-                    formContainer.style.display = "block";
-                });
-            }
+  <label for="geo-zone">Geo Zone:</label>
+  <input type="text" id="geo-zone" value="North America">
 
-            let popups = document.querySelectorAll(".popup-trigger");
-            popups.forEach(button => {
-                button.addEventListener("click", function () {
-                    let popup = document.getElementById("popup-box");
-                    popup.innerHTML = `Work in Processing ${this.innerText}...`;
-                    popup.classList.add("show");
+  <label for="employee-group">Employee Group:</label>
+  <input type="text" id="employee-group" value="Technology">
 
-                    setTimeout(() => {
-                        popup.classList.remove("show");
-                    }, 2000);
-                });
-            });
+  <label for="employee-subgroup">Employee SubGroup:</label>
+  <input type="text" id="employee-subgroup" value="Engineering">
+
+  <label for="business-line">Business Line:</label>
+  <input type="text" id="business-line" value="Software Development">
+
+  <label for="business-unit">Business Unit:</label>
+  <input type="text" id="business-unit" value="Product Engineering">
+
+  <label for="division">Division:</label>
+  <input type="text" id="division" value="Web Applications">
+
+  <label for="department">Department:</label>
+  <input type="text" id="department" value="R&D">
+
+  <label for="requisition-type">Requisition Type:</label>
+  <input type="text" id="requisition-type" value="Full-Time">
+
+  <label for="career-level">Career Level:</label>
+  <input type="text" id="career-level" value="Mid-Level">
+
+  <label><input type="checkbox" id="is-contract"> Is Contract</label>
+
+  <label for="start-date">Start Date:</label>
+  <input type="date" id="start-date" value="2025-06-01" required>
+
+  <label for="end-date">End Date:</label>
+  <input type="date" id="end-date" value="2025-12-31">
+
+  <label for="band">Band:</label>
+  <input type="text" id="band" value="B3">
+
+  <label for="sub-band">Sub Band:</label>
+  <input type="text" id="sub-band" value="Technical Lead">
+
+  <label><input type="checkbox" id="client-interview"> Client Interview Required</label>
+  <label for="skills">Skills:</label>
+  <input type="text" id="skills" value="React, Node.js" >
+  <label for="secondary-skill">Secondary Skill:</label>
+  <input type="text" id="secondary-skill" value="Python, SQL">
+
+  <label for="mode-of-working">Mode Of Working:</label>
+  <input type="text" id="mode-of-working" value="Hybrid">
+
+  
+
+  <button id="job-add-btn">Add Job</button>
+  <button id="job-cancel-btn">Cancel</button>
+</form>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Utility: Get CSRF token from the cookie.
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== "") {
+        let cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          let cookie = cookies[i].trim();
+          if (cookie.startsWith(name + "=")) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+    
+    document.addEventListener("DOMContentLoaded", function() {
+      // --- Tab Switching ---
+      const reqListTab = document.getElementById("requisition-list-tab");
+      const createReqTab = document.getElementById("create-requisition-tab");
+      const reqListContent = document.getElementById("requisition-list");
+      const createReqContent = document.getElementById("create-requisition");
+
+      reqListTab.addEventListener("click", function() {
+        reqListTab.classList.add("active");
+        createReqTab.classList.remove("active");
+        reqListContent.classList.remove("hidden");
+        createReqContent.classList.add("hidden");
+      });
+      createReqTab.addEventListener("click", function() {
+        createReqTab.classList.add("active");
+        reqListTab.classList.remove("active");
+        createReqContent.classList.remove("hidden");
+        reqListContent.classList.add("hidden");
+      });
+      
+      // --- Sidebar: Toggle Planning Submenu ---
+      const planningMenu = document.getElementById("planning-menu");
+      const planningSubmenu = document.getElementById("planning-submenu");
+      planningMenu.addEventListener("click", function(event) {
+        event.preventDefault();
+        // Toggle the display based on computed style.
+        const computedStyle = window.getComputedStyle(planningSubmenu);
+        planningSubmenu.style.display = (computedStyle.display === "none") ? "block" : "none";
+      });
+      
+      // --- Form Submission Handling ---
+      const jobForm = document.getElementById("job-form");
+      jobForm.addEventListener("submit", function(event) {
+        event.preventDefault();
+        const recruiterValue = document.getElementById("job-recruiter").value;
+        console.log("Recruiter Selected:", recruiterValue.value); // Debugging
+
+        // Get form values
+        const title = document.getElementById("job-title").value;
+        const positions = document.getElementById("job-positions").value;
+        const recruiter = "PixelREQ";
+        const legalEntity = document.getElementById("legal-entity").value;
+        const primaryLocation = document.getElementById("primary-location").value;
+        const geoZone = document.getElementById("geo-zone").value;
+        const employeeGroup = document.getElementById("employee-group").value;
+        const employeeSubGroup = document.getElementById("employee-subgroup").value;
+        const businessLine = document.getElementById("business-line").value;
+        const businessUnit = document.getElementById("business-unit").value;
+        const division = document.getElementById("division").value;
+        const department = document.getElementById("department").value;
+        const requisitionType = document.getElementById("requisition-type").value;
+        const careerLevel = document.getElementById("career-level").value;
+        const isContract = document.getElementById("is-contract").checked;
+        const startDate = document.getElementById("start-date").value;
+        const endDate = document.getElementById("end-date").value;
+        const band = document.getElementById("band").value;
+        const subBand = document.getElementById("sub-band").value;
+        const clientInterview = document.getElementById("client-interview").checked;
+        const skills = document.getElementById("skills").value;
+        const secondarySkill = document.getElementById("secondary-skill").value;
+        const modeOfWorking = document.getElementById("mode-of-working").value;
+        
+        console.log("recruiter:", recruiter);
+        // Basic validation for mandatory fields
+        if (title.trim() === "" || positions === "" || recruiter.trim() === "") {
+          alert("Please fill in all mandatory fields.");
+          return;
+        }
+        
+        // Create FormData to send to the backend
+        const formData = new FormData();
+        formData.append("job_title", title);
+        formData.append("positions", positions);
+        formData.append("recruiter", recruiter);
+        formData.append("legal_entity", legalEntity);
+        formData.append("primary_location", primaryLocation);
+        formData.append("geo_zone", geoZone);
+        formData.append("employee_group", employeeGroup);
+        formData.append("employee_sub_group", employeeSubGroup);
+        formData.append("business_line", businessLine);
+        formData.append("business_unit", businessUnit);
+        formData.append("division", division);
+        formData.append("department", department);
+        formData.append("requisition_type", requisitionType);
+        formData.append("career_level", careerLevel);
+        formData.append("is_contract", isContract);
+        formData.append("start_date", startDate);
+        formData.append("end_date", endDate);
+        formData.append("band", band);
+        formData.append("sub_band", subBand);
+        formData.append("client_interview", clientInterview);
+        formData.append("skills", skills);
+        formData.append("secondary_skill", secondarySkill);
+        formData.append("mode_of_working", modeOfWorking);
+        console.log("Form Data Before Sending:", Object.fromEntries(formData));
+        
+        
+        const csrfToken = getCookie("csrftoken");
+        
+        fetch("/create_job_requisition/", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrfToken
+          },
+          body: formData
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("Network error");
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log("Server response:", data);
+          // Assuming the response returns a 'job' object
+          const job = data.job;
+          const jobTableBody = document.getElementById("job-table-body");
+          const newRow = document.createElement("tr");
+          newRow.innerHTML = `
+            <td>${jobTableBody.children.length + 1}</td>
+            <td>${job.PositionTitle || title}</td>
+            <td>${job.Positions || positions}</td>
+            <td>${job.recruiter || recruiter}</td>
+            <td>${job.Status || "New"}</td>
+          `;
+          jobTableBody.appendChild(newRow);
+          alert("Job Requisition created successfully!");
+          jobForm.reset();
+          reqListTab.click();
+        })
+        .catch(error => {
+          console.error("Error:", error);
+          alert("There was an error adding the job.");
         });
-    </script>
+      });
+      
+      // Cancel Button: Reset form and switch to list view
+      document.getElementById("job-cancel-btn").addEventListener("click", function() {
+        jobForm.reset();
+        reqListTab.click();
+      });
+      
+      // --- Sample: Dynamically populate recruiter options ---
+      // document.addEventListener("DOMContentLoaded", function () {
+      // const jobRecruiterSelect = document.getElementById("job-recruiter");
+
+      // Fetch recruiter list from the API
+    // Fetch recruiters and populate the dropdown
+    fetch("/get-recruiters")
+      .then(response => response.json())
+      .then(data => {
+        console.log("Recruiters API Response:", data); // Debugging
+
+        const recruiterSelect = document.getElementById("job-recruiter");
+        // Set the default option
+        recruiterSelect.innerHTML = '<option value="">Select Recruiter</option>';
+
+        // Loop through each recruiter and create an option
+        data.forEach(recruiter => {
+          let option = document.createElement("option");
+          // Use UserID instead of id
+          option.value = recruiter.UserID;
+          // Use Name instead of name
+          option.textContent = recruiter.Name;
+          recruiterSelect.appendChild(option);
+        });
+
+        console.log("Dropdown Options Added:", recruiterSelect.innerHTML); // Debugging
+      })
+      .catch(error => console.error("Error fetching recruiters:", error));
+
+    // Add event listener to log the selected recruiter value for debugging
+    document.getElementById("job-recruiter").addEventListener("change", function() {
+      console.log("Recruiter Selected:", this.value);
+    });
+
+         });
+  </script>
 </body>
 </html>

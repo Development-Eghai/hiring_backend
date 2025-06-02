@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PixelAdvant Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      display: flex;
+      flex-direction: row;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: 250px;
+      background: #2c3e50;
+      color: white;
+      min-height: 100vh;
+      padding: 20px;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+    .sidebar h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+    }
+    .sidebar ul li {
+      margin: 15px 0;
+    }
+    .sidebar ul li a {
+      text-decoration: none;
+      color: white;
+      padding: 10px;
+      display: block;
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+    .sidebar ul li a:hover,
+    .sidebar ul li a.active {
+      background: #16a085;
+    }
+    .sidebar ul li ul.sub-menu {
+      margin-top: 5px;
+      padding-left: 15px;
+      list-style: disc;
+      display: none;
+    }
+    .logout {
+      color: white;
+      margin-top: 20px;
+    }
+    .main {
+      flex-grow: 1;
+      padding: 20px;
+      background-color: #e9ecef;
+      position: relative;
+    }
+    /* A basic table style */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: white;
+    }
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f8f8f8;
+    }
+    /* Form styling */
+    form label {
+      display: block;
+      margin-top: 10px;
+    }
+    form input {
+      margin-top: 5px;
+      padding: 5px;
+      width: 300px;
+    }
+    form button {
+      margin-top: 15px;
+      padding: 8px 15px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    form button:hover {
+      background-color: #218838;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar with Hiring-related Items -->
+    <div class="sidebar">
+      <h1>PixelAdvant</h1>
+      <ul>
+        <li><a href="#" class="menu-item active" id="req-management">Requisition Management</a></li>
+        <li><a href="#" class="menu-item" id="hiring-dashboard">Hiring Dashboard</a></li>
+        <li><a href="#" class="menu-item" id="candidate-management">Candidate Management</a></li>
+        <li><a href="#" class="menu-item" id="interview-scheduling">Interview Scheduling</a></li>
+        <div class="menu-item"><a href="/logout/" style="color: white;">Logout</a></div>
+      </ul>
+      
+    </div>
+
+    <!-- Main content area -->
+    <div class="main" id="main-content">
+      <!-- Container for Extra Details (existing view) -->
+      <div id="table-container" style="display: none;">
+        <h3>Extra Details</h3>
+        <table id="extra-details-table">
+          <thead>
+            <tr>
+              <th>RequisitionID</th>
+              <th>LegalEntity</th>
+              <th>PrimaryLocation</th>
+              <th>Geo_zone</th>
+              <th>EmployeeGroup</th>
+              <th>EmployeeSubGroup</th>
+              <th>BussinessLine</th>
+              <th>BussinessUnit</th>
+              <th>Division</th>
+              <th>Department</th>
+              <th>RequisitionType</th>
+              <th>CareerLevel</th>
+              <th>Is_contract</th>
+              <th>Start_date</th>
+              <th>End_date</th>
+              <th>Band</th>
+              <th>SubBand</th>
+              <th>Client_interview</th>
+              <th>Secondary_skill</th>
+              <th>ModeOfWorking</th>
+              <th>Skills</th>
+            </tr>
+          </thead>
+          <tbody id="extra-details-table-body">
+            <!-- Rows loaded via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Container for Hiring Form -->
+      <div id="hiring-form-container" style="display: none;">
+        <h3>Upload Candidate Resume</h3>
+        <form id="hiring-form" enctype="multipart/form-data">
+          <label for="name">Name:</label>
+          <input type="text" id="name" name="name" required />
+
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" required />
+
+          <label for="resume">Resume:</label>
+          <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required />
+
+          <button type="submit">Submit</button>
+        </form>
+      </div>
+
+      <!-- Container for Candidate Management -->
+      <div id="candidate-management-container" style="display: none;">
+        <h3>Candidate Management</h3>
+        <table id="candidate-table">
+          <thead>
+            <tr>
+              <th>CandidateID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Resume</th>
+              <th>Profile Created</th>
+            </tr>
+          </thead>
+          <tbody id="candidate-table-body">
+            <!-- Candidate rows via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+    </div> <!-- End Main Content -->
+  </div> <!-- End Container -->
+
+  <script>
+    // Utility: Get CSRF token from cookie
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.startsWith(name + "=")) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // Existing function to load extra details (kept as is)
+    function loadExtraDetails() {
+      document.getElementById("table-container").style.display = "block";
+      document.getElementById("hiring-form-container").style.display = "none";
+      document.getElementById("candidate-management-container").style.display = "none";
+      fetch("/get-job-extra-details/")
+        .then(response => response.json())
+        .then(data => {
+          console.log("Extra Details Data:", data);
+          const tableBody = document.getElementById("extra-details-table-body");
+          tableBody.innerHTML = "";
+          data.forEach(detail => {
+            const row = `
+              <tr data-id="${detail.RequisitionID}">
+                <td>${detail.RequisitionID}</td>
+                <td>${detail.LegalEntity}</td>
+                <td>${detail.PrimaryLocation}</td>
+                <td>${detail.Geo_zone || ""}</td>
+                <td>${detail.EmployeeGroup || ""}</td>
+                <td>${detail.EmployeeSubGroup || ""}</td>
+                <td>${detail.BussinessLine || ""}</td>
+                <td>${detail.BussinessUnit || ""}</td>
+                <td>${detail.Division || ""}</td>
+                <td>${detail.Department || ""}</td>
+                <td>${detail.RequisitionType}</td>
+                <td>${detail.CareerLevel}</td>
+                <td>${detail.Is_contract ? "Yes" : "No"}</td>
+                <td>${detail.Start_date || ""}</td>
+                <td>${detail.End_date || ""}</td>
+                <td>${detail.Band || ""}</td>
+                <td>${detail.SubBand || ""}</td>
+                <td>${detail.Client_interview ? "Yes" : "No"}</td>
+                <td>${detail.Secondary_skill || ""}</td>
+                <td>${detail.ModeOfWorking}</td>
+                <td>${detail.Skills}</td>
+              </tr>
+            `;
+            tableBody.innerHTML += row;
+          });
+        })
+        .catch(error => console.error("Error fetching extra details:", error));
+    }
+
+    // Function to show the hiring form
+    function loadHiringForm() {
+      document.getElementById("table-container").style.display = "none";
+      document.getElementById("hiring-form-container").style.display = "block";
+      document.getElementById("candidate-management-container").style.display = "none";
+    }
+
+    // Function to load candidate management details
+    function loadCandidateManagement() {
+      // Show candidate management section only; hide others.
+      document.getElementById("table-container").style.display = "none";
+      document.getElementById("hiring-form-container").style.display = "none";
+      document.getElementById("candidate-management-container").style.display = "block";
+      // Fetch candidate details from the server.
+      fetch("/get-candidates/")
+        .then(response => response.json())
+        .then(data => {
+          console.log("Candidate Data:", data);
+          const tableBody = document.getElementById("candidate-table-body");
+          tableBody.innerHTML = "";
+          data.forEach(candidate => {
+            // Create a link to view/download the resume if it exists.
+            const resumeLink = candidate.Resume ? `<a href="${candidate.Resume}" target="_blank">View Resume</a>` : "";
+            const row = `
+              <tr data-id="${candidate.CandidateID}">
+                <td>${candidate.CandidateID}</td>
+                <td>${candidate.Name}</td>
+                <td>${candidate.Email}</td>
+                <td>${resumeLink}</td>
+                <td>${candidate.ProfileCreated}</td>
+              </tr>
+            `;
+            tableBody.innerHTML += row;
+          });
+        })
+        .catch(error => console.error("Error fetching candidates:", error));
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      // Sidebar menu event listener.
+      const menuItems = document.querySelectorAll(".sidebar ul li a");
+      menuItems.forEach(item => {
+        item.addEventListener("click", function (event) {
+          event.preventDefault();
+          menuItems.forEach(menu => menu.classList.remove("active"));
+          this.classList.add("active");
+
+          if (this.id === "req-management") {
+            loadExtraDetails();
+          } else if (this.id === "hiring-dashboard") {
+            loadHiringForm();
+          } else if (this.id === "candidate-management") {
+            loadCandidateManagement();
+          } else if (this.id === "interview-scheduling") {
+            console.log("Load Interview Scheduling");
+          }
+        });
+      });
+
+      // Optionally, load a default view.
+      loadExtraDetails();
+      
+      // Hiring form submission handler (already implemented):
+      const hiringForm = document.getElementById("hiring-form");
+      hiringForm.addEventListener("submit", function(event) {
+        event.preventDefault();
+        const formData = new FormData(hiringForm);
+
+        fetch("/upload-candidate/", {
+          method: "POST",
+          body: formData,
+          headers: {
+            "X-CSRFToken": getCookie("csrftoken")
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          console.log("Candidate uploaded:", data);
+          alert("Candidate data saved successfully!");
+          hiringForm.reset();
+        })
+        .catch(error => {
+          console.error("Error uploading candidate:", error);
+          alert("Error uploading candidate.");
+        });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -9,7 +9,7 @@
 <body>
     <div class="container mt-5">
         <!-- Login form -->
-        <form class="col-6 mx-auto card p-3 shadow-lg" method="post" action="{% url 'login_page' %}">
+        <form class="col-6 mx-auto card p-3 shadow-lg" method="post" action="{% url 'login_page' %}"  >
             <h1 style="text-align: center;"><span style="color: green;">PixelAdvant</span></h1>
 
             {% csrf_token %}  <!-- CSRF token for security -->
@@ -30,14 +30,14 @@
             <!-- Username input field -->
             <div class="form-group">
                 <label for="username">Username</label>
-                <input type="text" class="form-control" name="username" id="username"
+                <input type="text" class="form-control" name="username" id="username" value="pixelhr@gmail.com"
                     placeholder="Enter username" required>
             </div>
 
             <!-- Password input field -->
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" name="password" class="form-control" id="password" placeholder="Password" required>
+                <input type="password" name="password" class="form-control" id="password" placeholder="Password" value="Admin@123" required>
             </div>
 
             <!-- Link to registration page -->
@@ -45,7 +45,11 @@
 
             <!-- Submit button -->
             <button type="submit" class="btn btn-primary">Submit</button>
+            {% if error %}
+    <p style="color: red;text-align: center;"><br/>{{ error }}</p>
+{% endif %}
         </form>
+        
     </div>
 </body>
 </html>
