@@ -32,6 +32,59 @@ from django.http import JsonResponse
 from django.core.serializers.json import DjangoJSONEncoder
 from .models import JobRequisition  # Assuming your main model is defined in models.py
 
+import PyPDF2 as pdf
+from langchain_ollama import OllamaLLM
+
+# Initialize Ollama model
+ollama_model = OllamaLLM(base_url='http://localhost:11434', model='ats_model')
+
+def extract_text_from_pdf(uploaded_file):
+    """Extracts text from a PDF file"""
+    reader = pdf.PdfReader(uploaded_file)
+    text = ""
+    for page in reader.pages:
+        text += str(page.extract_text())
+    return text
+
+def get_matching_score(job_description, resume_text, resume_name):
+    """Send job description and resume to Ollama model and get only the matching score"""
+    prompt = f"""
+    You are an AI-powered resume analysis agent.
+    Given a job description, compare multiple resumes.
+    
+    For each resume, **ONLY return the JSON output**:
+    
+    {{
+        "resume_name": "{resume_name}",
+        "percentage": 90
+    }}
+
+    **DO NOT** provide additional analysis, explanations, keywords, or recommendations.
+    
+    Job Description: {job_description}
+    Resume Text:{resume_text[:2000]} 
+
+    """
+    response = ollama_model.invoke(prompt)
+    return response.strip()  # Remove unnecessary formatting
+
+class ResumeMatchingAPI(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        """Handles resume uploads and returns matching scores only"""
+        job_description = request.data.get('job_description')
+        uploaded_files = request.FILES.getlist('resumes')  
+
+        results = []
+        for uploaded_file in uploaded_files:
+            resume_text = extract_text_from_pdf(uploaded_file)
+            score = get_matching_score(job_description, resume_text, uploaded_file.name)
+            results.append(score)
+
+        return Response({"matching_scores": results})
+
+
 def get_job_requisitions(request):
     """
     Retrieves all job requisitions along with their extra details and returns them as JSON.

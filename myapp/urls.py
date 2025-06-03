@@ -31,6 +31,8 @@ urlpatterns = [
     path('get-job-extra-details/', get_job_extra_details, name='get_job_extra_details'),
     path('upload-candidate/', upload_candidate, name='upload_candidate'),
     path('get-candidates/', get_candidates, name='get_candidates'),
+    path('api/match-resumes/', ResumeMatchingAPI.as_view(), name='match_resumes'),
+
   
 
 ]
