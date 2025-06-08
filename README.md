@@ -52,6 +52,34 @@ Tech Stack
 - docker stop hiring-backend-container
 - docker rm hiring-backend-container
 
+### Running the Ollama Resume Scoring Program
+
+  1.pip install ollama pymupdf
+  2.cd /path/to/hiring_backend
+  3.source venv/bin/activate  # Mac/Linux
+    venv\Scripts\activate  # Windows
+  4.ls media/resumes  # Check if resumes exist
+  5.python olama_test.py > scores.txt
+
+### API Testing with Postman
+This project includes a Postman collection named pixel_advant_endpoint_details.postman_collection that contains all the API endpoint details for testing.
+Steps to Import and Use Postman Collection
+1. Install Postman
+- Download and install Postman from Postman’s official website.
+2. Import the Collection
+- Open Postman.
+- Click on File → Import.
+- Select pixel_advant_endpoint_details.postman_collection from the project directory.
+- Click Import to load the endpoints.
+3. Set Up Environment Variables
+If your API requires environment variables (such as authentication keys, base URL, etc.), follow these steps:
+- Click Environments in Postman.
+- Create a new environment and add required variables (e.g., BASE_URL, API_KEY).
+- Use {{BASE_URL}} in endpoint URLs.
+4. Run API Tests
+- Select an endpoint from the imported collection.
+- Enter required parameters or body content.
+- Click Send to execute the API request.
 
   
   
