@@ -14,11 +14,10 @@ from django.db import connection
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from .models import Posting, UserDetails,Candidates,UserroleDetails
-from .serializers import CandidatesSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .models import JobRequisition, JobRequisitionExtraDetails
+from .models import JobRequisition
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
