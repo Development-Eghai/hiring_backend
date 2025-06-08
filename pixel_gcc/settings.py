@@ -71,7 +71,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'pixel_gcc.urls'
-
+APPEND_SLASH = False
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
