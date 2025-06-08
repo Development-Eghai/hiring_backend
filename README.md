@@ -52,14 +52,21 @@ Tech Stack
 - docker stop hiring-backend-container
 - docker rm hiring-backend-container
 
-### Running the Ollama Resume Scoring Program
+### Steps to Run the Ollama Resume Scoring Program
+- Install dependencies
+pip install ollama pymupdf
+- Navigate to the project directory
+cd /path/to/hiring_backend
+- Activate the virtual environment
+- Mac/Linux:
+source venv/bin/activate
+- Windows:
+venv\Scripts\activate
+- Ensure resumes are available in the folder
+ls media/resumes  # Check if resumes exist
+- Run the script and save compatibility scores
+python olama_test.py > scores.txt
 
-  1.pip install ollama pymupdf
-  2.cd /path/to/hiring_backend
-  3.source venv/bin/activate  # Mac/Linux
-    venv\Scripts\activate  # Windows
-  4.ls media/resumes  # Check if resumes exist
-  5.python olama_test.py > scores.txt
 
 ### API Testing with Postman
 This project includes a Postman collection named pixel_advant_endpoint_details.postman_collection that contains all the API endpoint details for testing.
