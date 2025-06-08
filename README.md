@@ -15,8 +15,8 @@ Tech Stack
 - Authentication: Django's built-in authentication, JWT
 - Deployment: Docker
 
-Installation
-Local Setup
+## Installation
+### Local Setup
 - Clone this repository:
 - git clone https://github.com/Development-Eghai/hiring_backend.git
 - cd hiring_backend
@@ -27,21 +27,25 @@ Local Setup
 - python manage.py migrate
 - python manage.py runserver
 
-Setting Up MySQL Database
-Install MySQL
+## Setting Up MySQL Database
+### Install MySQL
 - Download and install MySQL from the official site: MySQL Download.
 - Follow the installation process and ensure MySQL Server is running.
 - Set up your root password during installation.
-Import Database File (.sql)
-- Place your MySQL file (recruitingdb.sql) in a known directory.
-- Open a terminal or command prompt and log in to MySQL:
-- mysql -u root -p
-- Create a new database (replace hiring_db with your preferred name):
-- CREATE DATABASE  recruitingdb;
-- Exit MySQL and import the .sql file
-- mysql -u root -p  recruitingdb < /path/to/recruitingdb.sql
+### Import Database File (.sql)
+  - Place your MySQL file (recruitingdb.sql) in a known directory.
+  - Open a terminal or command prompt and log in to MySQL:
+  - mysql -u root -p
+  - Create a new database (replace hiring_db with your preferred name):
+  - CREATE DATABASE  recruitingdb;
+  - Exit MySQL and import the .sql file
+  - mysql -u root -p  pixeladvant_hiring < hiring_backend/pixeladvant_hiring_mysql.sql
+### Alternative DB setup
+  - set env variable DUMP_FILE=pixeladvant_hiring_mysql.sql
+  - set env variable MYSQL_DB_PASSWORD=<your-password>
+  - run setup_db_mysql.py
 
-Docker Setup
+### Docker Setup
 - Build the Docker image:
 - docker build -t hiring-backend .
 - docker run -d -p 8000:8000 --name hiring-backend-container hiring-backend
