@@ -72,7 +72,7 @@ class JobRequisition(models.Model):
                  ('Pending Approval', 'Pending Approval'),
                  ('Approved', 'Approved'),
                  ('Posted', 'Posted')],
-        default='Draft'
+        default='Pending Approval'
     )
     CreatedDate = models.DateTimeField(auto_now_add=True)
     UpdatedDate = models.DateTimeField(auto_now=True)
@@ -220,4 +220,15 @@ class Posting(models.Model):
         db_table = 'jobposting'
     def __str__(self):
         return f"{self.posting_id} - {self.posting_type}"
+
+class Candidate(models.Model):
+    CandidateID = models.AutoField(primary_key=True)
+    Name = models.CharField(max_length=191)
+    Email = models.CharField(max_length=191)
+    Resume = models.TextField(null=True, blank=True)
+    ProfileCreated = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        db_table = 'candidates'
+    def __str__(self):
+        return f"{self.CandidateID} - {self.Name}"
 

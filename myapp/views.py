@@ -1,8 +1,11 @@
 # Import necessary modules and models
+from argparse import Action
 import os
 from pyexpat.errors import messages
 from django.http import HttpResponse,JsonResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
+import fitz
+import ollama
 from rest_framework import generics
 from rest_framework.generics import ListAPIView
 # from django.contrib import messages
@@ -13,7 +16,7 @@ from django.contrib.auth import logout
 from django.db import connection
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
-from .models import Posting, UserDetails,Candidates,UserroleDetails
+from .models import Posting, RequisitionDetails, UserDetails,Candidates,UserroleDetails
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -33,6 +36,92 @@ import PyPDF2 as pdf
 from langchain_ollama import OllamaLLM
 from .serializers import JobRequisitionSerializer,JobRequisitionSerializerget
 from rest_framework import viewsets
+from .models import Candidate
+# from .utils import extract_info_from_resume  # Import the parsing function
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action
+from .models import Candidate
+import re
+import fitz 
+from concurrent.futures import ThreadPoolExecutor
+
+RESUME_STORAGE_FOLDER = "media/resumes"
+
+def extract_text_from_pdf(file):
+    """Extracts text from PDF using PyMuPDF."""
+    text = ""
+    with fitz.open(stream=file.read(), filetype="pdf") as pdf:
+        text = "\n".join(page.get_text("text") for page in pdf)
+    return text
+
+def extract_info_from_text(text):
+    """Attempts AI-based name & email extraction, with fallback regex."""
+    prompt = f"""
+    Extract only the full name and email address from this resume.
+    Return data in JSON format: 
+    {{
+        "name": "[Full Name]",
+        "email": "[Email Address]"
+    }}
+    Resume Content: {text}
+    """
+
+    response = ollama.chat(model="ats_model", messages=[{"role": "user", "content": prompt}])
+    ai_output = response['message']['content']
+    
+    # Print AI response for debugging
+    # print("AI Response:\n", ai_output)
+
+    # Try extracting using AI response JSON
+    name_match = re.search(r'"name":\s*"([^"]+)"', ai_output)
+    email_match = re.search(r'"email":\s*"([^"]+)"', ai_output)
+
+    if name_match and email_match:
+        return name_match.group(1), email_match.group(1)
+
+    # Fallback regex extraction if AI fails
+    name_fallback = re.search(r"Name:\s*(.*)", text)
+    email_fallback = re.search(r"Email:\s*([\w\.-]+@[\w\.-]+)", text)
+
+    name = name_fallback.group(1) if name_fallback else "Unknown"
+    email = email_fallback.group(1) if email_fallback else "Not found"
+
+    return name, email
+
+def process_resume(file):
+    """Processes a single resume - extracts text, stores file, then extracts name/email."""
+    
+    # Ensure storage folder exists
+    os.makedirs(RESUME_STORAGE_FOLDER, exist_ok=True)
+
+    # Save the resume to the media/resumes folder
+    file_path = os.path.join(RESUME_STORAGE_FOLDER, file.name)
+    with open(file_path, "wb") as f:
+        f.write(file.read())
+
+    # Extract text from PDF
+    text = extract_text_from_pdf(file)
+
+    # Extract name and email using AI with fallback
+    name, email = extract_info_from_text(text)
+
+    return Candidate(Name=name, Email=email, Resume=file_path)
+
+
+class BulkUploadResumeView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, *args, **kwargs):
+        files = request.FILES.getlist("files")
+
+        num_workers = min(len(files), os.cpu_count())  # Optimize worker count
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            candidates = list(executor.map(process_resume, files))
+
+        Candidate.objects.bulk_create(candidates)
+
+        return Response({"message": f"{len(candidates)} resumes processed and candidates stored efficiently!"})
+
 
 class JobRequisitionViewSetget(viewsets.ModelViewSet):
     queryset = JobRequisition.objects.all()
@@ -43,29 +132,101 @@ class JobRequisitionViewSetget(viewsets.ModelViewSet):
 class JobRequisitionViewSet(viewsets.ModelViewSet):
     queryset = JobRequisition.objects.all()
     serializer_class = JobRequisitionSerializer
-
+    # permission_classes = [IsAuthenticated]
+    
     def create(self, request, *args, **kwargs):
-        """Handle POST request to create JobRequisition and return a success response"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)  # Validate request data
-        job_requisition = serializer.save()  # Create JobRequisition first
-        send_email()
-        return Response({
-            "message": "Job requisition created successfully!",
-            "status_code": status.HTTP_201_CREATED,
-            "requisition_id": job_requisition.RequisitionID,
-            "data": serializer.data  # Return inserted data
-        }, status=status.HTTP_201_CREATED)
-    def list(self, request, *args, **kwargs):
-        """Handle GET request and return JobRequisition data with status code"""
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
+        """Only Hiring Managers (role = 1) can create job requisitions."""
+        user_role = request.data.get("user_role")  # Get role from JSON
 
-        return Response({
-            "message": "Job requisitions retrieved successfully!",
-            "status_code": status.HTTP_200_OK,
-            "data": serializer.data
-        }, status=status.HTTP_200_OK)
+        if user_role != 1:  # Now comparing integers instead of strings
+            return Response({"error": "Unauthorized. Only Hiring Managers can create requisitions."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        job_requisition = serializer.save()
+        return Response({"message": "Job requisition created successfully!", "requisition_id": job_requisition.RequisitionID}, status=status.HTTP_201_CREATED)
+
+    def list(self, request, *args, **kwargs):
+        """Filter job requisitions based on user role."""
+        user_role = request.data.get("user_role")  
+
+        if user_role == 3:  # Business Ops can see pending requisitions
+            # queryset = JobRequisition.objects.filter(Status="Pending Approval")
+            queryset = JobRequisition.objects.all()
+        elif user_role == 2:  # Recruiter can see only approved requisitions
+            queryset = JobRequisition.objects.filter(Status="Approved")
+        elif user_role == 1:  # Hiring Manager can see their own requisitions
+            # queryset = JobRequisition.objects.filter(HiringManagerID=request.user.id)
+            queryset = JobRequisition.objects.all()
+
+        else:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({"message": "Job requisitions retrieved successfully!", "data": serializer.data}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["POST"])
+    def approve_requisition(self, request):
+        """Only Business Ops (role = 3) can approve job requisitions."""
+        user_role = request.data.get("user_role")  
+        requisition_id = request.data.get("req_id")
+
+        if user_role != 3:
+            return Response({"error": "Unauthorized. Only Business Ops can approve requisitions."}, status=status.HTTP_403_FORBIDDEN)
+
+        requisition = get_object_or_404(JobRequisition, pk=requisition_id)
+        requisition.Status = "Approved"
+        requisition.save()
+
+        return Response({"message": "Job requisition approved!", "status": requisition.Status}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["POST"])
+    def get_approved_extra_details(self, request):
+        """Get extra details only for approved requisitions."""
+        user_role = request.data.get("user_role")  
+
+        if user_role not in [2, 3]:  
+            return Response({"error": "Unauthorized. Only Business Ops and Recruiters can view requisition details."}, status=status.HTTP_403_FORBIDDEN)
+
+        approved_reqs = JobRequisition.objects.filter(Status="Approved")
+        approved_ids = list(approved_reqs.values_list("RequisitionID", flat=True))  
+
+        extra_details_qs = RequisitionDetails.objects.filter(requisition_id__in=approved_ids).order_by("requisition_id")
+
+        data = []
+        for detail in extra_details_qs:
+            data.append({
+                "requisition_id": detail.requisition_id,  
+                "internal_title": detail.internal_title,
+                "external_title": detail.external_title,
+                "position": detail.position,
+                "business_line": detail.business_line,
+                "business_unit": detail.business_unit,
+                "division": detail.division,
+                "department": detail.department,
+                "location": detail.location,
+                "geo_zone": detail.geo_zone,
+                "employee_group": detail.employee_group,
+                "employee_sub_group": detail.employee_sub_group,
+                "contract_start_date": detail.contract_start_date.isoformat() if detail.contract_start_date else "",
+                "contract_end_date": detail.contract_end_date.isoformat() if detail.contract_end_date else "",
+                "career_level": detail.career_level,
+                "band": detail.band,
+                "sub_band": detail.sub_band,
+                "primary_skills": detail.primary_skills,
+                "secondary_skills": detail.secondary_skills,
+                "mode_of_working": detail.mode_of_working,
+                "requisition_type": detail.requisition_type,
+                "client_interview": detail.client_interview,
+                "required_score": detail.required_score,
+                "onb_coordinator": detail.onb_coordinator,
+                "onb_coordinator_team": detail.onb_coordinator_team,
+                "isg_team": detail.isg_team,
+                "interviewer_teammate_employee_id": detail.interviewer_teammate_employee_id,
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
+
 
 
 # Initialize Ollama model

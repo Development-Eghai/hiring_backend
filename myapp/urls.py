@@ -15,6 +15,8 @@ router = DefaultRouter()
 router.register(r'jobrequisition', JobRequisitionViewSet)
 router1 = DefaultRouter()
 router1.register(r'job-requisition', JobRequisitionViewSetget)
+# router2 = DefaultRouter()
+# router2.register(r'upload-resumes', BulkUploadResumeView)
 
 
 # Define URL patterns
@@ -26,6 +28,9 @@ urlpatterns = [
     path('api/match-resumes/', ResumeMatchingAPI.as_view(), name='match_resumes'),
     path('api/', include(router.urls)),
     path('api/', include(router1.urls)),
+    path("api/upload-resumes/", BulkUploadResumeView.as_view(), name="bulk-upload-resumes")
+    
+
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

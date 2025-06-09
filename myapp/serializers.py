@@ -17,7 +17,7 @@ class JobRequisitionSerializerget(serializers.ModelSerializer):
 
     class Meta:
         model = JobRequisition 
-        fields = ['PositionTitle', 'Recruiter', 'details' ,'Status']
+        fields = ['RequisitionID' ,'PositionTitle', 'Recruiter', 'details' ,'Status']
 
 
 
