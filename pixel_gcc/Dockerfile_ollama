@@ -1,0 +1,12 @@
+FROM ollama/ollama:latest
+
+WORKDIR /app
+
+# Copy your Modelfile or other necessary files
+COPY Modelfile /app/
+
+# Clear the existing entrypoint so your CMD is used directly
+ENTRYPOINT []
+
+# Use a shell command to start the Ollama server, create your model, and then keep the container running.
+CMD ["sh", "-c", "ollama serve & sleep 10 && ollama create ats_model -f /app/Modelfile && tail -f /dev/null"]

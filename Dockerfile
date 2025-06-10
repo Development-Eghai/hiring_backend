@@ -1,36 +1,33 @@
-# Use the Python 3.13 base image
-FROM python:3.13  
+# Use Python 3.13 as the base image
+FROM python:3.13
 
-# Create the app directory
-RUN mkdir /app  
+WORKDIR /app
 
-# Set the working directory inside the container
-WORKDIR /app  
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Set environment variables  
-ENV PYTHONDONTWRITEBYTECODE=1  
-ENV PYTHONUNBUFFERED=1  
+# Update package lists and install necessary packages, including netcat-openbsd
+RUN apt-get update && apt-get install -y \
+    default-libmysqlclient-dev \
+    default-mysql-client \
+    iputils-ping \
+    dnsutils \
+    gcc \
+    netcat-openbsd
 
-# Upgrade pip  
-RUN pip install --upgrade pip  
+# Upgrade pip and install Python dependencies
+RUN pip install --upgrade pip
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Ollama
-RUN curl -fsSL https://ollama.com/install.sh | sh  
+# Copy all project files including wait-for-it.sh
+COPY . /app/
 
-# Copy the Django project requirements file  
-COPY requirements.txt /app/  
+# Ensure wait-for-it.sh is executable
+RUN chmod +x /app/wait-for-it.sh
 
-# Install dependencies  
-RUN pip install --no-cache-dir -r requirements.txt  
+# Expose the Django port
+EXPOSE 8000
 
-# Pull the ATS model for Ollama  
-RUN ollama pull ats_model  
-
-# Copy the Django project files  
-COPY . /app/  
-
-# Expose the Django port  
-EXPOSE 8000  
-
-# Run Django’s development server  
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Use wait-for-it to wait until MySQL is ready before launching Django
+CMD ["/app/wait-for-it.sh", "mysql", "3306", "--", "python", "manage.py", "runserver", "0.0.0.0:8000"]

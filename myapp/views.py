@@ -1,5 +1,6 @@
 # Import necessary modules and models
 from argparse import Action
+from io import BytesIO
 import os
 from pyexpat.errors import messages
 from django.http import HttpResponse,JsonResponse
@@ -47,6 +48,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 RESUME_STORAGE_FOLDER = "media/resumes"
 
+# Initialize Ollama model
+ollama_model = OllamaLLM(base_url='http://localhost:11434', model='ats_model')
+
+
 def extract_text_from_pdf(file):
     """Extracts text from PDF using PyMuPDF."""
     text = ""
@@ -65,12 +70,18 @@ def extract_info_from_text(text):
     }}
     Resume Content: {text}
     """
-
-    response = ollama.chat(model="ats_model", messages=[{"role": "user", "content": prompt}])
-    ai_output = response['message']['content']
-    
+    # ollama_model = OllamaLLM(base_url='http://ollama:11434', model='ats_model')
+    # response = ollama.chat(model='ats_model', messages=[{"role": "user", "content": prompt}])
+    # ai_output = response['message']['content']
+    # ai_output = ollama_model.invoke(prompt)
+    # return response.strip()
     # Print AI response for debugging
-    # print("AI Response:\n", ai_output)
+    try:
+        ai_output = ollama_model.invoke(prompt)
+    except Exception as e:
+        print("Ollama Error:", e)
+
+    print("AI Response:\n", ai_output)
 
     # Try extracting using AI response JSON
     name_match = re.search(r'"name":\s*"([^"]+)"', ai_output)
@@ -229,8 +240,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
 
 
 
-# Initialize Ollama model
-ollama_model = OllamaLLM(base_url='http://localhost:11434', model='ats_model')
+
 
 def extract_text_from_pdf(uploaded_file):
     """Extracts text from a PDF file"""
