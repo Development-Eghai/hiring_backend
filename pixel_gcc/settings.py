@@ -40,7 +40,7 @@ SECRET_KEY = 'django-insecure-4!&yo)p$&euxlw@#lk$b$9p+qdc(!i(*t!)3r4x+b9yr5rf=bw
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
+CSRF_TRUSTED_ORIGINS = ['https://api.pixeladvant.com']
 ALLOWED_HOSTS = ["*"]
 
 

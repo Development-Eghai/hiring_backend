@@ -63,15 +63,18 @@ class UserroleDetails(models.Model):
 class JobRequisition(models.Model):
     RequisitionID = models.AutoField(primary_key=True)
     PositionTitle = models.CharField(max_length=191, null=True, blank=True, default="Not Provided")
-    HiringManagerID = models.IntegerField(null=True, blank=True)
+    HiringManager = models.ForeignKey(UserDetails, on_delete=models.SET_NULL, null=True, db_column="HiringManagerID", related_name="requisitions")
+    # HiringManager = models.ForeignKey(UserDetails, on_delete=models.CASCADE, db_column="HiringManagerID", related_name="requisitions")  # ForeignKey
     Recruiter = models.CharField(max_length=191, null=True, blank=True, default="Not Assigned")
     No_of_positions = models.IntegerField(null=True, blank=True, default=1)
     Status = models.CharField(
         max_length=50,
-        choices=[('Draft', 'Draft'),
-                 ('Pending Approval', 'Pending Approval'),
-                 ('Approved', 'Approved'),
-                 ('Posted', 'Posted')],
+        choices=[
+            ('Draft', 'Draft'),
+            ('Pending Approval', 'Pending Approval'),
+            ('Approved', 'Approved'),
+            ('Posted', 'Posted')
+        ],
         default='Pending Approval'
     )
     CreatedDate = models.DateTimeField(auto_now_add=True)
@@ -81,8 +84,9 @@ class JobRequisition(models.Model):
         db_table = 'jobrequisition'
 
     def __str__(self):
-        return self.PositionTitle
-
+        return f"{self.PositionTitle} - Managed by {self.HiringManager.Name}"
+    
+    
 class RequisitionDetails(models.Model):
     requisition = models.OneToOneField(JobRequisition, on_delete=models.CASCADE, related_name="details")
     # requisition = models.ForeignKey(JobRequisition, on_delete=models.CASCADE, related_name="details",unique=True)

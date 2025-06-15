@@ -1,5 +1,7 @@
 # Import necessary modules and models
 from argparse import Action
+import base64
+import datetime
 from io import BytesIO
 import os
 from pyexpat.errors import messages
@@ -140,11 +142,16 @@ class JobRequisitionViewSetget(viewsets.ModelViewSet):
     http_method_names = ['get']  # Only allow GET requests
 
 
+from rest_framework import viewsets, status
+from rest_framework.response import Response
+from datetime import datetime
+from myapp.models import JobRequisition, UserDetails
+from myapp.serializers import JobRequisitionSerializer
+
 class JobRequisitionViewSet(viewsets.ModelViewSet):
-    queryset = JobRequisition.objects.all()
+    queryset = JobRequisition.objects.select_related("HiringManager").all()
     serializer_class = JobRequisitionSerializer
-    # permission_classes = [IsAuthenticated]
-    
+
     def create(self, request, *args, **kwargs):
         """Only Hiring Managers (role = 1) can create job requisitions."""
         user_role = request.data.get("user_role")  # Get role from JSON
@@ -155,27 +162,59 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         job_requisition = serializer.save()
-        return Response({"message": "Job requisition created successfully!", "requisition_id": job_requisition.RequisitionID}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"message": "Job requisition created successfully!", "requisition_id": job_requisition.RequisitionID},
+            status=status.HTTP_201_CREATED
+        )
 
     def list(self, request, *args, **kwargs):
         """Filter job requisitions based on user role."""
-        user_role = request.data.get("user_role")  
+        user_role = request.data.get("user_role")
 
-        if user_role == 3:  # Business Ops can see pending requisitions
-            # queryset = JobRequisition.objects.filter(Status="Pending Approval")
-            queryset = JobRequisition.objects.all()
-        elif user_role == 2:  # Recruiter can see only approved requisitions
+        if user_role == 2:  # Recruiter can see only approved requisitions with restricted details
             queryset = JobRequisition.objects.filter(Status="Approved")
-        elif user_role == 1:  # Hiring Manager can see their own requisitions
-            # queryset = JobRequisition.objects.filter(HiringManagerID=request.user.id)
+            data = []
+
+            for requisition in queryset:
+                hiring_manager_name = getattr(requisition.HiringManager, "Name", "Unknown")
+                contract_start_date = requisition.details.contract_start_date if hasattr(requisition, "details") and requisition.details.contract_start_date else "Not Provided"
+                contract_end_date = requisition.details.contract_end_date if hasattr(requisition, "details") and requisition.details.contract_end_date else "Not Provided"
+
+                serialized_data = {
+                    "RequisitionID": requisition.RequisitionID,
+                    "JobTitle": requisition.PositionTitle,
+                    "HiringManagerName": hiring_manager_name,
+                    "StartDate": contract_start_date,
+                    "DueDate": contract_end_date,
+                    "HiringStatus": requisition.Status,
+                }
+                data.append(serialized_data)
+
+            
+
+            return Response({"message": "Job requisitions retrieved successfully!", "data": data}, status=status.HTTP_200_OK)
+
+        elif user_role == 3:  # Business Ops can see all requisitions
             queryset = JobRequisition.objects.all()
+
+        elif user_role == 1:  # Hiring Manager can see their own requisitions
+            queryset = JobRequisition.objects.filter(HiringManager=request.user)
 
         else:
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
+        # Default response for other roles (Business Ops & Hiring Managers)
         serializer = self.get_serializer(queryset, many=True)
-        return Response({"message": "Job requisitions retrieved successfully!", "data": serializer.data}, status=status.HTTP_200_OK)
+        data = []
 
+        for requisition in queryset:
+            hiring_manager_name = getattr(requisition.HiringManager, "Name", "Unknown")
+
+            serialized_data = self.get_serializer(requisition).data
+            serialized_data["HiringManagerName"] = hiring_manager_name
+            data.append(serialized_data)
+
+        return Response({"message": "Job requisitions retrieved successfully!", "data": serializer.data}, status=status.HTTP_200_OK)
     @action(detail=False, methods=["POST"])
     def approve_requisition(self, request):
         """Only Business Ops (role = 3) can approve job requisitions."""
@@ -353,36 +392,29 @@ def send_email():
         fail_silently=False,
     )
 
+@csrf_exempt
 def login_page(request):
-    context = {}
-    # Check if the HTTP request method is POST (form submission)
     if request.method == "POST":
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        if not username or not password:
-                return JsonResponse({'error': 'Email and password required'}, status=400)
-        try:
-                user = UserDetails.objects.get(Email=username)
-                print(user.PasswordHash)
-                userrole = UserroleDetails.objects.get(RoleID=user.RoleID)
-                request.session["role_name"] = userrole.RoleName
-                request.session["UserID"] = user.UserID
-                request.session.modified = True
-                if password == user.PasswordHash and user.UserID == 1:
-                    return redirect("/dashboard/")
-                elif password == user.PasswordHash and user.UserID == 3:
-                    return redirect("/dashboard_Buss/")
-                elif password == user.PasswordHash and user.UserID == 2:
-                    return redirect("/dashboard_rec/")
-                else:
-                    context['error'] = 'Invalid username or password.'
-                    return render(request, 'login.html', context)
-        except UserDetails.DoesNotExist:
-                context['error'] = 'Invalid username or password.'
-                return render(request, 'login.html', context)
+        auth_header = request.headers.get("Authorization")
 
-      
+        if not auth_header or not auth_header.startswith("Basic "):
+            return JsonResponse({'error': 'Authorization header missing or incorrect'}, status=401)
+
+        # Decode Base64 credentials
+        _, encoded_credentials = auth_header.split(" ")
+        decoded_credentials = base64.b64decode(encoded_credentials).decode("utf-8")
+        username, password = decoded_credentials.split(":")
+
+        try:
+            user = UserDetails.objects.get(Email=username)
+            userrole = UserroleDetails.objects.get(RoleID=user.RoleID)
+
+            if password == user.PasswordHash:
+                return JsonResponse({'message': 'Login successful', 'role': userrole.RoleName}, status=200)
+            else:
+                return JsonResponse({'error': 'Invalid username or password'}, status=400)
+
+        except UserDetails.DoesNotExist:
+            return JsonResponse({'error': 'Invalid username or password'}, status=400)
 
     return JsonResponse({'error': 'POST method required'}, status=405)
-
-      

@@ -3,13 +3,14 @@ version: '3.8'
 services:
   django:
     build:
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile  # Ensure Dockerfile exists for Django
     container_name: django-app
     ports:
       - "8000:8000"
     depends_on:
       - mysql
-      - ollama  # Ensure Ollama starts before Django
+      - ollama
     environment:
       DATABASE_HOST: mysql
       DATABASE_NAME: pixeladvant_hiring
@@ -17,9 +18,12 @@ services:
       DATABASE_PASSWORD: PixelAdvant@123
     volumes:
       - /app
+    networks:
+      - mynetwork
 
   mysql:
     image: mysql:8.0
+    container_name: mysql-db
     environment:
       MYSQL_ROOT_PASSWORD: PixelAdvant@123
       MYSQL_DATABASE: pixeladvant_hiring
@@ -30,21 +34,19 @@ services:
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      default:
-        aliases:
-          - mysql
+      - mynetwork
 
   ollama:
-    build: 
+    build:
       context: .
-      dockerfile: Dockerfile_ollama  # Reference your Ollama Dockerfile
+      dockerfile: Dockerfile_ollama  # Ensure Dockerfile_ollama exists for Ollama
     container_name: ollama
     ports:
       - "11434:11434"
-    networks:
-      - mynetwork
     volumes:
       - ~/.ollama:/root/.ollama
+    networks:
+      - mynetwork
 
 networks:
   mynetwork:
