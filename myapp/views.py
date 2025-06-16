@@ -57,7 +57,7 @@ from .serializers import HiringInterviewRoundsSerializer,HiringSkillsSerializer,
 RESUME_STORAGE_FOLDER = "media/resumes"
 
 # Initialize Ollama model
-ollama_model = OllamaLLM(base_url='http://localhost:11434', model='ats_model')
+ollama_model = OllamaLLM(base_url='http://ollama:11434', model='ats_model')
 
 
 def extract_text_from_pdf(file):
