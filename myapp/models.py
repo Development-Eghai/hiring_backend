@@ -22,6 +22,7 @@ class UserDetails(models.Model):
     RoleID = models.IntegerField()
     Email = models.CharField(max_length=255,blank=True)
     PasswordHash = models.CharField(max_length=255,blank=True)
+    ResetToken = models.CharField(max_length=64, blank=True, null=True)
     Created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -235,4 +236,62 @@ class Candidate(models.Model):
         db_table = 'candidates'
     def __str__(self):
         return f"{self.CandidateID} - {self.Name}"
+
+class HiringPlan(models.Model):
+    hiring_plan_id = models.AutoField(primary_key=True)
+    job_position = models.CharField(max_length=255,blank=True)
+    tech_stacks = models.CharField(max_length=255,unique=True)
+    jd_details = models.CharField(max_length=255,unique=True)    
+    designation = models.CharField(max_length=255,blank=True)
+    experience_range = models.CharField(max_length=255,blank=True)
+    target_companies = models.CharField(max_length=255,blank=True)
+    compensation = models.CharField(max_length=255,blank=True)
+    working_model = models.CharField(max_length=255,blank=True)
+    interview_status = models.CharField(max_length=255,blank=True)
+    location = models.CharField(max_length=255,blank=True)
+    education_decision = models.CharField(max_length=255,blank=True)
+    relocation = models.CharField(max_length=255,blank=True)
+    travel_opportunities = models.CharField(max_length=255,blank=True)
+    domain_knowledge = models.CharField(max_length=255,blank=True)
+    visa_requirements = models.CharField(max_length=255,blank=True)
+    background_verification = models.CharField(max_length=255,blank=True)
+    shift_timings = models.CharField(max_length=255,blank=True)
+    role_type = models.CharField(max_length=255,blank=True)
+    job_type = models.CharField(max_length=255,blank=True)
+    communication_language = models.CharField(max_length=255,blank=True)
+    notice_period = models.CharField(max_length=255,blank=True)
+    additional_comp = models.CharField(max_length=255,blank=True)
+    citizen_requirement = models.CharField(max_length=255,blank=True)
+    career_gap = models.CharField(max_length=255,blank=True)
+    sabbatical = models.CharField(max_length=255,blank=True)
+    screening_questions = models.CharField(max_length=255,blank=True)
+    job_health_requirements = models.CharField(max_length=255,blank=True)
+    social_media_links = models.CharField(max_length=255,blank=True)
+    language_proficiency = models.CharField(max_length=255,blank=True)
+    
+    class Meta:
+        db_table = 'job_hiring_overview'
+        managed = False
+
+class InterviewRounds(models.Model):
+    id = models.AutoField(primary_key=True)
+    requisition_id = models.IntegerField()
+    round_name = models.CharField(max_length=255,blank=True)
+    updt = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'job_request_interview_rounds'
+        managed = False
+
+class CommunicationSkills(models.Model):
+    id = models.AutoField(primary_key=True)
+    requisition_id = models.IntegerField()
+    skill_name = models.CharField(max_length=255,blank=True)
+    skill_value = models.CharField(max_length=255,blank=True)
+    updt = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'job_communication_skills'
+        managed = False
+
 

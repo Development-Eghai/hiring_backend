@@ -2,10 +2,27 @@ from rest_framework import serializers
 from .models import Candidates,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
-
+from .models import CommunicationSkills,InterviewRounds,HiringPlan
 logger = logging.getLogger(__name__)
 
 
+
+
+    
+class HiringPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HiringPlan
+        fields = '__all__'
+
+class HiringInterviewRoundsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterviewRounds
+        fields = '__all__'
+
+class HiringSkillsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommunicationSkills
+        fields = '__all__'
 class RequisitionDetailsSerializerget(serializers.ModelSerializer):
     class Meta:
         model = RequisitionDetails

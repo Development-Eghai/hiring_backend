@@ -1,0 +1,32 @@
+Follow these steps to set up and run the project using Docker:
+
+1. Clone the Repository
+git clone https://github.com/Development-Eghai/hiring_backend.git
+
+cd hiring_backend
+
+2. Build and Start Services
+Run the following command to build the Docker images and start the containers in detached mode:
+
+docker-compose up --build -d
+
+3. Check That Everything Is Running
+To confirm your services are up:
+
+docker ps
+
+
+4. Stop the Containers
+To bring everything down when you're done:
+
+docker-compose down
+
+
+
+
+
+
+
+
+
+

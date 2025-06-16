@@ -47,6 +47,12 @@ from .models import Candidate
 import re
 import fitz 
 from concurrent.futures import ThreadPoolExecutor
+from django.utils.crypto import get_random_string
+from django.contrib.auth.hashers import make_password
+from .models import InterviewRounds,HiringPlan
+from .serializers import HiringInterviewRoundsSerializer,HiringSkillsSerializer,HiringPlanSerializer
+
+
 
 RESUME_STORAGE_FOLDER = "media/resumes"
 
@@ -408,8 +414,10 @@ def login_page(request):
         try:
             user = UserDetails.objects.get(Email=username)
             userrole = UserroleDetails.objects.get(RoleID=user.RoleID)
+            print(user.PasswordHash)
+            print(password)
 
-            if password == user.PasswordHash:
+            if check_password(password, user.PasswordHash):
                 return JsonResponse({'message': 'Login successful', 'role': userrole.RoleName}, status=200)
             else:
                 return JsonResponse({'error': 'Invalid username or password'}, status=400)
@@ -418,3 +426,186 @@ def login_page(request):
             return JsonResponse({'error': 'Invalid username or password'}, status=400)
 
     return JsonResponse({'error': 'POST method required'}, status=405)
+
+class ForgotPasswordView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        user = get_object_or_404(UserDetails, Email=email)
+        
+        # Generate a unique reset token
+        reset_token = get_random_string(32)
+        user.ResetToken = reset_token
+        user.save()
+
+        # Send token via email (configure email settings)
+        send_mail(
+            "Password Reset Request",
+            f"Your reset token is: {reset_token}",
+            "noreply@example.com",
+            [user.Email],
+            fail_silently=False,
+        )
+
+        return Response({"message": "Reset token sent to email"}, status=status.HTTP_200_OK)
+
+class ResetPasswordView(APIView):
+    def post(self, request):
+        reset_token = request.data.get("token")
+        new_password = request.data.get("new_password")
+
+        user = get_object_or_404(UserDetails, ResetToken=reset_token)
+
+        # Hash and save new password
+        user.PasswordHash = make_password(new_password)
+        user.ResetToken = None  # Invalidate token after use
+        user.save()
+
+        return Response({"message": "Password reset successful"}, status=status.HTTP_200_OK)
+    
+class InterviewPlannerCalculation(APIView):
+    def post(self, request):        
+        dead_line_days = int(request.data.get('dead_line_days'))
+        offer_decline = int(request.data.get('offer_decline'))
+        working_hours_per_day = int(request.data.get('working_hours_per_day'))
+        no_of_roles_to_hire = int(request.data.get('no_of_roles_to_hire'))
+        conversion_ratio = int(request.data.get('conversion_ratio'))        
+        elimination = int(request.data.get('elimination'))
+        avg_interviewer_time_per_week_hrs = int(request.data.get('avg_interviewer_time_per_week_hrs'))
+        interview_round = int(request.data.get('interview_round'))
+        interview_time_per_round = int(request.data.get('interview_time_per_round'))
+        interviewer_leave_days = int(request.data.get('interviewer_leave_days'))
+        no_of_month_interview_happens = int(request.data.get('no_of_month_interview_happens'))
+        working_hrs_per_week = int(request.data.get('working_hrs_per_week')) 
+
+        required_candidate = int(no_of_roles_to_hire * conversion_ratio)
+        decline_adjust_count = ((required_candidate * offer_decline) / 100)
+        total_candidate_pipline = (required_candidate + decline_adjust_count)
+        total_interviews_needed = (total_candidate_pipline * interview_round)
+        total_interview_hrs = (total_interviews_needed * interview_time_per_round)
+        
+        total_interview_weeks = (total_interview_hrs / working_hrs_per_week)
+        no_of_interviewer_need = (total_interview_hrs / dead_line_days)        
+        leave_adjustment = round(no_of_interviewer_need +(((interviewer_leave_days * avg_interviewer_time_per_week_hrs) / (dead_line_days * working_hours_per_day)) * no_of_interviewer_need))        
+
+        return Response({
+            'required_candidate': required_candidate,    
+            'decline_adjust_count': decline_adjust_count,  
+            'total_candidate_pipline': total_candidate_pipline,
+            'total_interviews_needed': total_interviews_needed,
+            'total_interview_hrs': total_interview_hrs,
+            'working_hrs_per_week': working_hrs_per_week,
+            'total_interview_weeks': total_interview_weeks,
+            'no_of_interviewer_need': no_of_interviewer_need,
+            'leave_adjustment': leave_adjustment,
+        }, status=status.HTTP_201_CREATED)
+
+
+        return Response({'message': 'Data received'}, status=status.HTTP_200_OK)
+
+
+# @parser_classes([MultiPartParser, FormParser])
+class HiringPlanOverviewDetails(APIView):
+    # parser_classes = [MultiPartParser, FormParser]  # Enables file upload
+    def get(self, request):
+        # user = request.user
+        hiring_plan = HiringPlan.objects.all()
+        serializer = HiringPlanSerializer(hiring_plan, many=True)
+        # return render(request, 'recruiter_dashboard.html', context)
+        return Response(serializer.data)
+    
+    def post(self, request, *args, **kwargs):  # ✅ Accept pk from URL    
+        # print(request.data)    
+        serializer = HiringPlanSerializer(data=request.data)
+        if serializer.is_valid():
+            instance = serializer.save()
+            return Response({
+            'hiring_plan_id': instance.hiring_plan_id,    
+            'tech_stacks': instance.tech_stacks,  
+            'job_position': instance.job_position  
+        }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+       
+    def put(self, request):  # ✅ Accept pk from URL
+
+        hiring_plan_id = request.data.get('hiring_plan_id')  # get ID from JSON body
+        if not hiring_plan_id:
+            return Response({"error": "Hiring Plan ID is required in request body"}, status=400)
+        try:
+            instance = HiringPlan.objects.get(hiring_plan_id=hiring_plan_id)  # Or use 'RequisitionID=pk' if custom PK
+        except HiringPlan.DoesNotExist:
+            return Response({"error": "Not found"}, status=404)
+
+        serializer = HiringPlanSerializer(instance, data=request.data, partial=True)  # use partial=True
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+    
+    def delete(self, request):
+
+        hiring_plan_id = request.data.get('hiring_plan_id')  # get ID from JSON body
+        if not hiring_plan_id:
+            return Response({"error": "Hiring Plan ID is required in request body"}, status=400)
+        obj = get_object_or_404(HiringPlan, hiring_plan_id=hiring_plan_id)
+        obj.delete()
+        return Response({"message": "Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)        
+
+class HiringInterviewRounds(APIView):
+
+    def get(self, request):
+        # user = request.user
+        hiring_rounds = InterviewRounds.objects.all()
+        serializer = HiringInterviewRoundsSerializer(hiring_rounds, many=True)
+        # return render(request, 'recruiter_dashboard.html', context)
+        return Response(serializer.data)
+
+    def post(self, request):    
+        requisition_id = request.data.get('requisition_id')
+        round_name_list = request.data.get('round_name', [])        
+        data_to_insert = []
+        for round_name in round_name_list:
+            data_to_insert.append({
+                "requisition_id": requisition_id,
+                "round_name": round_name
+            })
+        serializer = HiringInterviewRoundsSerializer(data=data_to_insert,many=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request):
+        requisition_id = request.data.get('id')  # get ID from JSON body
+        if not requisition_id:
+            return Response({"error": "Hiring Plan ID is required in request body"}, status=400)
+        try:
+            instance = InterviewRounds.objects.get(id=requisition_id) 
+        except InterviewRounds.DoesNotExist:
+            return Response({"error": "Not found"}, status=404)
+
+        serializer = HiringInterviewRoundsSerializer(instance, data=request.data, partial=True)  # use partial=True
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+    
+class HiringInterviewSkills(APIView):
+    def post(self, request):    
+        requisition_id = request.data.get('requisition_id')
+        skill_name_list = request.data.get('skill_name', [])     
+        skill_value_list = request.data.get('skill_value', [])    
+        if not (len(skill_name_list) == len(skill_value_list)):
+            return Response({"error": "skill_name and skill_value must have same number of items."}, status=status.HTTP_400_BAD_REQUEST)
+    
+        data_to_insert = []
+        for skill_name, skill_value in zip(skill_name_list, skill_value_list):
+            data_to_insert.append({
+                "requisition_id": requisition_id,
+                "skill_name": skill_name,
+                "skill_value": skill_value	
+            })
+        serializer = HiringSkillsSerializer(data=data_to_insert,many=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
