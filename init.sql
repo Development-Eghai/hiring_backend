@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Jun 15, 2025 at 05:26 AM
+-- Generation Time: Jun 16, 2025 at 12:40 PM
 -- Server version: 9.1.0
 -- PHP Version: 8.3.14
 
@@ -587,6 +587,101 @@ INSERT INTO `jobrequisition` (`RequisitionID`, `PositionTitle`, `HiringManagerID
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `job_communication_skills`
+--
+
+DROP TABLE IF EXISTS `job_communication_skills`;
+CREATE TABLE IF NOT EXISTS `job_communication_skills` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `requisition_id` bigint NOT NULL,
+  `skill_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+  `skill_value` varchar(200) NOT NULL DEFAULT '',
+  `updt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `job_communication_skills`
+--
+
+INSERT INTO `job_communication_skills` (`id`, `requisition_id`, `skill_name`, `skill_value`, `updt`) VALUES
+(2, 1, 'Python', '5', '2025-06-16 12:31:42'),
+(3, 1, 'Django', '4', '2025-06-16 12:31:42');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `job_hiring_overview`
+--
+
+DROP TABLE IF EXISTS `job_hiring_overview`;
+CREATE TABLE IF NOT EXISTS `job_hiring_overview` (
+  `hiring_plan_id` bigint NOT NULL AUTO_INCREMENT,
+  `job_position` varchar(500) NOT NULL DEFAULT '',
+  `tech_stacks` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+  `jd_details` varchar(500) NOT NULL DEFAULT '',
+  `designation` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+  `experience_range` varchar(500) NOT NULL DEFAULT '',
+  `target_companies` varchar(500) NOT NULL,
+  `compensation` varchar(500) NOT NULL,
+  `working_model` varchar(50) NOT NULL DEFAULT '',
+  `interview_status` varchar(500) NOT NULL,
+  `location` varchar(500) NOT NULL,
+  `education_decision` varchar(50) NOT NULL,
+  `relocation` varchar(500) NOT NULL,
+  `travel_opportunities` varchar(500) NOT NULL,
+  `domain_knowledge` varchar(500) NOT NULL,
+  `visa_requirements` varchar(500) NOT NULL,
+  `background_verification` varchar(50) NOT NULL,
+  `shift_timings` varchar(50) NOT NULL,
+  `role_type` varchar(100) NOT NULL,
+  `job_type` varchar(100) NOT NULL,
+  `communication_language` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `notice_period` varchar(500) NOT NULL,
+  `additional_comp` varchar(500) NOT NULL,
+  `citizen_requirement` varchar(100) NOT NULL,
+  `career_gap` varchar(50) NOT NULL,
+  `sabbatical` varchar(50) NOT NULL,
+  `screening_questions` text,
+  `job_health_requirements` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `social_media_links` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `language_proficiency` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  PRIMARY KEY (`hiring_plan_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `job_hiring_overview`
+--
+
+INSERT INTO `job_hiring_overview` (`hiring_plan_id`, `job_position`, `tech_stacks`, `jd_details`, `designation`, `experience_range`, `target_companies`, `compensation`, `working_model`, `interview_status`, `location`, `education_decision`, `relocation`, `travel_opportunities`, `domain_knowledge`, `visa_requirements`, `background_verification`, `shift_timings`, `role_type`, `job_type`, `communication_language`, `notice_period`, `additional_comp`, `citizen_requirement`, `career_gap`, `sabbatical`, `screening_questions`, `job_health_requirements`, `social_media_links`, `language_proficiency`) VALUES
+(3, 'Software Engineer', 'Python, Django', 'Detailed job description here', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `job_request_interview_rounds`
+--
+
+DROP TABLE IF EXISTS `job_request_interview_rounds`;
+CREATE TABLE IF NOT EXISTS `job_request_interview_rounds` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `requisition_id` varchar(100) NOT NULL DEFAULT '',
+  `round_name` varchar(500) NOT NULL,
+  `updt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `job_request_interview_rounds`
+--
+
+INSERT INTO `job_request_interview_rounds` (`id`, `requisition_id`, `round_name`, `updt`) VALUES
+(9, '1', 'Technical', '2025-06-16 12:32:34'),
+(10, '1', 'HR', '2025-06-16 12:32:34');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `offerletter`
 --
 
@@ -845,21 +940,23 @@ CREATE TABLE IF NOT EXISTS `users_details` (
   `RoleID` int NOT NULL,
   `Email` varchar(191) NOT NULL,
   `PasswordHash` varchar(255) NOT NULL,
+  `ResetToken` varchar(64) DEFAULT NULL,
   `Created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`UserID`),
   UNIQUE KEY `Email` (`Email`),
   KEY `RoleID` (`RoleID`)
-) ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `users_details`
 --
 
-INSERT INTO `users_details` (`UserID`, `Name`, `RoleID`, `Email`, `PasswordHash`, `Created_at`) VALUES
-(1, 'PixelHR', 1, 'pixelhr@gmail.com', 'Admin@123', '2025-05-26 05:10:52'),
-(2, 'PixelREQ', 2, 'pixelreq@gmail.com', 'Admin@123', '2025-05-26 05:10:52'),
-(3, 'PixelBO', 3, 'pixelbo@gmail.com', 'Admin@123', '2025-05-26 05:10:52'),
-(4, 'PixelCan', 4, 'pixelcan@gmail.com', 'Admin@123', '2025-05-26 05:10:52');
+INSERT INTO `users_details` (`UserID`, `Name`, `RoleID`, `Email`, `PasswordHash`, `ResetToken`, `Created_at`) VALUES
+(1, 'PixelHR', 1, 'pixelhr@gmail.com', 'pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=', NULL, '2025-05-26 05:10:52'),
+(2, 'PixelREQ', 2, 'pixelreq@gmail.com', 'pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=', NULL, '2025-05-26 05:10:52'),
+(3, 'PixelBO', 3, 'pixelbo@gmail.com', 'pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=', NULL, '2025-05-26 05:10:52'),
+(4, 'PixelCan', 4, 'pixelcan@gmail.com', 'pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=', NULL, '2025-05-26 05:10:52'),
+(5, 'ANAND', 1, 'anand040593@gmail.com', 'pbkdf2_sha256$1000000$s5wZjZTM19ND2LpAqQOOzD$lNsk5Rxt9kUB3yHXp0c9EUo3ZmW7CB/BsddEbUcQWSA=', NULL, '2025-05-26 05:10:52');
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
