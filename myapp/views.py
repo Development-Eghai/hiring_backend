@@ -1,5 +1,6 @@
 # Import necessary modules and models
 from argparse import Action
+import jwt
 import base64
 import datetime
 from io import BytesIO
@@ -51,6 +52,8 @@ from django.utils.crypto import get_random_string
 from django.contrib.auth.hashers import make_password
 from .models import InterviewRounds,HiringPlan
 from .serializers import HiringInterviewRoundsSerializer,HiringSkillsSerializer,HiringPlanSerializer
+SECRET_KEY = settings.SECRET_KEY
+from rest_framework.decorators import api_view
 
 
 
@@ -148,28 +151,29 @@ class JobRequisitionViewSetget(viewsets.ModelViewSet):
     http_method_names = ['get']  # Only allow GET requests
 
 
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-from datetime import datetime
-from myapp.models import JobRequisition, UserDetails
-from myapp.serializers import JobRequisitionSerializer
 
 class JobRequisitionViewSet(viewsets.ModelViewSet):
     queryset = JobRequisition.objects.select_related("HiringManager").all()
     serializer_class = JobRequisitionSerializer
 
-    def create(self, request, *args, **kwargs):
+    def create(self, serializer):
         """Only Hiring Managers (role = 1) can create job requisitions."""
-        user_role = request.data.get("user_role")  # Get role from JSON
+        user_role = self.request.data.get("user_role")
 
-        if user_role != 1:  # Now comparing integers instead of strings
+        if user_role is None:
+            return Response({"error": "User role is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user_role != 1:
             return Response({"error": "Unauthorized. Only Hiring Managers can create requisitions."}, status=status.HTTP_403_FORBIDDEN)
-
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=self.request.data)
         serializer.is_valid(raise_exception=True)
         job_requisition = serializer.save()
+        send_email()
         return Response(
-            {"message": "Job requisition created successfully!", "requisition_id": job_requisition.RequisitionID},
+            {
+                "message": "Job requisition created successfully!", 
+                "requisition_id": job_requisition.RequisitionID
+             },
             status=status.HTTP_201_CREATED
         )
 
@@ -334,59 +338,6 @@ class ResumeMatchingAPI(APIView):
         return Response({"matching_scores": results})
 
 
-def get_job_requisitions(request):
-    """
-    Retrieves all job requisitions along with their extra details and returns them as JSON.
-    Each returned JSON object includes main requisition fields and an "extra_details" sub-object
-    with details coming from the jobrequisitionextradetails table.
-    """
-    requisitions = JobRequisition.objects.all().order_by('-CreatedDate')
-    data = []
-    
-    for req in requisitions:
-        # Initialize the extra details dictionary to None.
-        extra = None
-
-        # Since no related name was set, the extra details are available on req.jobrequisitionextradetails_set.
-        if req.jobrequisitionextradetails_set.exists():
-            extra_obj = req.jobrequisitionextradetails_set.first()
-            extra = {
-                "LegalEntity": extra_obj.LegalEntity,
-                "PrimaryLocation": extra_obj.PrimaryLocation,
-                "Geo_zone": extra_obj.Geo_zone,
-                "EmployeeGroup": extra_obj.EmployeeGroup,
-                "EmployeeSubGroup": extra_obj.EmployeeSubGroup,
-                "BussinessLine": extra_obj.BussinessLine,
-                "BussinessUnit": extra_obj.BussinessUnit,
-                "Division": extra_obj.Division,
-                "Department": extra_obj.Department,
-                "RequisitionType": extra_obj.RequisitionType,
-                "CareerLevel": extra_obj.CareerLevel,
-                "Is_contract": extra_obj.Is_contract,
-                "Start_date": extra_obj.Start_date.isoformat() if extra_obj.Start_date else None,
-                "End_date": extra_obj.End_date.isoformat() if extra_obj.End_date else None,
-                "Band": extra_obj.Band,
-                "SubBand": extra_obj.SubBand,
-                "Client_interview": extra_obj.Client_interview,
-                "Secondary_skill": extra_obj.Secondary_skill,
-                "ModeOfWorking": extra_obj.ModeOfWorking,
-                "Skills": extra_obj.Skills,
-            }
-        
-        # Build our dictionary for the job requisition.
-        data.append({
-            "RequisitionID": req.RequisitionID,
-            "PositionTitle": req.PositionTitle,
-            "No_of_positions": req.No_of_positions,
-            "recruiter": req.recruiter,
-            "Status": req.Status,
-            "CreatedDate": req.CreatedDate.strftime("%Y-%m-%d %H:%M:%S"),
-            "extra_details": extra,  # This will be None if no extra record exists.
-        })
-    
-    # Use Django's JSON encoder for date objects etc.
-    return JsonResponse(data, safe=False)
-
 
 
 def send_email():
@@ -398,6 +349,16 @@ def send_email():
         fail_silently=False,
     )
 
+    
+def generate_jwt_token(user):
+    """ Generate JWT Token """
+    payload = {
+        'user_id': user.UserID,
+        'email': user.Email,
+        'role': UserroleDetails.objects.get(RoleID=user.RoleID).RoleName,
+        'exp': datetime.datetime.now() + datetime.timedelta(hours=12)  # Token expires in 1 hour
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 @csrf_exempt
 def login_page(request):
     if request.method == "POST":
@@ -414,11 +375,14 @@ def login_page(request):
         try:
             user = UserDetails.objects.get(Email=username)
             userrole = UserroleDetails.objects.get(RoleID=user.RoleID)
-            print(user.PasswordHash)
-            print(password)
 
             if check_password(password, user.PasswordHash):
-                return JsonResponse({'message': 'Login successful', 'role': userrole.RoleName}, status=200)
+                token = generate_jwt_token(user)
+                return JsonResponse({
+                    'message': 'Login successful',
+                    'role': userrole.RoleName,
+                    'token': token
+                }, status=200)
             else:
                 return JsonResponse({'error': 'Invalid username or password'}, status=400)
 
@@ -426,6 +390,7 @@ def login_page(request):
             return JsonResponse({'error': 'Invalid username or password'}, status=400)
 
     return JsonResponse({'error': 'POST method required'}, status=405)
+
 
 class ForgotPasswordView(APIView):
     def post(self, request):
@@ -488,6 +453,7 @@ class InterviewPlannerCalculation(APIView):
         leave_adjustment = round(no_of_interviewer_need +(((interviewer_leave_days * avg_interviewer_time_per_week_hrs) / (dead_line_days * working_hours_per_day)) * no_of_interviewer_need))        
 
         return Response({
+            'message': 'Data received',
             'required_candidate': required_candidate,    
             'decline_adjust_count': decline_adjust_count,  
             'total_candidate_pipline': total_candidate_pipline,
@@ -498,9 +464,6 @@ class InterviewPlannerCalculation(APIView):
             'no_of_interviewer_need': no_of_interviewer_need,
             'leave_adjustment': leave_adjustment,
         }, status=status.HTTP_201_CREATED)
-
-
-        return Response({'message': 'Data received'}, status=status.HTTP_200_OK)
 
 
 # @parser_classes([MultiPartParser, FormParser])
@@ -519,8 +482,8 @@ class HiringPlanOverviewDetails(APIView):
         if serializer.is_valid():
             instance = serializer.save()
             return Response({
-            'hiring_plan_id': instance.hiring_plan_id,    
-            'tech_stacks': instance.tech_stacks,  
+            'message':"plan created successfully",
+            'hiring_plan_id': instance.hiring_plan_id,  
             'job_position': instance.job_position  
         }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -550,6 +513,42 @@ class HiringPlanOverviewDetails(APIView):
         obj.delete()
         return Response({"message": "Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)        
 
+@api_view(['GET'])
+def get_hiring_plans(request):
+    hiring_plans = HiringPlan.objects.all()
+    serializer = HiringPlanSerializer(hiring_plans, many=True)
+    
+    # Filter the response to only include desired fields
+    filtered_data = [{'hiring_plan_id': item['hiring_plan_id'], 'job_position': item['job_position']} 
+                     for item in serializer.data]
+    
+    return Response(
+            {
+                "message": "hiring plan detail fetched successfully!", 
+                "data": filtered_data
+             }
+        )
+
+@api_view(['POST'])
+def get_hiring_plan_details(request):
+    hiring_plan_id = request.data.get('hiring_plan_id')
+
+    if not hiring_plan_id:
+        return Response({'error': 'No hiring_plan_id provided'}, status=400)
+
+    try:
+        hiring_plan = HiringPlan.objects.get(hiring_plan_id=hiring_plan_id)
+        serializer = HiringPlanSerializer(hiring_plan)
+        return Response(
+            {
+                "message": "hiring plan detail created successfully!", 
+                "data": serializer.data
+             }
+            )
+    except HiringPlan.DoesNotExist:
+        return Response({'error': 'Hiring plan not found'}, status=404)
+
+
 class HiringInterviewRounds(APIView):
 
     def get(self, request):
@@ -557,7 +556,10 @@ class HiringInterviewRounds(APIView):
         hiring_rounds = InterviewRounds.objects.all()
         serializer = HiringInterviewRoundsSerializer(hiring_rounds, many=True)
         # return render(request, 'recruiter_dashboard.html', context)
-        return Response(serializer.data)
+        return Response({
+                "message": "Interview Rounds detail created successfully!", 
+                "data": serializer.data
+             })
 
     def post(self, request):    
         requisition_id = request.data.get('requisition_id')
@@ -607,5 +609,8 @@ class HiringInterviewSkills(APIView):
         serializer = HiringSkillsSerializer(data=data_to_insert,many=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response({
+                "message": "Interview Rounds detail created successfully!", 
+                "data": serializer.data}, 
+                status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

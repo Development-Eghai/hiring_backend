@@ -21,7 +21,7 @@ EMAIL_PORT = 587
 print(config('App_PASSWORD'))
 EMAIL_HOST_USER = config('EMAIL_MAIN')
 EMAIL_HOST_PASSWORD = config('App_PASSWORD')
-
+SECRET_KEY = config('SECRET_KEY')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -56,7 +56,23 @@ INSTALLED_APPS = [
     'rest_framework',
     'myapp',
     "pixel_gcc",
+    'rest_framework_simplejwt',
 ]
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+SIMPLE_JWT = {
+    'USER_ID_FIELD': 'UserID',  # ✅ Set to match your model's primary key
+    'USER_ID_CLAIM': 'user_id',  # ✅ Ensure JWT tokens store the correct field
+}
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 

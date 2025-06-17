@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Jun 16, 2025 at 12:40 PM
+-- Generation Time: Jun 17, 2025 at 12:10 PM
 -- Server version: 9.1.0
 -- PHP Version: 8.3.14
 
@@ -295,18 +295,7 @@ CREATE TABLE IF NOT EXISTS `candidates` (
   `Resume` text,
   `ProfileCreated` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`CandidateID`)
-) ENGINE=MyISAM AUTO_INCREMENT=101 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `candidates`
---
-
-INSERT INTO `candidates` (`CandidateID`, `Name`, `Email`, `Resume`, `ProfileCreated`) VALUES
-(96, 'NITIN BANSAL', 'nitinbansal1984@hotmail.com', 'media/resumes\\NITIN BANSAL - Resume (1).pdf', '2025-06-10 01:23:58'),
-(97, 'Vinay Junghare', 'vinayjunghare@gmail.com', 'media/resumes\\Resume_Vinay_J.pdf', '2025-06-10 01:23:58'),
-(98, 'Ritika Dogra', 'ritika_rati2@yahoo.co.in', 'media/resumes\\RitikaDogra_14Years.pdf', '2025-06-10 01:23:58'),
-(99, 'TUSHAR BHATNAGAR', 'tusharbhatnagar13@gmail.com', 'media/resumes\\Tushar  Bhatnagar Resume.pdf', '2025-06-10 01:23:58'),
-(100, 'PRIYANK SINHA', 'priyanksinha.007@gmail.com', 'media/resumes\\Priyank%20Sinha%20Resume%20May%202024.pdf', '2025-06-10 01:23:58');
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -487,55 +476,7 @@ CREATE TABLE IF NOT EXISTS `interview_team` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `requisition_id` (`requisition_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `interview_team`
---
-
-INSERT INTO `interview_team` (`id`, `requisition_id`, `employee_id`, `name`, `created_at`, `updated_at`) VALUES
-(3, 20, 'EMP001', 'Robert Smith', '2025-06-06 05:18:15', '2025-06-06 05:18:15'),
-(4, 20, 'EMP002', 'Emily White', '2025-06-06 05:18:15', '2025-06-06 05:18:15'),
-(5, 21, 'EMP001', 'Robert Smith', '2025-06-06 05:19:23', '2025-06-06 05:19:23'),
-(6, 21, 'EMP002', 'Emily White', '2025-06-06 05:19:23', '2025-06-06 05:19:23'),
-(7, 22, 'EMP001', 'Robert Smith', '2025-06-06 06:05:00', '2025-06-06 06:05:00'),
-(8, 22, 'EMP002', 'Emily White', '2025-06-06 06:05:00', '2025-06-06 06:05:00'),
-(9, 23, 'EMP001', 'Robert Smith', '2025-06-06 06:10:25', '2025-06-06 06:10:25'),
-(10, 23, 'EMP002', 'Emily White', '2025-06-06 06:10:25', '2025-06-06 06:10:25'),
-(11, 24, 'EMP001', 'Robert Smith', '2025-06-06 06:16:38', '2025-06-06 06:16:38'),
-(12, 24, 'EMP002', 'Emily White', '2025-06-06 06:16:38', '2025-06-06 06:16:38'),
-(13, 25, 'EMP001', 'Robert Smith', '2025-06-06 06:29:16', '2025-06-06 06:29:16'),
-(14, 25, 'EMP002', 'Emily White', '2025-06-06 06:29:16', '2025-06-06 06:29:16'),
-(15, 26, 'EMP001', 'Robert Smith', '2025-06-07 00:52:13', '2025-06-07 00:52:13'),
-(16, 26, 'EMP002', 'Emily White', '2025-06-07 00:52:13', '2025-06-07 00:52:13'),
-(17, 27, 'EMP001', 'Robert Smith', '2025-06-07 00:53:20', '2025-06-07 00:53:20'),
-(18, 27, 'EMP002', 'Emily White', '2025-06-07 00:53:20', '2025-06-07 00:53:20'),
-(19, 28, 'EMP001', 'Robert Smith', '2025-06-07 00:56:26', '2025-06-07 00:56:26'),
-(20, 28, 'EMP002', 'Emily White', '2025-06-07 00:56:26', '2025-06-07 00:56:26'),
-(21, 29, 'EMP001', 'Robert Smith', '2025-06-07 00:58:16', '2025-06-07 00:58:16'),
-(22, 29, 'EMP002', 'Emily White', '2025-06-07 00:58:16', '2025-06-07 00:58:16'),
-(23, 30, 'EMP001', 'Robert Smith', '2025-06-07 00:58:29', '2025-06-07 00:58:29'),
-(24, 30, 'EMP002', 'Emily White', '2025-06-07 00:58:29', '2025-06-07 00:58:29'),
-(25, 31, 'EMP001', 'Robert Smith', '2025-06-07 00:59:09', '2025-06-07 00:59:09'),
-(26, 31, 'EMP002', 'Emily White', '2025-06-07 00:59:09', '2025-06-07 00:59:09'),
-(27, 32, 'EMP001', 'Robert Smith', '2025-06-07 01:00:14', '2025-06-07 01:00:14'),
-(28, 32, 'EMP002', 'Emily White', '2025-06-07 01:00:14', '2025-06-07 01:00:14'),
-(29, 33, 'EMP001', 'Robert Smith', '2025-06-07 09:37:40', '2025-06-07 09:37:40'),
-(30, 33, 'EMP002', 'Emily White', '2025-06-07 09:37:40', '2025-06-07 09:37:40'),
-(31, 34, 'EMP001', 'Robert Smith', '2025-06-08 01:28:16', '2025-06-08 01:28:16'),
-(32, 34, 'EMP002', 'Emily White', '2025-06-08 01:28:16', '2025-06-08 01:28:16'),
-(33, 35, 'EMP001', 'Robert Smith', '2025-06-08 01:59:40', '2025-06-08 01:59:40'),
-(34, 35, 'EMP002', 'Emily White', '2025-06-08 01:59:40', '2025-06-08 01:59:40'),
-(35, 36, 'EMP001', 'Robert Smith', '2025-06-12 03:16:45', '2025-06-12 03:16:45'),
-(36, 36, 'EMP002', 'Emily White', '2025-06-12 03:16:45', '2025-06-12 03:16:45'),
-(37, 37, 'EMP001', 'Robert Smith', '2025-06-12 03:16:55', '2025-06-12 03:16:55'),
-(38, 37, 'EMP002', 'Emily White', '2025-06-12 03:16:55', '2025-06-12 03:16:55'),
-(39, 38, 'EMP001', 'Robert Smith', '2025-06-12 03:21:20', '2025-06-12 03:21:20'),
-(40, 38, 'EMP002', 'Emily White', '2025-06-12 03:21:20', '2025-06-12 03:21:20'),
-(41, 39, 'EMP001', 'Robert Smith', '2025-06-12 03:23:47', '2025-06-12 03:23:47'),
-(42, 39, 'EMP002', 'Emily White', '2025-06-12 03:23:47', '2025-06-12 03:23:47'),
-(43, 40, 'EMP001', 'Robert Smith', '2025-06-12 04:29:38', '2025-06-12 04:29:38'),
-(44, 40, 'EMP002', 'Emily White', '2025-06-12 04:29:38', '2025-06-12 04:29:38');
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -546,6 +487,7 @@ INSERT INTO `interview_team` (`id`, `requisition_id`, `employee_id`, `name`, `cr
 DROP TABLE IF EXISTS `jobrequisition`;
 CREATE TABLE IF NOT EXISTS `jobrequisition` (
   `RequisitionID` int NOT NULL AUTO_INCREMENT,
+  `Planning_id` bigint NOT NULL,
   `PositionTitle` varchar(191) NOT NULL,
   `HiringManagerID` int NOT NULL,
   `Recruiter` varchar(191) NOT NULL,
@@ -554,35 +496,9 @@ CREATE TABLE IF NOT EXISTS `jobrequisition` (
   `CreatedDate` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `UpdatedDate` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`RequisitionID`),
-  KEY `fk_hiring_manager` (`HiringManagerID`)
-) ENGINE=MyISAM AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `jobrequisition`
---
-
-INSERT INTO `jobrequisition` (`RequisitionID`, `PositionTitle`, `HiringManagerID`, `Recruiter`, `No_of_positions`, `Status`, `CreatedDate`, `UpdatedDate`) VALUES
-(30, 'Software Engineer1', 1, 'John Doe', 2, 'Approved', '2025-06-07 00:58:29', '2025-06-12 05:16:14'),
-(29, 'Software Engineer1', 1, 'John Doe', 2, 'Approved', '2025-06-07 00:58:16', '2025-06-12 05:16:17'),
-(28, 'Software Engineer1', 1, 'John Doe', 2, 'Approved', '2025-06-07 00:56:26', '2025-06-12 05:16:19'),
-(27, 'Software Engineer1', 1, 'John Doe', 2, 'Pending Approval', '2025-06-07 00:53:20', '2025-06-12 05:16:22'),
-(26, 'Software Engineer1', 1, 'John Doe', 2, 'Pending Approval', '2025-06-07 00:52:13', '2025-06-12 05:16:26'),
-(25, 'Software Engineer1', 1, 'John Doe', 2, 'Pending Approval', '2025-06-06 06:29:16', '2025-06-12 09:45:49'),
-(24, 'Software Engineer1', 1, 'John Doe', 2, 'Pending Approval', '2025-06-06 06:16:38', '2025-06-12 09:45:56'),
-(23, 'Software Engineer1', 1, 'John Doe', 2, 'Pending Approval', '2025-06-06 06:10:25', '2025-06-12 09:45:59'),
-(22, 'Software Engineer1', 1, 'John Doe', 2, 'Pending Approval', '2025-06-06 06:05:00', '2025-06-12 09:46:02'),
-(21, 'Software Engineer1', 1, 'John Doe', 2, 'Approved', '2025-06-06 05:19:23', '2025-06-12 09:46:03'),
-(20, 'Software Engineer', 1, 'John Doe', 2, 'Pending Approval', '2025-06-06 05:18:15', '2025-06-12 09:46:05'),
-(31, 'Software Engineer1', 1, 'John Doe', 2, 'Pending Approval', '2025-06-07 00:59:09', '2025-06-12 09:46:08'),
-(32, 'Software Engineer1', 1, 'John Doe', 2, 'Pending Approval', '2025-06-07 01:00:14', '2025-06-12 09:46:09'),
-(33, 'Software Engineer1', 1, 'John Doe', 2, 'Pending Approval', '2025-06-07 09:37:40', '2025-06-12 09:46:11'),
-(34, 'Software Engineer1', 1, 'John Doe', 2, 'Pending Approval', '2025-06-08 01:28:16', '2025-06-12 09:46:13'),
-(35, 'Software Engineer1', 1, 'John Doe', 2, 'Pending Approval', '2025-06-08 01:59:40', '2025-06-12 09:46:15'),
-(36, 'Software Engineer1', 1, 'John Doe', 2, 'Approved', '2025-06-12 03:16:45', '2025-06-12 03:18:30'),
-(37, 'Software Engineer1', 1, 'John Doe', 2, 'Approved', '2025-06-12 03:16:55', '2025-06-12 03:18:24'),
-(38, 'Software Engineer1', 1, 'John Doe', 2, 'Approved', '2025-06-12 03:21:20', '2025-06-12 03:21:29'),
-(39, 'Software Engineer1', 1, 'John Doe', 2, 'Approved', '2025-06-12 03:23:47', '2025-06-12 03:23:57'),
-(40, 'Software Engineer1', 1, 'John Doe', 2, 'Approved', '2025-06-12 04:29:38', '2025-06-12 04:33:02');
+  KEY `fk_hiring_manager` (`HiringManagerID`),
+  KEY `plan_id_fk` (`Planning_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -597,16 +513,9 @@ CREATE TABLE IF NOT EXISTS `job_communication_skills` (
   `skill_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
   `skill_value` varchar(200) NOT NULL DEFAULT '',
   `updt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `job_communication_skills`
---
-
-INSERT INTO `job_communication_skills` (`id`, `requisition_id`, `skill_name`, `skill_value`, `updt`) VALUES
-(2, 1, 'Python', '5', '2025-06-16 12:31:42'),
-(3, 1, 'Django', '4', '2025-06-16 12:31:42');
+  PRIMARY KEY (`id`),
+  KEY `plan_skill_fk` (`requisition_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -646,15 +555,9 @@ CREATE TABLE IF NOT EXISTS `job_hiring_overview` (
   `job_health_requirements` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `social_media_links` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `language_proficiency` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `Created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`hiring_plan_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `job_hiring_overview`
---
-
-INSERT INTO `job_hiring_overview` (`hiring_plan_id`, `job_position`, `tech_stacks`, `jd_details`, `designation`, `experience_range`, `target_companies`, `compensation`, `working_model`, `interview_status`, `location`, `education_decision`, `relocation`, `travel_opportunities`, `domain_knowledge`, `visa_requirements`, `background_verification`, `shift_timings`, `role_type`, `job_type`, `communication_language`, `notice_period`, `additional_comp`, `citizen_requirement`, `career_gap`, `sabbatical`, `screening_questions`, `job_health_requirements`, `social_media_links`, `language_proficiency`) VALUES
-(3, 'Software Engineer', 'Python, Django', 'Detailed job description here', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '');
 
 -- --------------------------------------------------------
 
@@ -665,19 +568,12 @@ INSERT INTO `job_hiring_overview` (`hiring_plan_id`, `job_position`, `tech_stack
 DROP TABLE IF EXISTS `job_request_interview_rounds`;
 CREATE TABLE IF NOT EXISTS `job_request_interview_rounds` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `requisition_id` varchar(100) NOT NULL DEFAULT '',
+  `requisition_id` bigint NOT NULL,
   `round_name` varchar(500) NOT NULL,
   `updt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `job_request_interview_rounds`
---
-
-INSERT INTO `job_request_interview_rounds` (`id`, `requisition_id`, `round_name`, `updt`) VALUES
-(9, '1', 'Technical', '2025-06-16 12:32:34'),
-(10, '1', 'HR', '2025-06-16 12:32:34');
+  PRIMARY KEY (`id`),
+  KEY `plan_fk` (`requisition_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -809,34 +705,7 @@ CREATE TABLE IF NOT EXISTS `requisition_details` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `requisition_id` (`requisition_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `requisition_details`
---
-
-INSERT INTO `requisition_details` (`id`, `requisition_id`, `internal_title`, `external_title`, `position`, `business_line`, `business_unit`, `division`, `department`, `location`, `geo_zone`, `employee_group`, `employee_sub_group`, `contract_start_date`, `contract_end_date`, `career_level`, `band`, `sub_band`, `primary_skills`, `secondary_skills`, `mode_of_working`, `requisition_type`, `client_interview`, `required_score`, `onb_coordinator`, `onb_coordinator_team`, `isg_team`, `interviewer_teammate_employee_id`, `created_at`, `updated_at`) VALUES
-(17, 27, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', '2025-06-12', '2025-07-19', 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-07 00:53:20', '2025-06-12 05:06:34'),
-(16, 26, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-07 00:52:13', '2025-06-07 00:52:13'),
-(15, 25, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-06 06:29:16', '2025-06-06 06:29:16'),
-(14, 24, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-06 06:16:38', '2025-06-06 06:16:38'),
-(13, 23, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-06 06:10:25', '2025-06-06 06:10:25'),
-(12, 22, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-06 06:05:00', '2025-06-06 06:05:00'),
-(11, 21, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', '2025-06-12', '2025-07-31', 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-06 05:19:23', '2025-06-12 06:23:34'),
-(10, 20, 'Senior Software Engineer', 'Software Engineer I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-06 05:18:15', '2025-06-06 05:18:15'),
-(18, 28, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', '2025-06-12', '2025-07-31', 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-07 00:56:26', '2025-06-12 06:23:34'),
-(19, 29, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', '2025-07-31', '2025-08-30', 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-07 00:58:16', '2025-06-12 06:23:34'),
-(20, 30, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', '2025-06-12', '2025-07-31', 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-07 00:58:29', '2025-06-12 06:23:34'),
-(21, 31, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-07 00:59:09', '2025-06-07 00:59:09'),
-(22, 32, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-07 01:00:14', '2025-06-07 01:00:14'),
-(23, 33, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-07 09:37:40', '2025-06-07 09:37:40'),
-(24, 34, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-08 01:28:16', '2025-06-08 01:28:16'),
-(25, 35, 'Senior Software Engineer1', 'Software Engineer1 I', 'Not Provided', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-08 01:59:40', '2025-06-08 01:59:40'),
-(26, 36, 'Senior Software Engineer1', 'Software Engineer1 I', 'Software Engineer1', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-12 03:16:45', '2025-06-12 03:16:45'),
-(27, 37, 'Senior Software Engineer1', 'Software Engineer1 I', 'Software Engineer1', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', NULL, NULL, 'Senior', 'N/A', 'N/A', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-12 03:16:55', '2025-06-12 03:16:55'),
-(28, 38, 'Senior Software Engineer1', 'Software Engineer1 I', 'Software Engineer1', 'General Business', 'General Unit', 'Unknown Division', 'Unknown Department', 'Not Provided', 'US-East', 'Software Engineers', 'Backend Developers', '2025-06-01', '2026-06-01', 'Senior', 'B1', 'SB2', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-12 03:21:20', '2025-06-12 03:21:20'),
-(29, 39, 'Senior Software Engineer1', 'Software Engineer1 I', 'Software Engineer1', 'General Business', 'General Unit', 'Engineering', 'Software Development', 'New York', 'US-East', 'Software Engineers', 'Backend Developers', '2025-06-01', '2026-06-01', 'Senior', 'B1', 'SB2', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-12 03:23:47', '2025-06-12 03:23:47'),
-(30, 40, 'Senior Software Engineer1', 'Software Engineer1 I', 'Software Engineer1', 'General Business', 'General Unit', 'Engineering', 'Software Development', 'New York', 'US-East', 'Software Engineers', 'Backend Developers', '2025-06-01', '2026-06-01', 'Senior', 'B1', 'SB2', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Office', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-12 04:29:38', '2025-06-12 04:29:38');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -854,55 +723,7 @@ CREATE TABLE IF NOT EXISTS `teams` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `requisition_id` (`requisition_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `teams`
---
-
-INSERT INTO `teams` (`id`, `requisition_id`, `team_type`, `team_name`, `created_at`, `updated_at`) VALUES
-(4, 20, 'ISG Team', 'Infrastructure Team', '2025-06-06 05:18:15', '2025-06-06 05:18:15'),
-(3, 20, 'ONB Coordinator', 'HR Team', '2025-06-06 05:18:15', '2025-06-06 05:18:15'),
-(5, 21, 'ONB Coordinator', 'HR Team', '2025-06-06 05:19:23', '2025-06-06 05:19:23'),
-(6, 21, 'ISG Team', 'Infrastructure Team', '2025-06-06 05:19:23', '2025-06-06 05:19:23'),
-(7, 22, 'ONB Coordinator', 'HR Team', '2025-06-06 06:05:00', '2025-06-06 06:05:00'),
-(8, 22, 'ISG Team', 'Infrastructure Team', '2025-06-06 06:05:00', '2025-06-06 06:05:00'),
-(9, 23, 'ONB Coordinator', 'HR Team', '2025-06-06 06:10:25', '2025-06-06 06:10:25'),
-(10, 23, 'ISG Team', 'Infrastructure Team', '2025-06-06 06:10:25', '2025-06-06 06:10:25'),
-(11, 24, 'ONB Coordinator', 'HR Team', '2025-06-06 06:16:38', '2025-06-06 06:16:38'),
-(12, 24, 'ISG Team', 'Infrastructure Team', '2025-06-06 06:16:38', '2025-06-06 06:16:38'),
-(13, 25, 'ONB Coordinator', 'HR Team', '2025-06-06 06:29:16', '2025-06-06 06:29:16'),
-(14, 25, 'ISG Team', 'Infrastructure Team', '2025-06-06 06:29:16', '2025-06-06 06:29:16'),
-(15, 26, 'ONB Coordinator', 'HR Team', '2025-06-07 00:52:13', '2025-06-07 00:52:13'),
-(16, 26, 'ISG Team', 'Infrastructure Team', '2025-06-07 00:52:13', '2025-06-07 00:52:13'),
-(17, 27, 'ONB Coordinator', 'HR Team', '2025-06-07 00:53:20', '2025-06-07 00:53:20'),
-(18, 27, 'ISG Team', 'Infrastructure Team', '2025-06-07 00:53:20', '2025-06-07 00:53:20'),
-(19, 28, 'ONB Coordinator', 'HR Team', '2025-06-07 00:56:26', '2025-06-07 00:56:26'),
-(20, 28, 'ISG Team', 'Infrastructure Team', '2025-06-07 00:56:26', '2025-06-07 00:56:26'),
-(21, 29, 'ONB Coordinator', 'HR Team', '2025-06-07 00:58:16', '2025-06-07 00:58:16'),
-(22, 29, 'ISG Team', 'Infrastructure Team', '2025-06-07 00:58:16', '2025-06-07 00:58:16'),
-(23, 30, 'ONB Coordinator', 'HR Team', '2025-06-07 00:58:29', '2025-06-07 00:58:29'),
-(24, 30, 'ISG Team', 'Infrastructure Team', '2025-06-07 00:58:29', '2025-06-07 00:58:29'),
-(25, 31, 'ONB Coordinator', 'HR Team', '2025-06-07 00:59:09', '2025-06-07 00:59:09'),
-(26, 31, 'ISG Team', 'Infrastructure Team', '2025-06-07 00:59:09', '2025-06-07 00:59:09'),
-(27, 32, 'ONB Coordinator', 'HR Team', '2025-06-07 01:00:14', '2025-06-07 01:00:14'),
-(28, 32, 'ISG Team', 'Infrastructure Team', '2025-06-07 01:00:14', '2025-06-07 01:00:14'),
-(29, 33, 'ONB Coordinator', 'HR Team', '2025-06-07 09:37:40', '2025-06-07 09:37:40'),
-(30, 33, 'ISG Team', 'Infrastructure Team', '2025-06-07 09:37:40', '2025-06-07 09:37:40'),
-(31, 34, 'ONB Coordinator', 'HR Team', '2025-06-08 01:28:16', '2025-06-08 01:28:16'),
-(32, 34, 'ISG Team', 'Infrastructure Team', '2025-06-08 01:28:16', '2025-06-08 01:28:16'),
-(33, 35, 'ONB Coordinator', 'HR Team', '2025-06-08 01:59:40', '2025-06-08 01:59:40'),
-(34, 35, 'ISG Team', 'Infrastructure Team', '2025-06-08 01:59:40', '2025-06-08 01:59:40'),
-(35, 36, 'ONB Coordinator', 'HR Team', '2025-06-12 03:16:45', '2025-06-12 03:16:45'),
-(36, 36, 'ISG Team', 'Infrastructure Team', '2025-06-12 03:16:45', '2025-06-12 03:16:45'),
-(37, 37, 'ONB Coordinator', 'HR Team', '2025-06-12 03:16:55', '2025-06-12 03:16:55'),
-(38, 37, 'ISG Team', 'Infrastructure Team', '2025-06-12 03:16:55', '2025-06-12 03:16:55'),
-(39, 38, 'ONB Coordinator', 'HR Team', '2025-06-12 03:21:20', '2025-06-12 03:21:20'),
-(40, 38, 'ISG Team', 'Infrastructure Team', '2025-06-12 03:21:20', '2025-06-12 03:21:20'),
-(41, 39, 'ONB Coordinator', 'HR Team', '2025-06-12 03:23:47', '2025-06-12 03:23:47'),
-(42, 39, 'ISG Team', 'Infrastructure Team', '2025-06-12 03:23:47', '2025-06-12 03:23:47'),
-(43, 40, 'ONB Coordinator', 'HR Team', '2025-06-12 04:29:38', '2025-06-12 04:29:38'),
-(44, 40, 'ISG Team', 'Infrastructure Team', '2025-06-12 04:29:38', '2025-06-12 04:29:38');
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -957,6 +778,28 @@ INSERT INTO `users_details` (`UserID`, `Name`, `RoleID`, `Email`, `PasswordHash`
 (3, 'PixelBO', 3, 'pixelbo@gmail.com', 'pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=', NULL, '2025-05-26 05:10:52'),
 (4, 'PixelCan', 4, 'pixelcan@gmail.com', 'pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=', NULL, '2025-05-26 05:10:52'),
 (5, 'ANAND', 1, 'anand040593@gmail.com', 'pbkdf2_sha256$1000000$s5wZjZTM19ND2LpAqQOOzD$lNsk5Rxt9kUB3yHXp0c9EUo3ZmW7CB/BsddEbUcQWSA=', NULL, '2025-05-26 05:10:52');
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `jobrequisition`
+--
+ALTER TABLE `jobrequisition`
+  ADD CONSTRAINT `plan_id_fk` FOREIGN KEY (`Planning_id`) REFERENCES `job_hiring_overview` (`hiring_plan_id`) ON DELETE CASCADE ON UPDATE RESTRICT;
+
+--
+-- Constraints for table `job_communication_skills`
+--
+ALTER TABLE `job_communication_skills`
+  ADD CONSTRAINT `plan_skill_fk` FOREIGN KEY (`requisition_id`) REFERENCES `job_hiring_overview` (`hiring_plan_id`) ON DELETE CASCADE ON UPDATE RESTRICT;
+
+--
+-- Constraints for table `job_request_interview_rounds`
+--
+ALTER TABLE `job_request_interview_rounds`
+  ADD CONSTRAINT `plan_fk` FOREIGN KEY (`requisition_id`) REFERENCES `job_hiring_overview` (`hiring_plan_id`) ON DELETE CASCADE ON UPDATE RESTRICT;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

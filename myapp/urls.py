@@ -10,7 +10,10 @@ from .views import JobRequisitionViewSet,JobRequisitionViewSetget
 from rest_framework.routers import DefaultRouter
 from .views import HiringPlanOverviewDetails,HiringInterviewRounds,HiringInterviewSkills
 from .views import InterviewPlannerCalculation
-
+# from rest_framework_simplejwt.views import (
+#     TokenObtainPairView,
+#     TokenRefreshView,
+# )
 
 
 router = DefaultRouter()
@@ -21,12 +24,12 @@ router1.register(r'job-requisition', JobRequisitionViewSetget)
 # router2.register(r'upload-resumes', BulkUploadResumeView)
 
 
+
 # Define URL patterns
 urlpatterns = [
     path("admin/", admin.site.urls),          # Admin interface TODO not yet implemented
     path('login/', login_page, name='login_page'),    # Login page TODO screen to develop and integrated
-    # path('submit-candidate/', submit_candidate, name='submit_candidate'),
-    path('get-job-requisitions/', get_job_requisitions, name='get_job_requisitions1'), #TODO screen to develop and integrated
+    # path('submit-candidate/', submit_candidate, name='submit_candidate'),#TODO screen to develop and integrated
     path('api/match-resumes/', ResumeMatchingAPI.as_view(), name='match_resumes'),#TODO screen to develop and integrated
     path('api/', include(router.urls)), #TODO Hiring Manager create requsition
     path('api/', include(router1.urls)), #TODO home Screen Hiring Manager
@@ -39,9 +42,15 @@ urlpatterns = [
     path('hiring_interview_rounds/', HiringInterviewRounds.as_view(), name='hiring_interview_rounds'),#Django Flow is Done
     path('hiring_skills/', HiringInterviewSkills.as_view(), name='hiring_skills'),#TODO screen to develop and integrated
     path('interview_planner_calc/', InterviewPlannerCalculation.as_view(), name='interview_planner_calc'),#TODO screen to develop and integrated
+    # path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    path('api/hiring-plans/', get_hiring_plans, name='hiring_plans'),
+    path('api/hiring-plan/details/', get_hiring_plan_details, name='hiring_plan_details'),
 
 
 ]
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
