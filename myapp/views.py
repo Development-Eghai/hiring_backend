@@ -182,9 +182,9 @@ class BulkUploadResumeView(APIView):
                 return Response(api_json_response_format(
                     False,
                     "No files were uploaded.",
-                    "RESUME_UPLOAD_EMPTY",
+                    400,
                     {}
-                ), status=400)
+                ), status=200)
 
             num_workers = min(len(files), os.cpu_count())
             with ThreadPoolExecutor(max_workers=num_workers) as executor:
@@ -197,15 +197,15 @@ class BulkUploadResumeView(APIView):
                 f"{len(candidates)} resumes processed and candidates stored successfully.",
                 201,
                 {"processed_count": len(candidates)}
-            ), status=201)
+            ), status=200)
 
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                "Failed to process bulk resume upload.",
-                "RESUME_UPLOAD_ERROR",
-                {"details": str(e)}
-            ), status=500)
+                "Failed to process bulk resume upload."+str(e),
+                500,
+                {}
+            ), status=200)
 
 # class JobRequisitionViewSetget(viewsets.ReadOnlyModelViewSet):
 #     queryset = JobRequisition.objects.all()
@@ -262,8 +262,8 @@ class JobRequisitionFlatViewSet(viewsets.ViewSet):
             selected_fields = request.data.get("fields", [])
             if not isinstance(selected_fields, list) or not selected_fields:
                 return Response(
-                    api_json_response_format(False, "Missing or invalid 'fields' parameter.", "FIELD_VALIDATION_ERROR", {}),
-                    status=400
+                    api_json_response_format(False, "Missing or invalid 'fields' parameter.", 400", {}),
+                    status=200
                 )
 
             queryset = JobRequisition.objects.select_related("details", "Planning_id")
@@ -279,10 +279,8 @@ class JobRequisitionFlatViewSet(viewsets.ViewSet):
 
         except Exception as e:
             return Response(
-                api_json_response_format(False, "Failed to retrieve dynamic field data", "FIELD_FETCH_ERROR", {
-                    "details": str(e)
-                }),
-                status=500
+                api_json_response_format(False, "Failed to retrieve dynamic field data"+str(e), 500, {}),
+                status=200
             )
 
 class JobRequisitionPublicViewSet(viewsets.ViewSet):
@@ -313,10 +311,10 @@ class JobRequisitionPublicViewSet(viewsets.ViewSet):
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                "Error while fetching data for template",
-                "TEMPLATE_FETCH_ERROR",
-                {"details": str(e)}
-            ), status=500)
+                "Error while fetching data for template"+str(e),
+                500,
+                {}
+            ), status=200)
 
 class JobRequisitionViewSet(viewsets.ModelViewSet):
     queryset = JobRequisition.objects.select_related("HiringManager").all()
@@ -326,10 +324,10 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
         try:
             user_role = request.data.get("user_role")
             if user_role is None:
-                return Response(api_json_response_format(False, "User role is required.", "ROLE_MISSING", {}), status=400)
+                return Response(api_json_response_format(False, "User role is required.", 400, {}), status=200)
 
             if user_role != 1:
-                return Response(api_json_response_format(False, "Only Hiring Managers can create requisitions.", "UNAUTHORIZED_CREATION", {}), status=403)
+                return Response(api_json_response_format(False, "Only Hiring Managers can create requisitions.", 403, {}), status=200)
 
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -338,10 +336,10 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
 
             return Response(api_json_response_format(True, "Job requisition created successfully!", 201, {
                 "requisition_id": job_requisition.RequisitionID
-            }), status=201)
+            }), status=200)
 
         except Exception as e:
-            return Response(api_json_response_format(False, "Error while creating requisition.", "CREATE_FAILED", {"details": str(e)}), status=500)
+            return Response(api_json_response_format(False, "Error while creating requisition."+str(e), 500, {}), status=200)
 
     def list(self, request, *args, **kwargs):
         try:
@@ -366,13 +364,13 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             elif user_role == 1:
                 queryset = JobRequisition.objects.filter(HiringManager=request.user)
             else:
-                return Response(api_json_response_format(False, "Unauthorized", "INVALID_ROLE", {}), status=403)
+                return Response(api_json_response_format(False, "Unauthorized", 403, {}), status=200)
 
             serializer = self.get_serializer(queryset, many=True)
             return Response(api_json_response_format(True, "Job requisitions retrieved successfully!", 200, serializer.data), status=200)
 
         except Exception as e:
-            return Response(api_json_response_format(False, "Error fetching job requisitions.", "LISTING_ERROR", {"details": str(e)}), status=500)
+            return Response(api_json_response_format(False, "Error fetching job requisitions."+ str(e), 500, {}), status=200)
 
     @action(detail=False, methods=["POST"])
     def approve_requisition(self, request):
@@ -381,7 +379,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             requisition_id = request.data.get("req_id")
 
             if user_role != 3:
-                return Response(api_json_response_format(False, "Only Business Ops can approve requisitions.", "UNAUTHORIZED_APPROVAL", {}), status=403)
+                return Response(api_json_response_format(False, "Only Business Ops can approve requisitions.", 403, {}), status=200)
 
             requisition = get_object_or_404(JobRequisition, pk=requisition_id)
             requisition.Status = "Approved"
@@ -390,7 +388,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             return Response(api_json_response_format(True, "Job requisition approved!", 200, {"status": requisition.Status}), status=200)
 
         except Exception as e:
-            return Response(api_json_response_format(False, "Error approving requisition.", "APPROVAL_ERROR", {"details": str(e)}), status=500)
+            return Response(api_json_response_format(False, "Error approving requisition."+ str(e), 500, {}), status=200)
 
     @action(detail=False, methods=["POST"])
     def get_approved_extra_details(self, request):
@@ -398,7 +396,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             user_role = request.data.get("user_role")
 
             if user_role not in [2, 3]:
-                return Response(api_json_response_format(False, "Unauthorized access.", "ACCESS_DENIED", {}), status=403)
+                return Response(api_json_response_format(False, "Unauthorized access.", 403, {}), status=200)
 
             approved_ids = JobRequisition.objects.filter(Status="Approved").values_list("RequisitionID", flat=True)
             details = RequisitionDetails.objects.filter(requisition_id__in=approved_ids).order_by("requisition_id")
@@ -436,7 +434,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             return Response(api_json_response_format(True, "Extra requisition details retrieved successfully!", 200, data), status=200)
 
         except Exception as e:
-            return Response(api_json_response_format(False, "Error retrieving extra requisition details.", "DETAIL_FETCH_ERROR", {"details": str(e)}), status=500)
+            return Response(api_json_response_format(False, "Error retrieving extra requisition details."+ str(e), 500, {}), status=200)
 
     @action(detail=False, methods=["POST"])
     def get_requisition_by_id(self, request):
@@ -444,7 +442,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             requisition_id = request.data.get("req_id")
 
             if not requisition_id:
-                return Response(api_json_response_format(False, "Requisition ID is required.", "MISSING_ID", {}), status=400)
+                return Response(api_json_response_format(False, "Requisition ID is required.", 400, {}), status=200)
 
             requisition = get_object_or_404(JobRequisition, pk=requisition_id)
             serializer = self.get_serializer(requisition)
@@ -452,7 +450,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             return Response(api_json_response_format(True, "Requisition retrieved successfully!", 200, serializer.data), status=200)
 
         except Exception as e:
-            return Response(api_json_response_format(False, "Error retrieving requisition.", "REQ_FETCH_ERROR", {"details": str(e)}), status=500)
+            return Response(api_json_response_format(False, "Error retrieving requisition."+ str(e), 500, {"details": str(e)}), status=200)
 
 
 
@@ -497,8 +495,8 @@ class ResumeMatchingAPI(APIView):
 
             if not job_description or not uploaded_files:
                 return Response(api_json_response_format(
-                    False, "Missing job description or resume files.", "INVALID_INPUT", {}
-                ), status=400)
+                    False, "Missing job description or resume files.",400, {}
+                ), status=200)
 
             results = []
             for uploaded_file in uploaded_files:
@@ -512,8 +510,8 @@ class ResumeMatchingAPI(APIView):
 
         except Exception as e:
             return Response(api_json_response_format(
-                False, "Error while processing resumes.", "RESUME_MATCH_ERROR", {"details": str(e)}
-            ), status=500)
+                False, "Error while processing resumes."+ str(e), 500, {}
+            ), status=200)
 
 def send_email():
     send_mail(
@@ -601,10 +599,9 @@ class ForgotPasswordView(APIView):
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                "Error while sending reset token.",
-                "RESET_TOKEN_ERROR",
-                {"details": str(e)}
-            ), status=500)
+                "Error while sending reset token."+ str(e),500,
+                {}
+            ), status=200)
 
 class ResetPasswordView(APIView):
     def post(self, request):
@@ -627,10 +624,10 @@ class ResetPasswordView(APIView):
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                "Error while resetting password.",
-                "RESET_PASSWORD_ERROR",
-                {"details": str(e)}
-            ), status=500)
+                "Error while resetting password."+ str(e),
+                500,
+                {}
+            ), status=200)
     
 class InterviewPlannerCalculation(APIView):
     def post(self, request):
@@ -682,9 +679,8 @@ class InterviewPlannerCalculation(APIView):
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                "Error during interview planning calculation.",
-                "INTERVIEW_CALCULATION_ERROR",
-                {"details": str(e)}
+                "Error during interview planning calculation.",500,
+                {}
             ), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # @parser_classes([MultiPartParser, FormParser])
@@ -702,10 +698,9 @@ class HiringPlanOverviewDetails(APIView):
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                "Error retrieving hiring plans.",
-                "HIRING_PLAN_FETCH_ERROR",
-                {"details": str(e)}
-            ), status=500)
+                "Error retrieving hiring plans."+ str(e),500,
+                {}
+            ), status=200)
 
     def post(self, request, *args, **kwargs):
         serializer = HiringPlanSerializer(data=request.data)
@@ -719,32 +714,31 @@ class HiringPlanOverviewDetails(APIView):
                     "hiring_plan_id": instance.hiring_plan_id,
                     "job_position": instance.job_position
                 }
-            ), status=201)
+            ), status=200)
         return Response(api_json_response_format(
             False,
-            "Validation error while creating hiring plan.",
-            "HIRING_PLAN_VALIDATION_ERROR",
-            {"errors": serializer.errors}
-        ), status=400)
+            "Validation error while creating hiring plan."+serializer.errors,
+            400,
+            {}
+        ), status=200)
 
     def put(self, request):
         hiring_plan_id = request.data.get('hiring_plan_id')
         if not hiring_plan_id:
             return Response(api_json_response_format(
                 False,
-                "Hiring Plan ID is required in request body.",
-                "HIRING_PLAN_ID_MISSING",
+                "Hiring Plan ID is required in request body.",400,
                 {}
-            ), status=400)
+            ), status=200)
         try:
             instance = HiringPlan.objects.get(hiring_plan_id=hiring_plan_id)
         except HiringPlan.DoesNotExist:
             return Response(api_json_response_format(
                 False,
                 "Hiring plan not found.",
-                "HIRING_PLAN_NOT_FOUND",
+                404,
                 {}
-            ), status=404)
+            ), status=200)
 
         serializer = HiringPlanSerializer(instance, data=request.data, partial=True)
         if serializer.is_valid():
@@ -757,20 +751,18 @@ class HiringPlanOverviewDetails(APIView):
             ), status=200)
         return Response(api_json_response_format(
             False,
-            "Validation error while updating hiring plan.",
-            "HIRING_PLAN_UPDATE_VALIDATION_ERROR",
-            {"errors": serializer.errors}
-        ), status=400)
+            "Validation error while updating hiring plan."+serializer.errors,400,
+            {}
+        ), status=200)
 
     def delete(self, request):
         hiring_plan_id = request.data.get('hiring_plan_id')
         if not hiring_plan_id:
             return Response(api_json_response_format(
                 False,
-                "Hiring Plan ID is required in request body.",
-                "HIRING_PLAN_ID_MISSING",
+                "Hiring Plan ID is required in request body.",400,
                 {}
-            ), status=400)
+            ), status=200)
 
         obj = get_object_or_404(HiringPlan, hiring_plan_id=hiring_plan_id)
         obj.delete()
@@ -802,10 +794,9 @@ def get_hiring_plans(request):
     except Exception as e:
         return Response(api_json_response_format(
             False,
-            "Error retrieving hiring plan list.",
-            "HIRING_PLAN_LIST_ERROR",
-            {"details": str(e)}
-        ), status=500)
+            "Error retrieving hiring plan list."+str(e),500,
+            {}
+        ), status=200)
     
 
 @api_view(['POST'])
@@ -815,10 +806,9 @@ def get_hiring_plan_details(request):
     if not hiring_plan_id:
         return Response(api_json_response_format(
             False,
-            "No hiring_plan_id provided.",
-            "HIRING_PLAN_ID_MISSING",
+            "No hiring_plan_id provided.",400,
             {}
-        ), status=400)
+        ), status=200)
 
     try:
         hiring_plan = HiringPlan.objects.get(hiring_plan_id=hiring_plan_id)
@@ -836,15 +826,14 @@ def get_hiring_plan_details(request):
             "Hiring plan not found.",
             "HIRING_PLAN_NOT_FOUND",
             {}
-        ), status=404)
+        ), status=200)
 
     except Exception as e:
         return Response(api_json_response_format(
             False,
-            "Error retrieving hiring plan.",
-            "HIRING_PLAN_DETAIL_ERROR",
-            {"details": str(e)}
-        ), status=500)
+            "Error retrieving hiring plan. "+ str(e),500,
+            {}
+        ), status=200)
 
 
 class HiringInterviewRounds(APIView):
@@ -861,10 +850,10 @@ class HiringInterviewRounds(APIView):
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                "Error fetching interview rounds.",
-                "INTERVIEW_ROUND_FETCH_ERROR",
+                "Error fetching interview rounds."+str(e),
+                500,
                 {"details": str(e)}
-            ), status=500)
+            ), status=200)
 
     def post(self, request):
         try:
@@ -875,9 +864,9 @@ class HiringInterviewRounds(APIView):
                 return Response(api_json_response_format(
                     False,
                     "Missing requisition_id or round_name list.",
-                    "ROUND_DATA_MISSING",
+                    400,
                     {}
-                ), status=400)
+                ), status=200)
 
             data_to_insert = [
                 {"requisition_id": requisition_id, "round_name": name}
@@ -892,21 +881,21 @@ class HiringInterviewRounds(APIView):
                     "Interview rounds created successfully.",
                     201,
                     serializer.data
-                ), status=201)
+                ), status=200)
             return Response(api_json_response_format(
                 False,
-                "Validation failed while creating interview rounds.",
-                "ROUND_VALIDATION_ERROR",
-                {"errors": serializer.errors}
-            ), status=400)
+                "Validation failed while creating interview rounds."+serializer.errors,
+                400,
+                {}
+            ), status=200)
 
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                "Unexpected error during round creation.",
-                "ROUND_CREATION_ERROR",
-                {"details": str(e)}
-            ), status=500)
+                "Unexpected error during round creation."+str(e),
+                500,
+                {}
+            ), status=200)
 
     def put(self, request):
         requisition_id = request.data.get('id')
@@ -914,9 +903,9 @@ class HiringInterviewRounds(APIView):
             return Response(api_json_response_format(
                 False,
                 "Hiring Plan ID is required in request body.",
-                "ROUND_ID_MISSING",
+                400,
                 {}
-            ), status=400)
+            ), status=200)
 
         try:
             instance = InterviewRounds.objects.get(id=requisition_id)
@@ -924,9 +913,9 @@ class HiringInterviewRounds(APIView):
             return Response(api_json_response_format(
                 False,
                 "Interview round not found.",
-                "ROUND_NOT_FOUND",
+                404,
                 {}
-            ), status=404)
+            ), status=200)
 
         serializer = HiringInterviewRoundsSerializer(instance, data=request.data, partial=True)
         if serializer.is_valid():
@@ -939,10 +928,10 @@ class HiringInterviewRounds(APIView):
             ), status=200)
         return Response(api_json_response_format(
             False,
-            "Validation error while updating interview round.",
-            "ROUND_UPDATE_VALIDATION_ERROR",
-            {"errors": serializer.errors}
-        ), status=400)
+            "Validation error while updating interview round."+serializer.errors,
+            400,
+            {}
+        ), status=200)
     
 class HiringInterviewSkills(APIView):
     def post(self, request):
@@ -955,17 +944,17 @@ class HiringInterviewSkills(APIView):
                 return Response(api_json_response_format(
                     False,
                     "Missing requisition_id or skill data.",
-                    "SKILL_INPUT_MISSING",
+                    400,
                     {}
-                ), status=400)
+                ), status=200)
 
             if len(skill_name_list) != len(skill_value_list):
                 return Response(api_json_response_format(
                     False,
                     "skill_name and skill_value must have same number of items.",
-                    "SKILL_LENGTH_MISMATCH",
+                    400,
                     {}
-                ), status=400)
+                ), status=200)
 
             data_to_insert = [
                 {"requisition_id": requisition_id, "skill_name": name, "skill_value": value}
@@ -980,19 +969,19 @@ class HiringInterviewSkills(APIView):
                     "Interview skills created successfully!",
                     201,
                     serializer.data
-                ), status=201)
+                ), status=200)
 
             return Response(api_json_response_format(
                 False,
-                "Validation error while creating interview skills.",
-                "SKILL_VALIDATION_ERROR",
-                {"errors": serializer.errors}
-            ), status=400)
+                "Validation error while creating interview skills."+serializer.errors,
+                400,
+                {}
+            ), status=200)
 
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                "Unexpected error during interview skills creation.",
-                "SKILL_CREATION_ERROR",
-                {"details": str(e)}
-            ), status=500)
+                "Unexpected error during interview skills creation."+str(e),
+                500,
+                {}
+            ), status=200)
