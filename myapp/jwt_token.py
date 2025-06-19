@@ -4,6 +4,10 @@ from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework import status
 
+def api_json_response_format(status,message,error_code,data):
+    result_json = {"success" : status,"message" : message,"error_code" : error_code,"data": data}
+    return result_json
+
 def jwt_required(func):
     @wraps(func)
     def wrapper(request, *args, **kwargs):

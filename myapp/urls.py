@@ -6,7 +6,7 @@ from django.conf import settings   # Application settings
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns  # Static files serving
 from .views import login_page
 from django.conf.urls.static import static
-from .views import JobRequisitionViewSet,JobRequisitionViewSetget,JobRequisitionPublicViewSet
+from .views import JobRequisitionViewSet,JobRequisitionPublicViewSet
 from rest_framework.routers import DefaultRouter
 from .views import HiringPlanOverviewDetails,HiringInterviewRounds,HiringInterviewSkills
 from .views import InterviewPlannerCalculation
@@ -19,13 +19,11 @@ from .views import InterviewPlannerCalculation
 router = DefaultRouter()
 router.register(r'jobrequisition', JobRequisitionViewSet)
 router1 = DefaultRouter()
-router1.register(r'job-requisition', JobRequisitionViewSetget) 
-# router2 = DefaultRouter()
-# router2.register(r'upload-resumes', BulkUploadResumeView)
+# router1.register(r'job-requisition', JobRequisitionViewSetget) 
+router1.register(r'jobrequisition-dynamic', JobRequisitionFlatViewSet,basename='jobrequisition-dynamic')
 
 router2 = DefaultRouter()
 router2.register(r'public/job-requisitions', JobRequisitionPublicViewSet, basename='public-job-requisition')
-
 
 
 

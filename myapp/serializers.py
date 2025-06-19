@@ -25,32 +25,77 @@ class HiringSkillsSerializer(serializers.ModelSerializer):
 
 
 class JobRequisitionSerializerget(serializers.ModelSerializer):
+    # RequisitionDetails (1:1)
     division = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
     location = serializers.SerializerMethodField()
+    internal_title = serializers.SerializerMethodField()
+    external_title = serializers.SerializerMethodField()
+    job_position = serializers.SerializerMethodField()
+    business_line = serializers.SerializerMethodField()
+    geo_zone = serializers.SerializerMethodField()
+    primary_skills = serializers.SerializerMethodField()
+    secondary_skills = serializers.SerializerMethodField()
+    contract_start_date = serializers.SerializerMethodField()
+    contract_end_date = serializers.SerializerMethodField()
+    band = serializers.SerializerMethodField()
+    sub_band = serializers.SerializerMethodField()
+    career_level = serializers.SerializerMethodField()
+    client_interview = serializers.SerializerMethodField()
+
+    # HiringPlan (ForeignKey)
+    tech_stacks = serializers.SerializerMethodField()
+    designation = serializers.SerializerMethodField()
+    experience_range = serializers.SerializerMethodField()
+    target_companies = serializers.SerializerMethodField()
+    compensation = serializers.SerializerMethodField()
+    working_model = serializers.SerializerMethodField()
+    visa_requirements = serializers.SerializerMethodField()
+    notice_period = serializers.SerializerMethodField()
 
     class Meta:
         model = JobRequisition
         fields = [
-            'RequisitionID',
-            'PositionTitle',
-            'Recruiter',
-            'division',
-            'department',
-            'location',
-            'Status'
+            "RequisitionID", "PositionTitle", "Recruiter", "Status",
+            "division", "department", "location",
+            "internal_title", "external_title", "job_position",
+            "business_line", "geo_zone", "primary_skills", "secondary_skills",
+            "contract_start_date", "contract_end_date", "band", "sub_band",
+            "career_level", "client_interview",
+            "tech_stacks", "designation", "experience_range",
+            "target_companies", "compensation", "working_model",
+            "visa_requirements", "notice_period"
         ]
 
-    def get_division(self, obj):
-        return getattr(obj.details, 'division', None) if hasattr(obj, 'details') else None
+    # RequisitionDetails methods
+    def get_division(self, obj): return getattr(obj.details, "division", None)
+    def get_department(self, obj): return getattr(obj.details, "department", None)
+    def get_location(self, obj): return getattr(obj.details, "location", None)
+    def get_internal_title(self, obj): return getattr(obj.details, "internal_title", None)
+    def get_external_title(self, obj): return getattr(obj.details, "external_title", None)
+    def get_job_position(self, obj): return getattr(obj.details, "job_position", None)
+    def get_business_line(self, obj): return getattr(obj.details, "business_line", None)
+    def get_geo_zone(self, obj): return getattr(obj.details, "geo_zone", None)
+    def get_primary_skills(self, obj): return getattr(obj.details, "primary_skills", None)
+    def get_secondary_skills(self, obj): return getattr(obj.details, "secondary_skills", None)
+    def get_contract_start_date(self, obj):
+        return obj.details.contract_start_date.isoformat() if getattr(obj, "details", None) and obj.details.contract_start_date else None
+    def get_contract_end_date(self, obj):
+        return obj.details.contract_end_date.isoformat() if getattr(obj, "details", None) and obj.details.contract_end_date else None
+    def get_band(self, obj): return getattr(obj.details, "band", None)
+    def get_sub_band(self, obj): return getattr(obj.details, "sub_band", None)
+    def get_career_level(self, obj): return getattr(obj.details, "career_level", None)
+    def get_client_interview(self, obj): return getattr(obj.details, "client_interview", None)
 
-    def get_department(self, obj):
-        return getattr(obj.details, 'department', None) if hasattr(obj, 'details') else None
-
-    def get_location(self, obj):
-        return getattr(obj.details, 'location', None) if hasattr(obj, 'details') else None
-
-
+    # HiringPlan methods
+    def get_tech_stacks(self, obj): return getattr(obj.Planning_id, "tech_stacks", None)
+    def get_designation(self, obj): return getattr(obj.Planning_id, "designation", None)
+    def get_experience_range(self, obj): return getattr(obj.Planning_id, "experience_range", None)
+    def get_target_companies(self, obj): return getattr(obj.Planning_id, "target_companies", None)
+    def get_compensation(self, obj): return getattr(obj.Planning_id, "compensation", None)
+    def get_working_model(self, obj): return getattr(obj.Planning_id, "working_model", None)
+    def get_visa_requirements(self, obj): return getattr(obj.Planning_id, "visa_requirements", None)
+    def get_notice_period(self, obj): return getattr(obj.Planning_id, "notice_period", None)
 
 class BillingDetailsSerializer(serializers.ModelSerializer):
     requisition = serializers.PrimaryKeyRelatedField(

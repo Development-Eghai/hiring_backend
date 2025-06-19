@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "pixel_gcc",
     'rest_framework_simplejwt',
     'corsheaders',
+    # 'django_filters',
 ]
 
 
