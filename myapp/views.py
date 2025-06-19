@@ -262,7 +262,7 @@ class JobRequisitionFlatViewSet(viewsets.ViewSet):
             selected_fields = request.data.get("fields", [])
             if not isinstance(selected_fields, list) or not selected_fields:
                 return Response(
-                    api_json_response_format(False, "Missing or invalid 'fields' parameter.", 400", {}),
+                    api_json_response_format(False, "Missing or invalid 'fields' parameter.", 400, {}),
                     status=200
                 )
 
