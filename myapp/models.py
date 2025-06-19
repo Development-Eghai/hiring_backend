@@ -75,7 +75,7 @@ class Candidates(models.Model):
         managed = False
 
 class UserDetails(models.Model):
-    UserID = models.AutoField(primary_key=True)
+    id = models.AutoField(primary_key=True)
     Name = models.CharField(max_length=255,blank=True)
     RoleID = models.IntegerField()
     Email = models.CharField(max_length=255,blank=True)
@@ -125,7 +125,7 @@ class JobRequisition(models.Model):
     'myapp.HiringPlan',  # Explicitly reference the app name
     on_delete=models.CASCADE,
     db_column="Planning_id",
-    related_name="requisitions"
+    related_name="requisition"
     )
     PositionTitle = models.CharField(max_length=191, null=True, blank=True, default="Not Provided")
     HiringManager = models.ForeignKey(UserDetails, on_delete=models.SET_NULL, null=True, db_column="HiringManagerID", related_name="requisitions")
@@ -158,7 +158,7 @@ class RequisitionDetails(models.Model):
 
     internal_title = models.CharField(max_length=255, null=True, blank=True, default="Unknown Title")
     external_title = models.CharField(max_length=255, null=True, blank=True, default="Unknown Title")
-    position = models.CharField(max_length=255, null=True, blank=True, default="Not Provided")
+    job_position = models.CharField(max_length=255, null=True, blank=True, default="Not Provided")
     business_line = models.CharField(max_length=255, null=True, blank=True, default="General Business")
     business_unit = models.CharField(max_length=255, null=True, blank=True, default="General Unit")
     division = models.CharField(max_length=255, null=True, blank=True, default="Unknown Division")
@@ -178,7 +178,7 @@ class RequisitionDetails(models.Model):
     primary_skills = models.TextField(null=True, blank=True, default="Not Specified")
     secondary_skills = models.TextField(null=True, blank=True, default="None")
     
-    mode_of_working = models.CharField(max_length=50, null=True, blank=True, default="Office")
+    working_model = models.CharField(max_length=50, null=True, blank=True, default="Office")
     requisition_type = models.CharField(max_length=50, null=True, blank=True, default="Standard Hiring")
     
     client_interview = models.BooleanField(default=False)

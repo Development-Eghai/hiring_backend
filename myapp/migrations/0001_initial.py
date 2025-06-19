@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='UserDetails',
             fields=[
-                ('UserID', models.AutoField(primary_key=True, serialize=False)),
+                ('id', models.AutoField(primary_key=True, serialize=False)),
                 ('Name', models.CharField(blank=True, max_length=255)),
                 ('RoleID', models.IntegerField()),
                 ('Email', models.CharField(blank=True, max_length=255)),

@@ -6,7 +6,7 @@ from django.conf import settings   # Application settings
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns  # Static files serving
 from .views import login_page
 from django.conf.urls.static import static
-from .views import JobRequisitionViewSet,JobRequisitionViewSetget
+from .views import JobRequisitionViewSet,JobRequisitionViewSetget,JobRequisitionPublicViewSet
 from rest_framework.routers import DefaultRouter
 from .views import HiringPlanOverviewDetails,HiringInterviewRounds,HiringInterviewSkills
 from .views import InterviewPlannerCalculation
@@ -22,6 +22,10 @@ router1 = DefaultRouter()
 router1.register(r'job-requisition', JobRequisitionViewSetget) 
 # router2 = DefaultRouter()
 # router2.register(r'upload-resumes', BulkUploadResumeView)
+
+router2 = DefaultRouter()
+router2.register(r'public/job-requisitions', JobRequisitionPublicViewSet, basename='public-job-requisition')
+
 
 
 
@@ -47,7 +51,9 @@ urlpatterns = [
 
     path('api/hiring-plans/', get_hiring_plans, name='hiring_plans'),
     path('api/hiring-plan/details/', get_hiring_plan_details, name='hiring_plan_details'),
+    path('get_requisition_by_id/', JobRequisitionViewSet.as_view({'post': 'get_requisition_by_id'}), name='get_requisition_by_id'),
 
+    path('api/', include(router2.urls)),
 
 ]
 

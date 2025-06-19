@@ -38,7 +38,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from .models import JobRequisition
 import PyPDF2 as pdf
 from langchain_ollama import OllamaLLM
-from .serializers import JobRequisitionSerializer,JobRequisitionSerializerget
+from .serializers import JobRequisitionCompactSerializer, JobRequisitionSerializer,JobRequisitionSerializerget, JobTemplateSerializer
 from rest_framework import viewsets
 from .models import Candidate
 # from .utils import extract_info_from_resume  # Import the parsing function
@@ -54,7 +54,8 @@ from .models import InterviewRounds,HiringPlan
 from .serializers import HiringInterviewRoundsSerializer,HiringSkillsSerializer,HiringPlanSerializer
 SECRET_KEY = settings.SECRET_KEY
 from rest_framework.decorators import api_view
-
+from rest_framework_simplejwt.tokens import RefreshToken
+from .jwt_token import jwt_required
 
 
 RESUME_STORAGE_FOLDER = "media/resumes"
@@ -132,7 +133,7 @@ def process_resume(file):
 
 class BulkUploadResumeView(APIView):
     parser_classes = (MultiPartParser, FormParser)
-
+    #@jwt_required
     def post(self, request, *args, **kwargs):
         files = request.FILES.getlist("files")
 
@@ -145,150 +146,246 @@ class BulkUploadResumeView(APIView):
         return Response({"message": f"{len(candidates)} resumes processed and candidates stored efficiently!"})
 
 
-class JobRequisitionViewSetget(viewsets.ModelViewSet):
+
+class JobRequisitionViewSetget(viewsets.ReadOnlyModelViewSet):
     queryset = JobRequisition.objects.all()
     serializer_class = JobRequisitionSerializerget
-    http_method_names = ['get']  # Only allow GET requests
 
+    def list(self, request):
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "data": serializer.data,
+                "status_code": 200
+            })
+        except Exception as e:
+            return Response({
+                "error": "Error fetching job requisitions",
+                "details": str(e),
+                "status_code": 500
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class JobRequisitionPublicViewSet(viewsets.ViewSet):
+    def list(self, request):
+        try:
+            requisitions = JobRequisition.objects.prefetch_related(
+                'interview_team', 'teams'
+            ).select_related('details', 'billing_details', 'posting_details')
+
+            data = []
+            for obj in requisitions:
+                job_template_data = JobTemplateSerializer({
+                    "requisition_details": getattr(obj, "details", None),
+                    "billing": getattr(obj, "billing_details", None),
+                    "posting": getattr(obj, "posting_details", None),
+                    "interviewers": obj.interview_team.all(),
+                    "functional_teams": obj.teams.all(),
+                }).data
+                data.append(job_template_data)
+
+            return Response({"job_template": data, "status_code": 200})
+        
+        except Exception as e:
+            return Response({
+                "error": "Error while fetching data for template",
+                "details": str(e),
+                "status_code": 500
+            })
 
 class JobRequisitionViewSet(viewsets.ModelViewSet):
     queryset = JobRequisition.objects.select_related("HiringManager").all()
     serializer_class = JobRequisitionSerializer
 
-    def create(self, serializer):
-        """Only Hiring Managers (role = 1) can create job requisitions."""
-        user_role = self.request.data.get("user_role")
+    def create(self, request, *args, **kwargs):
+        try:
+            user_role = request.data.get("user_role")
 
-        if user_role is None:
-            return Response({"error": "User role is required."}, status=status.HTTP_400_BAD_REQUEST)
+            if user_role is None:
+                return Response({"error": "User role is required.", "error_code": "ROLE_MISSING", "status_code": 400},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-        if user_role != 1:
-            return Response({"error": "Unauthorized. Only Hiring Managers can create requisitions."}, status=status.HTTP_403_FORBIDDEN)
-        serializer = self.get_serializer(data=self.request.data)
-        serializer.is_valid(raise_exception=True)
-        job_requisition = serializer.save()
-        send_email()
-        return Response(
-            {
-                "message": "Job requisition created successfully!", 
-                "requisition_id": job_requisition.RequisitionID
-             },
-            status=status.HTTP_201_CREATED
-        )
+            if user_role != 1:
+                return Response({"error": "Only Hiring Managers can create requisitions.", "error_code": "UNAUTHORIZED_CREATION", "status_code": 403},
+                                status=status.HTTP_403_FORBIDDEN)
+
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            job_requisition = serializer.save()
+            send_email()  # if applicable
+
+            return Response({
+                "message": "Job requisition created successfully!",
+                "requisition_id": job_requisition.RequisitionID,
+                "status_code": 201
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({
+                "error": "Error while creating requisition.",
+                "error_code": "CREATE_FAILED",
+                "details": str(e),
+                "status_code": 500
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
-        """Filter job requisitions based on user role."""
-        user_role = request.data.get("user_role")
+        try:
+            user_role = request.data.get("user_role")
 
-        if user_role == 2:  # Recruiter can see only approved requisitions with restricted details
-            queryset = JobRequisition.objects.filter(Status="Approved")
-            data = []
+            if user_role == 2:
+                queryset = JobRequisition.objects.filter(Status="Approved")
+                data = []
+                for requisition in queryset:
+                    data.append({
+                        "RequisitionID": requisition.RequisitionID,
+                        "JobTitle": requisition.PositionTitle,
+                        "HiringManagerName": getattr(requisition.HiringManager, "Name", "Unknown"),
+                        "StartDate": requisition.details.contract_start_date if hasattr(requisition, "details") else "Not Provided",
+                        "DueDate": requisition.details.contract_end_date if hasattr(requisition, "details") else "Not Provided",
+                        "HiringStatus": requisition.Status
+                    })
+                return Response({
+                    "message": "Job requisitions retrieved successfully!",
+                    "data": data,
+                    "status_code": 200
+                }, status=status.HTTP_200_OK)
 
-            for requisition in queryset:
-                hiring_manager_name = getattr(requisition.HiringManager, "Name", "Unknown")
-                contract_start_date = requisition.details.contract_start_date if hasattr(requisition, "details") and requisition.details.contract_start_date else "Not Provided"
-                contract_end_date = requisition.details.contract_end_date if hasattr(requisition, "details") and requisition.details.contract_end_date else "Not Provided"
+            elif user_role == 3:
+                queryset = JobRequisition.objects.all()
 
-                serialized_data = {
-                    "RequisitionID": requisition.RequisitionID,
-                    "JobTitle": requisition.PositionTitle,
-                    "HiringManagerName": hiring_manager_name,
-                    "StartDate": contract_start_date,
-                    "DueDate": contract_end_date,
-                    "HiringStatus": requisition.Status,
-                }
-                data.append(serialized_data)
+            elif user_role == 1:
+                queryset = JobRequisition.objects.filter(HiringManager=request.user)
 
-            
+            else:
+                return Response({"error": "Unauthorized", "error_code": "INVALID_ROLE", "status_code": 403},
+                                status=status.HTTP_403_FORBIDDEN)
 
-            return Response({"message": "Job requisitions retrieved successfully!", "data": data}, status=status.HTTP_200_OK)
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "message": "Job requisitions retrieved successfully!",
+                "data": serializer.data,
+                "status_code": 200
+            }, status=status.HTTP_200_OK)
 
-        elif user_role == 3:  # Business Ops can see all requisitions
-            queryset = JobRequisition.objects.all()
+        except Exception as e:
+            return Response({
+                "error": "Error fetching job requisitions.",
+                "error_code": "LISTING_ERROR",
+                "details": str(e),
+                "status_code": 500
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        elif user_role == 1:  # Hiring Manager can see their own requisitions
-            queryset = JobRequisition.objects.filter(HiringManager=request.user)
-
-        else:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-
-        # Default response for other roles (Business Ops & Hiring Managers)
-        serializer = self.get_serializer(queryset, many=True)
-        data = []
-
-        for requisition in queryset:
-            hiring_manager_name = getattr(requisition.HiringManager, "Name", "Unknown")
-
-            serialized_data = self.get_serializer(requisition).data
-            serialized_data["HiringManagerName"] = hiring_manager_name
-            data.append(serialized_data)
-
-        return Response({"message": "Job requisitions retrieved successfully!", "data": serializer.data}, status=status.HTTP_200_OK)
     @action(detail=False, methods=["POST"])
     def approve_requisition(self, request):
-        """Only Business Ops (role = 3) can approve job requisitions."""
-        user_role = request.data.get("user_role")  
-        requisition_id = request.data.get("req_id")
+        try:
+            user_role = request.data.get("user_role")
+            requisition_id = request.data.get("req_id")
 
-        if user_role != 3:
-            return Response({"error": "Unauthorized. Only Business Ops can approve requisitions."}, status=status.HTTP_403_FORBIDDEN)
+            if user_role != 3:
+                return Response({"error": "Only Business Ops can approve requisitions.", "error_code": "UNAUTHORIZED_APPROVAL", "status_code": 403},
+                                status=status.HTTP_403_FORBIDDEN)
 
-        requisition = get_object_or_404(JobRequisition, pk=requisition_id)
-        requisition.Status = "Approved"
-        requisition.save()
+            requisition = get_object_or_404(JobRequisition, pk=requisition_id)
+            requisition.Status = "Approved"
+            requisition.save()
 
-        return Response({"message": "Job requisition approved!", "status": requisition.Status}, status=status.HTTP_200_OK)
+            return Response({
+                "message": "Job requisition approved!",
+                "status": requisition.Status,
+                "status_code": 200
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "error": "Error approving requisition.",
+                "error_code": "APPROVAL_ERROR",
+                "details": str(e),
+                "status_code": 500
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["POST"])
     def get_approved_extra_details(self, request):
-        """Get extra details only for approved requisitions."""
-        user_role = request.data.get("user_role")  
+        try:
+            user_role = request.data.get("user_role")
 
-        if user_role not in [2, 3]:  
-            return Response({"error": "Unauthorized. Only Business Ops and Recruiters can view requisition details."}, status=status.HTTP_403_FORBIDDEN)
+            if user_role not in [2, 3]:
+                return Response({"error": "Unauthorized access.", "error_code": "ACCESS_DENIED", "status_code": 403},
+                                status=status.HTTP_403_FORBIDDEN)
 
-        approved_reqs = JobRequisition.objects.filter(Status="Approved")
-        approved_ids = list(approved_reqs.values_list("RequisitionID", flat=True))  
+            approved_ids = list(JobRequisition.objects.filter(Status="Approved")
+                                .values_list("RequisitionID", flat=True))
 
-        extra_details_qs = RequisitionDetails.objects.filter(requisition_id__in=approved_ids).order_by("requisition_id")
+            details = RequisitionDetails.objects.filter(requisition_id__in=approved_ids).order_by("requisition_id")
 
-        data = []
-        for detail in extra_details_qs:
-            data.append({
-                "requisition_id": detail.requisition_id,  
-                "internal_title": detail.internal_title,
-                "external_title": detail.external_title,
-                "position": detail.position,
-                "business_line": detail.business_line,
-                "business_unit": detail.business_unit,
-                "division": detail.division,
-                "department": detail.department,
-                "location": detail.location,
-                "geo_zone": detail.geo_zone,
-                "employee_group": detail.employee_group,
-                "employee_sub_group": detail.employee_sub_group,
-                "contract_start_date": detail.contract_start_date.isoformat() if detail.contract_start_date else "",
-                "contract_end_date": detail.contract_end_date.isoformat() if detail.contract_end_date else "",
-                "career_level": detail.career_level,
-                "band": detail.band,
-                "sub_band": detail.sub_band,
-                "primary_skills": detail.primary_skills,
-                "secondary_skills": detail.secondary_skills,
-                "mode_of_working": detail.mode_of_working,
-                "requisition_type": detail.requisition_type,
-                "client_interview": detail.client_interview,
-                "required_score": detail.required_score,
-                "onb_coordinator": detail.onb_coordinator,
-                "onb_coordinator_team": detail.onb_coordinator_team,
-                "isg_team": detail.isg_team,
-                "interviewer_teammate_employee_id": detail.interviewer_teammate_employee_id,
-            })
+            data = [{
+                "requisition_id": d.requisition_id,
+                "internal_title": d.internal_title,
+                "external_title": d.external_title,
+                "position": d.position,
+                "business_line": d.business_line,
+                "business_unit": d.business_unit,
+                "division": d.division,
+                "department": d.department,
+                "location": d.location,
+                "geo_zone": d.geo_zone,
+                "employee_group": d.employee_group,
+                "employee_sub_group": d.employee_sub_group,
+                "contract_start_date": d.contract_start_date.isoformat() if d.contract_start_date else "",
+                "contract_end_date": d.contract_end_date.isoformat() if d.contract_end_date else "",
+                "career_level": d.career_level,
+                "band": d.band,
+                "sub_band": d.sub_band,
+                "primary_skills": d.primary_skills,
+                "secondary_skills": d.secondary_skills,
+                "mode_of_working": d.mode_of_working,
+                "requisition_type": d.requisition_type,
+                "client_interview": d.client_interview,
+                "required_score": d.required_score,
+                "onb_coordinator": d.onb_coordinator,
+                "onb_coordinator_team": d.onb_coordinator_team,
+                "isg_team": d.isg_team,
+                "interviewer_teammate_employee_id": d.interviewer_teammate_employee_id,
+            } for d in details]
 
-        return Response(data, status=status.HTTP_200_OK)
+            return Response({
+                "message": "Extra requisition details retrieved successfully!",
+                "data": data,
+                "status_code": 200
+            }, status=status.HTTP_200_OK)
 
+        except Exception as e:
+            return Response({
+                "error": "Error retrieving extra requisition details.",
+                "error_code": "DETAIL_FETCH_ERROR",
+                "details": str(e),
+                "status_code": 500
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=["POST"])
+    def get_requisition_by_id(self, request):
+        try:
+            requisition_id = request.data.get("req_id")
 
+            if not requisition_id:
+                return Response({"error": "Requisition ID is required.", "error_code": "MISSING_ID", "status_code": 400},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            requisition = get_object_or_404(JobRequisition, pk=requisition_id)
+            serializer = self.get_serializer(requisition)
+
+            return Response({
+                "message": "Requisition retrieved successfully!",
+                "data": serializer.data,
+                "status_code": 200
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "error": "Error retrieving requisition.",
+                "error_code": "REQ_FETCH_ERROR",
+                "details": str(e),
+                "status_code": 500
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def extract_text_from_pdf(uploaded_file):
@@ -323,7 +420,7 @@ def get_matching_score(job_description, resume_text, resume_name):
 
 class ResumeMatchingAPI(APIView):
     parser_classes = (MultiPartParser, FormParser)
-
+    #@jwt_required
     def post(self, request):
         """Handles resume uploads and returns matching scores only"""
         job_description = request.data.get('job_description')
@@ -365,31 +462,61 @@ def login_page(request):
         auth_header = request.headers.get("Authorization")
 
         if not auth_header or not auth_header.startswith("Basic "):
-            return JsonResponse({'error': 'Authorization header missing or incorrect'}, status=401)
+            return JsonResponse({
+                'error': 'Authorization header missing or incorrect',
+                'error_code': 'AUTH_HEADER_INVALID',
+                'status_code': 401
+            }, status=401)
 
-        # Decode Base64 credentials
-        _, encoded_credentials = auth_header.split(" ")
-        decoded_credentials = base64.b64decode(encoded_credentials).decode("utf-8")
-        username, password = decoded_credentials.split(":")
+        try:
+            _, encoded_credentials = auth_header.split(" ")
+            decoded_credentials = base64.b64decode(encoded_credentials).decode("utf-8")
+            username, password = decoded_credentials.split(":")
+        except Exception as e:
+            return JsonResponse({
+                'error': 'Invalid credentials encoding.',
+                'error_code': 'BASE64_DECODE_ERROR',
+                'details': str(e),
+                'status_code': 400
+            }, status=400)
 
         try:
             user = UserDetails.objects.get(Email=username)
             userrole = UserroleDetails.objects.get(RoleID=user.RoleID)
+            refresh = RefreshToken.for_user(user)
 
             if check_password(password, user.PasswordHash):
-                token = generate_jwt_token(user)
                 return JsonResponse({
                     'message': 'Login successful',
                     'role': userrole.RoleName,
-                    'token': token
+                    'user_id': user.id,
+                    'username': user.Name,
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                    'status_code': 200
                 }, status=200)
             else:
-                return JsonResponse({'error': 'Invalid username or password'}, status=400)
+                return JsonResponse({
+                    'error': 'Invalid username or password',
+                    'error_code': 'AUTH_FAILED',
+                    'status_code': 400
+                }, status=400)
 
         except UserDetails.DoesNotExist:
-            return JsonResponse({'error': 'Invalid username or password'}, status=400)
+            return JsonResponse({
+                'error': 'Invalid username or password',
+                'error_code': 'USER_NOT_FOUND',
+                'status_code': 400
+            }, status=400)
 
-    return JsonResponse({'error': 'POST method required'}, status=405)
+    return JsonResponse({
+        'error': 'POST method required',
+        'error_code': 'METHOD_NOT_ALLOWED',
+        'status_code': 405
+    }, status=405)
+
+
+ 
 
 
 class ForgotPasswordView(APIView):
@@ -428,6 +555,7 @@ class ResetPasswordView(APIView):
         return Response({"message": "Password reset successful"}, status=status.HTTP_200_OK)
     
 class InterviewPlannerCalculation(APIView):
+    #@jwt_required
     def post(self, request):        
         dead_line_days = int(request.data.get('dead_line_days'))
         offer_decline = int(request.data.get('offer_decline'))
@@ -469,6 +597,7 @@ class InterviewPlannerCalculation(APIView):
 # @parser_classes([MultiPartParser, FormParser])
 class HiringPlanOverviewDetails(APIView):
     # parser_classes = [MultiPartParser, FormParser]  # Enables file upload
+    #@jwt_required
     def get(self, request):
         # user = request.user
         hiring_plan = HiringPlan.objects.all()
@@ -476,6 +605,7 @@ class HiringPlanOverviewDetails(APIView):
         # return render(request, 'recruiter_dashboard.html', context)
         return Response(serializer.data)
     
+    #@jwt_required
     def post(self, request, *args, **kwargs):  # ✅ Accept pk from URL    
         # print(request.data)    
         serializer = HiringPlanSerializer(data=request.data)
@@ -487,7 +617,7 @@ class HiringPlanOverviewDetails(APIView):
             'job_position': instance.job_position  
         }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-       
+    #@jwt_required   
     def put(self, request):  # ✅ Accept pk from URL
 
         hiring_plan_id = request.data.get('hiring_plan_id')  # get ID from JSON body
@@ -503,7 +633,7 @@ class HiringPlanOverviewDetails(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
-    
+    #@jwt_required
     def delete(self, request):
 
         hiring_plan_id = request.data.get('hiring_plan_id')  # get ID from JSON body
@@ -514,6 +644,7 @@ class HiringPlanOverviewDetails(APIView):
         return Response({"message": "Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)        
 
 @api_view(['GET'])
+#@jwt_required
 def get_hiring_plans(request):
     hiring_plans = HiringPlan.objects.all()
     serializer = HiringPlanSerializer(hiring_plans, many=True)
@@ -530,6 +661,7 @@ def get_hiring_plans(request):
         )
 
 @api_view(['POST'])
+#@jwt_required
 def get_hiring_plan_details(request):
     hiring_plan_id = request.data.get('hiring_plan_id')
 
@@ -541,7 +673,7 @@ def get_hiring_plan_details(request):
         serializer = HiringPlanSerializer(hiring_plan)
         return Response(
             {
-                "message": "hiring plan detail created successfully!", 
+                "message": "hiring plan detail fetched successfully!", 
                 "data": serializer.data
              }
             )
@@ -550,7 +682,7 @@ def get_hiring_plan_details(request):
 
 
 class HiringInterviewRounds(APIView):
-
+    #@jwt_required
     def get(self, request):
         # user = request.user
         hiring_rounds = InterviewRounds.objects.all()
@@ -560,7 +692,7 @@ class HiringInterviewRounds(APIView):
                 "message": "Interview Rounds detail created successfully!", 
                 "data": serializer.data
              })
-
+    #@jwt_required
     def post(self, request):    
         requisition_id = request.data.get('requisition_id')
         round_name_list = request.data.get('round_name', [])        
@@ -575,7 +707,7 @@ class HiringInterviewRounds(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+    #@jwt_required
     def put(self, request):
         requisition_id = request.data.get('id')  # get ID from JSON body
         if not requisition_id:
@@ -592,6 +724,7 @@ class HiringInterviewRounds(APIView):
         return Response(serializer.errors, status=400)
     
 class HiringInterviewSkills(APIView):
+    #@jwt_required
     def post(self, request):    
         requisition_id = request.data.get('requisition_id')
         skill_name_list = request.data.get('skill_name', [])     

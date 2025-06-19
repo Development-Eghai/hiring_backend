@@ -13,6 +13,17 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 from decouple import config
+from datetime import timedelta
+
+
+# SIMPLE_JWT = {
+#     'USER_ID_FIELD': 'id',  # ✅ Set to match your model's primary key
+#     'USER_ID_CLAIM': 'user_id',  # ✅ Ensure JWT tokens store the correct field
+#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # or hours=1
+#     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+#     'ROTATE_REFRESH_TOKENS': False,
+#     'BLACKLIST_AFTER_ROTATION': True,
+# }
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'  # Change based on your email provider
@@ -63,16 +74,20 @@ INSTALLED_APPS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        # 'myapp.authentication.CustomJWTAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        
+    
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
+    
 }
-SIMPLE_JWT = {
-    'USER_ID_FIELD': 'UserID',  # ✅ Set to match your model's primary key
-    'USER_ID_CLAIM': 'user_id',  # ✅ Ensure JWT tokens store the correct field
-}
+# REST_FRAMEWORK = {
+#     'DEFAULT_AUTHENTICATION_CLASSES': (
+#         'myapp.authentication.CustomJWTAuthentication',
+#     ),
+# }
+
+
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
