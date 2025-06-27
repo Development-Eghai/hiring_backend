@@ -1,9 +1,10 @@
 from rest_framework import serializers
-from .models import Candidates,UserDetails
+from .models import CandidateInterviewStages, CandidateReview, Candidates, InterviewDesignParameters, InterviewDesignScreen, StageAlertResponsibility,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
 from .models import CommunicationSkills,InterviewRounds,HiringPlan
 from django.core.exceptions import ObjectDoesNotExist
+from .models import Interviewer, InterviewSlot
 
 logger = logging.getLogger(__name__)
   
@@ -306,3 +307,68 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
     #     representation = super().to_representation(instance)
     #     representation['Planning_id'] = instance.Planning_id.hiring_plan_id  # ✅ Convert to integer
     #     return representation
+
+class CandidateReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CandidateReview
+        fields = [
+            "ParameterDefined",
+            "Guidelines",
+            "MinimumQuestions",
+            "ActualRating",
+            "Feedback"
+        ]
+
+class InterviewSlotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterviewSlot
+        fields = ['id', 'date', 'start_time', 'end_time']
+
+class InterviewerSerializer(serializers.ModelSerializer):
+    slots = InterviewSlotSerializer(many=True)
+
+    class Meta:
+        model = Interviewer
+        fields = '__all__'
+
+    def create(self, validated_data):
+        slot_data = validated_data.pop('slots', [])
+        interviewer = Interviewer.objects.create(**validated_data)
+        for slot in slot_data:
+            InterviewSlot.objects.create(interviewer=interviewer, **slot)
+        return interviewer
+
+
+class CandidateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Candidates
+        fields = ['CandidateID', 'Name', 'Email']
+
+class JobRequisitionDetailSerializer(serializers.ModelSerializer):
+    candidates = CandidateSerializer(many=True)
+    interviewer = InterviewerSerializer(many=True)
+
+    class Meta:
+        model = JobRequisition
+        fields = ['RequisitionID', 'PositionTitle', 'candidates', 'interviewer']
+
+class InterviewDesignScreenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterviewDesignScreen
+        fields = '__all__'
+
+class InterviewDesignParametersSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterviewDesignParameters
+        fields = '__all__'
+
+class StageAlertResponsibilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StageAlertResponsibility
+        fields = '__all__'
+
+
+class CandidateInterviewStagesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CandidateInterviewStages
+        fields = '__all__'
