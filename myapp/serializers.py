@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CandidateInterviewStages, CandidateReview, Candidates, InterviewDesignParameters, InterviewDesignScreen, StageAlertResponsibility,UserDetails
+from .models import Approver, Benefit, CandidateInterviewStages, CandidateReview, Candidates, InterviewDesignParameters, InterviewDesignScreen, OfferNegotiation, OfferNegotiationBenefit, StageAlertResponsibility,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
 from .models import CommunicationSkills,InterviewRounds,HiringPlan
@@ -302,7 +302,59 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
         except Exception as e:
             logger.error("Error while creating JobRequisition: %s", str(e))
             raise serializers.ValidationError({"error": str(e)})
+    def update(self, instance, validated_data):
+        logger.info("Updating JobRequisition ID %s with data: %s", instance.RequisitionID, validated_data)
 
+        # Extract nested data
+        details_data = validated_data.pop('details', None)
+        billing_data = validated_data.pop('billing_details', None)
+        posting_data = validated_data.pop('posting_details', None)
+        interview_data = validated_data.pop('interview_team', [])
+        teams_data = validated_data.pop('teams', [])
+
+        # Update top-level fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Update or create related one-to-one fields
+        if details_data:
+            if hasattr(instance, 'details'):
+                for attr, value in details_data.items():
+                    setattr(instance.details, attr, value)
+                instance.details.save()
+            else:
+                RequisitionDetails.objects.create(requisition=instance, **details_data)
+
+        if billing_data:
+            if hasattr(instance, 'billing_details'):
+                for attr, value in billing_data.items():
+                    setattr(instance.billing_details, attr, value)
+                instance.billing_details.save()
+            else:
+                BillingDetails.objects.create(requisition=instance, **billing_data)
+
+        if posting_data:
+            if hasattr(instance, 'posting_details'):
+                for attr, value in posting_data.items():
+                    setattr(instance.posting_details, attr, value)
+                instance.posting_details.save()
+            else:
+                PostingDetails.objects.create(requisition=instance, **posting_data)
+
+        # Refresh many-to-many-like data by clearing and recreating
+        if interview_data is not None:
+            instance.interview_team.all().delete()
+            for interviewer in interview_data:
+                InterviewTeam.objects.create(requisition=instance, **interviewer)
+
+        if teams_data is not None:
+            instance.teams.all().delete()
+            for team in teams_data:
+                Teams.objects.create(requisition=instance, **team)
+
+        logger.info("JobRequisition ID %s updated successfully", instance.RequisitionID)
+        return instance
     # def to_representation(self, instance):
     #     representation = super().to_representation(instance)
     #     representation['Planning_id'] = instance.Planning_id.hiring_plan_id  # ✅ Convert to integer
@@ -371,4 +423,51 @@ class StageAlertResponsibilitySerializer(serializers.ModelSerializer):
 class CandidateInterviewStagesSerializer(serializers.ModelSerializer):
     class Meta:
         model = CandidateInterviewStages
+        fields = '__all__'
+
+
+class OfferNegotiationBenefitSerializer(serializers.ModelSerializer):
+    benefit_name = serializers.CharField(source='benefit.name', read_only=True)
+
+    class Meta:
+        model = OfferNegotiationBenefit
+        fields = ['id', 'benefit', 'benefit_name']
+
+
+class OfferNegotiationSerializer(serializers.ModelSerializer):
+    benefits = serializers.ListField(child=serializers.CharField(), write_only=True, required=False)
+    benefit_details = OfferNegotiationBenefitSerializer(source='offer_benefits', many=True, read_only=True)
+
+    class Meta:
+        model = OfferNegotiation
+        fields = '__all__'
+
+    def create(self, validated_data):
+        benefits = validated_data.pop('benefits', [])
+        offer = OfferNegotiation.objects.create(**validated_data)
+        for name in benefits:
+            benefit_obj, _ = Benefit.objects.get_or_create(name=name)
+            OfferNegotiationBenefit.objects.create(offer_negotiation=offer, benefit=benefit_obj)
+        return offer
+
+    def update(self, instance, validated_data):
+        benefits = validated_data.pop('benefits', None)
+
+        # Update basic fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Optional: update benefits if included in payload
+        if benefits is not None:
+            instance.benefits.clear()
+            for name in benefits:
+                benefit_obj, _ = Benefit.objects.get_or_create(name=name)
+                OfferNegotiationBenefit.objects.create(offer_negotiation=instance, benefit=benefit_obj)
+
+        return instance
+    
+class ApproverSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Approver
         fields = '__all__'

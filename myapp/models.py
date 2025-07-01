@@ -459,3 +459,114 @@ class StageAlertResponsibility(models.Model):
     class Meta:
         db_table = 'job_stage_responsibility'
         managed = False
+
+class OfferNegotiation(models.Model):
+    requisition = models.ForeignKey(
+        JobRequisition,
+        on_delete=models.CASCADE,
+        related_name="offer_negotiations"
+    )
+    client_name = models.CharField(max_length=100)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    position_applied = models.CharField(max_length=150)
+    
+    expected_salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    offered_salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    expected_title = models.CharField(max_length=150, null=True, blank=True)
+    offered_title = models.CharField(max_length=150, null=True, blank=True)
+    
+    expected_location = models.CharField(max_length=100, null=True, blank=True)
+    offered_location = models.CharField(max_length=100, null=True, blank=True)
+    
+    expected_doj = models.DateField(null=True, blank=True)
+    offered_doj = models.DateField(null=True, blank=True)
+    
+    expected_work_mode = models.CharField(max_length=50, null=True, blank=True)
+    offered_work_mode = models.CharField(max_length=50, null=True, blank=True)
+    
+    negotiation_status = models.CharField(
+        max_length=50,
+        choices=[
+            ("Successful", "Successful"),
+            ("Closed", "Closed"),
+            ("Sent for Realignment", "Sent for Realignment"),
+            ("Failed", "Failed"),
+            ("Open", "Open"),
+            ("In progress", "In progress")
+        ],
+        default="Open"
+    )
+    
+    comments = models.TextField(blank=True)
+    benefits = models.ManyToManyField(
+        'Benefit',
+        through='OfferNegotiationBenefit',
+        blank=True
+    )
+
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'offer_negotiation'
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} - {self.position_applied} ({self.negotiation_status})"
+
+
+class Benefit(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        db_table = 'benefit'
+
+    def __str__(self):
+        return self.name
+    
+class OfferNegotiationBenefit(models.Model):
+    offer_negotiation = models.ForeignKey(
+        'OfferNegotiation',
+        on_delete=models.CASCADE,
+        related_name='offer_benefits'
+    )
+    benefit = models.ForeignKey(
+        'Benefit',
+        on_delete=models.CASCADE,
+        related_name='benefit_offers'
+    )
+
+    class Meta:
+        db_table = 'offer_negotiation_benefits'
+        unique_together = ('offer_negotiation', 'benefit')
+
+    def __str__(self):
+        return f"{self.offer_negotiation} ↔ {self.benefit.name}"
+
+
+class Approver(models.Model):
+    ROLE_CHOICES = [
+        ('HM', 'Hiring Manager'),
+        ('FPNA', 'FPNA/Business Ops'),
+        ('HR', 'HR/Recruitment Head'),
+        ('CEO', 'CEO'),
+        ('COO', 'COO'),
+    ]
+
+    hiring_plan = models.ForeignKey(HiringPlan, on_delete=models.CASCADE)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    email = models.EmailField()
+    contact_number = models.CharField(max_length=15, blank=True, null=True)
+    job_title = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.role})"
+
+    class Meta:
+        db_table = 'approver'  # optional: use custom table name
+        managed = False

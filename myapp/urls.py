@@ -26,6 +26,10 @@ router2 = DefaultRouter()
 router2.register(r'public/job-requisitions', JobRequisitionPublicViewSet, basename='public-job-requisition')
 
 
+router3 = DefaultRouter()
+router3.register(r'offer-negotiations', OfferNegotiationViewSet, basename='offer-negotiation')
+
+
 
 # Define URL patterns
 urlpatterns = [
@@ -66,6 +70,16 @@ urlpatterns = [
     path('api/interview/report/', InterviewReportAPIView.as_view()),  # Generating interview report
 
     path("api/interview/schedules/", GetInterviewScheduleAPIView.as_view()),
+
+    path('plans/ids/', get_all_plan_ids, name='get_all_plan_ids'),
+
+    path('api/', include(router3.urls)),
+
+    path('api/set-approver/', ApproverCreateListView.as_view(), name='set-approver'),
+    path('api/set-approver/filter/', ApproverFilterView.as_view(), name='filter-approver'),
+
+
+
 
 ]
 

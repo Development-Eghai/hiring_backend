@@ -20,7 +20,7 @@ from django.contrib.auth import logout
 from django.db import connection
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
-from .models import CandidateInterviewStages, CandidateReview, InterviewDesignScreen, InterviewReview, InterviewSchedule, Interviewer, Posting, RequisitionDetails, StageAlertResponsibility, UserDetails,Candidates,UserroleDetails
+from .models import Approver, CandidateInterviewStages, CandidateReview, InterviewDesignScreen, InterviewReview, InterviewSchedule, Interviewer, OfferNegotiation, Posting, RequisitionDetails, StageAlertResponsibility, UserDetails,Candidates,UserroleDetails
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -40,7 +40,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from .models import JobRequisition
 import PyPDF2 as pdf
 from langchain_ollama import OllamaLLM
-from .serializers import CandidateInterviewStagesSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, InterviewerSerializer, JobRequisitionCompactSerializer, JobRequisitionSerializer,JobRequisitionSerializerget, JobTemplateSerializer, StageAlertResponsibilitySerializer
+from .serializers import ApproverSerializer, CandidateInterviewStagesSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, InterviewerSerializer, JobRequisitionCompactSerializer, JobRequisitionSerializer,JobRequisitionSerializerget, JobTemplateSerializer, OfferNegotiationSerializer, StageAlertResponsibilitySerializer
 from rest_framework import viewsets
 from .models import Candidate
 # from .utils import extract_info_from_resume  # Import the parsing function
@@ -72,6 +72,98 @@ import re
 from .serializers import JobRequisitionDetailSerializer
 
 # ollama.base_url = "http://ollama:11434"
+
+
+class ApproverCreateListView(generics.ListCreateAPIView):
+    queryset = Approver.objects.all()
+    serializer_class = ApproverSerializer
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(api_json_response_format(
+                True,
+                "Approvers retrieved successfully!",
+                200,
+                serializer.data
+            ), status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Error retrieving approvers. {str(e)}",
+                500,
+                []
+            ), status=status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(api_json_response_format(
+                True,
+                "Approver created successfully!",
+                201,
+                serializer.data
+            ), status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Error creating approver. {str(e)}",
+                500,
+                {}
+            ), status=status.HTTP_200_OK)
+
+
+class ApproverFilterView(APIView):
+    def post(self, request, *args, **kwargs):
+        try:
+            hiring_plan_id = request.data.get("hiring_plan")
+            if not hiring_plan_id:
+                return Response(api_json_response_format(
+                    False,
+                    "hiring_plan is required in request body",
+                    400,
+                    []
+                ), status=status.HTTP_200_OK)
+
+            approvers = Approver.objects.filter(hiring_plan_id=hiring_plan_id)
+            serializer = ApproverSerializer(approvers, many=True)
+            return Response(api_json_response_format(
+                True,
+                "Approvers filtered by hiring plan retrieved successfully!",
+                200,
+                serializer.data
+            ), status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Error filtering approvers. {str(e)}",
+                500,
+                []
+            ), status=status.HTTP_200_OK)
+
+class OfferNegotiationViewSet(viewsets.ModelViewSet):
+    queryset = OfferNegotiation.objects.prefetch_related('benefits').all()
+    serializer_class = OfferNegotiationSerializer
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(api_json_response_format(True, "Job requisitions retrieved successfully!", 200, serializer.data), status=200)
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error retrieving job requisitions. {str(e)}", 500, {}), status=200)
+
+    def create(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(api_json_response_format(True, "Offer negotiation created successfully!", 201, serializer.data), status=200)
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error creating offer negotiation. {str(e)}", 500, {}), status=200)
 
 
 class GetInterviewScheduleAPIView(APIView):
@@ -319,6 +411,7 @@ DISPLAY_TO_MODEL_FIELD1 = {
     "Citizenship Requirement": "citizen_requirement"
 }
 DISPLAY_TO_MODEL_FIELD = {
+    "id": "RequisitionID",
     "Position/Role": "details__job_position",
     "Tech": "Planning_id__tech_stacks",
     "JD": "Planning_id__jd_details",
@@ -822,6 +915,56 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             return Response(api_json_response_format(False, "Error while creating requisition."+str(e), 500, {}), status=200)
+    
+    @action(detail=False, methods=['put'], url_path='update-requisition')
+    def update_requisition(self, request):
+        try:
+            user_role = request.data.get("user_role")
+            requisition_id = request.data.get("requisition_id")
+
+            if user_role != 1:
+                return Response(api_json_response_format(False, "Only Hiring Managers can update requisitions.", 403, {}), status=200)
+            if not requisition_id:
+                return Response(api_json_response_format(False, "requisition_id is required.", 400, {}), status=200)
+
+            try:
+                instance = JobRequisition.objects.get(pk=requisition_id)
+            except JobRequisition.DoesNotExist:
+                return Response(api_json_response_format(False, "Job requisition not found.", 404, {}), status=200)
+
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(api_json_response_format(True, "Job requisition updated successfully!", 200, {
+                "requisition_id": serializer.instance.RequisitionID
+            }), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, "Error while updating requisition. " + str(e), 500, {}), status=200)
+
+        
+    @action(detail=False, methods=['delete'], url_path='delete-requisition')
+    def delete_requisition(self, request):
+        try:
+            user_role = request.data.get("user_role")
+            requisition_id = request.data.get("requisition_id")
+
+            if user_role != 1:
+                return Response(api_json_response_format(False, "Only Hiring Managers can delete requisitions.", 403, {}), status=200)
+            if not requisition_id:
+                return Response(api_json_response_format(False, "requisition_id is required.", 400, {}), status=200)
+
+            try:
+                requisition = JobRequisition.objects.get(pk=requisition_id)
+            except JobRequisition.DoesNotExist:
+                return Response(api_json_response_format(False, "Job requisition not found.", 404, {}), status=200)
+
+            requisition.delete()
+            return Response(api_json_response_format(True, "Job requisition deleted successfully!", 200, {}), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, "Error while deleting requisition. " + str(e), 500, {}), status=200)
 
     def list(self, request, *args, **kwargs):
         try:
@@ -1309,8 +1452,11 @@ def get_hiring_plans(request):
 
         # Filtered field map (Planning_id only)
         planning_fields_map = {
-            key: val for key, val in DISPLAY_TO_MODEL_FIELD1.items()
-            if isinstance(val, str) or (isinstance(val, list) and all(isinstance(f, str) for f in val))
+            "id": "hiring_plan_id",  # ensure this field is manually injected
+            **{
+                key: val for key, val in DISPLAY_TO_MODEL_FIELD1.items()
+                if isinstance(val, str) or (isinstance(val, list) and all(isinstance(f, str) for f in val))
+            }
         }
 
 
@@ -1325,7 +1471,17 @@ def get_hiring_plans(request):
     except Exception as e:
         return Response(api_json_response_format(
             False, "Error retrieving hiring plan data. " + str(e), 500, {}), status=200)
-    
+
+
+@api_view(['GET'])
+def get_all_plan_ids(request):
+    plans = HiringPlan.objects.all().values_list('hiring_plan_id', flat=True)
+    return Response(api_json_response_format(
+        True,
+        "All plan IDs fetched successfully!",
+        200,
+        {'plan_ids': list(plans)}
+    ), status=200)
 
 @api_view(['POST'])
 def get_hiring_plan_details(request):
