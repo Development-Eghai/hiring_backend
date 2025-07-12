@@ -10,6 +10,7 @@ from .views import JobRequisitionViewSet,JobRequisitionPublicViewSet
 from rest_framework.routers import DefaultRouter
 from .views import HiringPlanOverviewDetails,HiringInterviewRounds,HiringInterviewSkills
 from .views import InterviewPlannerCalculation
+from myapp import views
 # from rest_framework_simplejwt.views import (
 #     TokenObtainPairView,
 #     TokenRefreshView,
@@ -28,6 +29,12 @@ router2.register(r'public/job-requisitions', JobRequisitionPublicViewSet, basena
 
 router3 = DefaultRouter()
 router3.register(r'offer-negotiations', OfferNegotiationViewSet, basename='offer-negotiation')
+
+
+router4 = DefaultRouter()
+router4.register(r'candidate-submissions', CandidateSubmissionViewSet, basename='candidate-submission')
+
+
 
 
 
@@ -71,15 +78,35 @@ urlpatterns = [
 
     path("api/interview/schedules/", GetInterviewScheduleAPIView.as_view()),
 
-    path('plans/ids/', get_all_plan_ids, name='get_all_plan_ids'),
+    path('reqs/ids/', get_all_req_ids, name='get_all_req_ids'),
 
     path('api/', include(router3.urls)),
 
     path('api/set-approver/', ApproverCreateListView.as_view(), name='set-approver'),
     path('api/set-approver/filter/', ApproverFilterView.as_view(), name='filter-approver'),
 
+    path('interivew_design_dashboard/', InterviewScreenDashboardView.as_view(), name='interivew_desing_dashboard'),
+    path('get_plan_id_position_role/', get_plan_id_position_role, name='get_plan_id_position_role'),
+
+    path('filter_candidates_dashboard/', filter_candidates_dashboard, name='filter_candidates_dashboard'),
+    
+    path('api/', include(router4.urls)),
+    path('api/candidate-submissions/get-submissions-by-candidate-id/', CandidateSubmissionViewSet.as_view({'post': 'get_submissions_by_candidate_id'})),
+    path('approval/approve/<int:negotiation_id>/', views.approve_offer, name='approve-offer'),
+    path('approval/reject/<int:negotiation_id>/', views.reject_offer, name='reject-offer'),
 
 
+    path('configuration/', admin_configuration, name='configuration'),
+    path('config_position_role/', ConfigPositionRoleView.as_view(), name='config_position_role'),
+    path('position-role/search/', ConfigPositionRoleSearchView.as_view(), name='position_role_search'),
+    path('screening-type/search/', ConfigScreeningTypeSearchView.as_view(), name='screening_type_search'),
+    path('scorecard/search/', ConfigScoreCardSearchView.as_view(), name='score_card_search'),
+    path('config_screening_type/', ConfigScreeningTypeView.as_view(), name='config_screening_type'),
+    path('config_score_card/', ConfigScoreCardView.as_view(), name='config_score_card'),
+    path('design_screen_list_data/', design_screen_list_data, name='design_screen_list_data'),
+    path('manage-requisition/', ManageRequisitionView.as_view(), name='manage_requisition'),
+
+     path('api/candidates/interview-details/', CandidateInterviewDetailView.as_view(), name='candidate-interview-details'),
 
 ]
 

@@ -1,8 +1,12 @@
 from django.db import models
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils.timezone import now
 
 
 class HiringPlan(models.Model):
-    hiring_plan_id = models.AutoField(primary_key=True)
+    id = models.AutoField(primary_key=True)
+    hiring_plan_id = models.CharField(max_length=50,blank=True,unique=True,db_index=True)
     job_position = models.CharField(max_length=255,blank=True)
     tech_stacks = models.CharField(max_length=255,blank=True)
     jd_details = models.CharField(max_length=255,blank=True)    
@@ -32,7 +36,20 @@ class HiringPlan(models.Model):
     job_health_requirements = models.CharField(max_length=255,blank=True)
     social_media_links = models.CharField(max_length=255,blank=True)
     language_proficiency = models.CharField(max_length=255,blank=True)
-    Created_at = models.DateTimeField(auto_now_add=True)
+    # requisition_date = models.DateField(null=True, blank=True)
+    # due_requisition_date = models.DateField(null=True, blank=True)
+    requisition_template = models.CharField(max_length=255,blank=True)
+    no_of_openings = models.IntegerField(default=0)
+    mode_of_working = models.CharField(max_length=255, blank=True)
+    relocation_amount = models.CharField(max_length=255, blank=True)
+    domain_yn = models.CharField(max_length=255, blank=True)
+    domain_name = models.CharField(max_length=255, blank=True)
+    education_qualification = models.CharField(max_length=255, blank=True)
+    visa_country = models.CharField(max_length=255, blank=True)
+    visa_type = models.CharField(max_length=255, blank=True)
+    github_link = models.CharField(max_length=255, blank=True)
+
+    Created_at = models.DateTimeField(auto_now_add=True) 
     
     class Meta:
         db_table = 'job_hiring_overview'
@@ -40,7 +57,7 @@ class HiringPlan(models.Model):
 
 class InterviewRounds(models.Model):
     id = models.AutoField(primary_key=True)
-    requisition_id = models.IntegerField()
+    plan_id = models.CharField(max_length=50,blank=True)
     round_name = models.CharField(max_length=255,blank=True)
     updt = models.DateTimeField(auto_now_add=True)
 
@@ -50,7 +67,7 @@ class InterviewRounds(models.Model):
 
 class CommunicationSkills(models.Model):
     id = models.AutoField(primary_key=True)
-    requisition_id = models.IntegerField()
+    plan_id = models.CharField(max_length=50,blank=True)
     skill_name = models.CharField(max_length=255,blank=True)
     skill_value = models.CharField(max_length=255,blank=True)
     updt = models.DateTimeField(auto_now_add=True)
@@ -64,15 +81,72 @@ class Candidates(models.Model):
     Name = models.CharField(max_length=255,blank=True)
     Email = models.CharField(max_length=255,unique=True)
     Resume = models.FileField(upload_to='resumes/')
-    ProfileCreated = models.DateTimeField(auto_now_add=True)
     #  pdf_file = models.FileField(upload_to='pdfs/')
-
+    Final_rating = models.IntegerField()
+    Feedback = models.TextField(null=True, blank=True)
+    Result = models.CharField(max_length=50,blank=True)
+    ProfileCreated = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return self.Name
     
     class Meta:
         db_table = 'candidates'
         managed = False
+
+class CandidateSubmission(models.Model):
+    candidate = models.ForeignKey(
+        'Candidates',  # Referencing existing model
+        to_field='CandidateID',
+        on_delete=models.CASCADE,
+        related_name='submissions'
+    )
+
+    recruiter_email = models.EmailField()
+    job_title = models.CharField(max_length=100)
+    start_date = models.DateField()
+    city = models.CharField(max_length=100)
+    country = models.CharField(max_length=100)
+    currency = models.CharField(max_length=10)
+
+    salary = models.DecimalField(max_digits=12, decimal_places=2)
+    variable_pay = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    status = models.CharField(max_length=50)
+    open_date = models.DateField()
+    target_start_date = models.DateField()
+    close_date = models.DateField(null=True, blank=True)
+    close_reason = models.TextField(null=True, blank=True)
+    opening_salary_currency = models.CharField(max_length=10)
+    opening_salary_range = models.CharField(max_length=50)
+
+    driving_license_number = models.CharField(max_length=50, null=True, blank=True)
+    driving_license_validity = models.DateField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'candidate_submission'
+
+    def __str__(self):
+        return f"{self.candidate.Name} — {self.job_title}"
+    
+class CandidateReference(models.Model):
+    candidate_submission = models.ForeignKey(
+        CandidateSubmission,
+        on_delete=models.CASCADE,
+        related_name='references'
+    )
+
+    name = models.CharField(max_length=100)
+    designation = models.CharField(max_length=100)
+    organization = models.CharField(max_length=100)
+    relationship = models.CharField(max_length=100)
+    phone_number = models.CharField(max_length=20)
+    email = models.EmailField()
+    address = models.TextField()
+
+    class Meta:
+        db_table = 'candidate_reference'
 
 class UserDetails(models.Model):
     id = models.AutoField(primary_key=True)
@@ -120,7 +194,8 @@ class UserroleDetails(models.Model):
 
 
 class JobRequisition(models.Model):
-    RequisitionID = models.AutoField(primary_key=True)
+    id = models.AutoField(primary_key=True)
+    RequisitionID = models.CharField(max_length=50, unique=True, db_index=True)
     Planning_id = models.ForeignKey(
     'myapp.HiringPlan',  # Explicitly reference the app name
     on_delete=models.CASCADE,
@@ -131,21 +206,32 @@ class JobRequisition(models.Model):
     HiringManager = models.ForeignKey(UserDetails, on_delete=models.SET_NULL, null=True, db_column="HiringManagerID", related_name="requisitions")
     Recruiter = models.CharField(max_length=191, null=True, blank=True, default="Not Assigned")
     No_of_positions = models.IntegerField(null=True, blank=True, default=1)
+    # Inside JobRequisition model
+    LegalEntityID = models.CharField(max_length=50, null=True, blank=True, default="0")  # for legal_entry
+    QualificationID = models.CharField(max_length=100, null=True, blank=True, default="B.Tech")  # for qualification
     Status = models.CharField(
-        max_length=50,
-        choices=[
-            ('Draft', 'Draft'),
-            ('Pending Approval', 'Pending Approval'),
-            ('Approved', 'Approved'),
-            ('Posted', 'Posted')
-        ],
-        default='Pending Approval'
+    max_length=50,
+    choices=[
+        ('Pending Approval', 'Pending Approval'),
+        ('Need More Details', 'Need More Details'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected')
+    ],
+    default='Pending Approval'
+    )
+    CommentFromBusinessOps = models.TextField(
+    null=True,
+    blank=True,
+    default="",
+    help_text="Optional remarks or clarification from Business Ops during review."
     )
     CreatedDate = models.DateTimeField(auto_now_add=True)
     UpdatedDate = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'jobrequisition'
+        
+
 
     def __str__(self):
         hiring_manager_name = self.HiringManager.Name if self.HiringManager else "Unknown"
@@ -153,7 +239,13 @@ class JobRequisition(models.Model):
     
     
 class RequisitionDetails(models.Model):
-    requisition = models.OneToOneField(JobRequisition, on_delete=models.CASCADE, related_name="details")
+    requisition = models.OneToOneField(
+    JobRequisition,
+    to_field='RequisitionID',
+    on_delete=models.CASCADE,
+    related_name='position_information'
+    )
+    # requisition = models.OneToOneField(JobRequisition, on_delete=models.CASCADE, related_name="details")
     # requisition = models.ForeignKey(JobRequisition, on_delete=models.CASCADE, related_name="details",unique=True)
 
     internal_title = models.CharField(max_length=255, null=True, blank=True, default="Unknown Title")
@@ -167,7 +259,7 @@ class RequisitionDetails(models.Model):
     geo_zone = models.CharField(max_length=255, null=True, blank=True, default="Global")
     employee_group = models.CharField(max_length=255, null=True, blank=True, default="General Employee Group")
     employee_sub_group = models.CharField(max_length=255, null=True, blank=True, default="General Sub Group")
-    
+    company_client_name = models.CharField(max_length=255, null=True, blank=True, default="")
     contract_start_date = models.DateField(null=True, blank=True, default=None)
     contract_end_date = models.DateField(null=True, blank=True, default=None)
     
@@ -181,9 +273,10 @@ class RequisitionDetails(models.Model):
     working_model = models.CharField(max_length=50, null=True, blank=True, default="Office")
     requisition_type = models.CharField(max_length=50, null=True, blank=True, default="Standard Hiring")
     
-    client_interview = models.BooleanField(default=False)
+    client_interview = models.CharField(max_length=10, null=True, blank=True, default="NO")
     required_score = models.IntegerField(null=True, blank=True, default=0)
-    
+    requisition_date = models.DateField(null=True, blank=True)
+    due_requisition_date = models.DateField(null=True, blank=True)
     onb_coordinator = models.CharField(max_length=255, null=True, blank=True, default="Not Assigned")
     onb_coordinator_team = models.TextField(null=True, blank=True, default="No Team Assigned")
     isg_team = models.TextField(null=True, blank=True, default="No ISG Team Assigned")
@@ -200,10 +293,19 @@ class RequisitionDetails(models.Model):
         return self.requisition.PositionTitle
 
 class BillingDetails(models.Model):
-    # One-to-One relationship with JobRequisition
-    requisition = models.OneToOneField(JobRequisition, on_delete=models.CASCADE, related_name="billing_details")
+    requisition = models.OneToOneField(
+        JobRequisition,
+        to_field='RequisitionID',
+        on_delete=models.CASCADE,
+        related_name='billing_details'
+    )
+
     billing_type = models.CharField(max_length=50, null=True, blank=True, default="Non-Billable")
     billing_start_date = models.DateField(null=True, blank=True)
+    billing_end_date = models.DateField(null=True, blank=True)
+    contract_start_date = models.DateField(null=True, blank=True)
+    contract_end_date = models.DateField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -216,12 +318,20 @@ class BillingDetails(models.Model):
 
 class PostingDetails(models.Model):
     # One-to-One relationship with JobRequisition
-    requisition = models.OneToOneField(JobRequisition, on_delete=models.CASCADE, related_name="posting_details")
+    # requisition = models.OneToOneField(JobRequisition, on_delete=models.CASCADE, related_name="posting_details")
+    requisition = models.OneToOneField(
+    JobRequisition,
+    to_field='RequisitionID',
+    on_delete=models.CASCADE,
+    related_name='posting_details'
+    )
+    
     experience = models.CharField(max_length=255, null=True, blank=True, default="0+ years")
     designation = models.CharField(max_length=255, null=True, blank=True, default="Unknown Role")
     job_category = models.CharField(max_length=255, null=True, blank=True, default="General")
     job_region = models.CharField(max_length=255, null=True, blank=True, default="Global")
     internal_job_description = models.TextField(null=True, blank=True, default="No Description")
+    qualification = models.CharField(max_length=255, null=True, blank=True)
     external_job_description = models.TextField(null=True, blank=True, default="No Description Available")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -235,7 +345,13 @@ class PostingDetails(models.Model):
 
 class InterviewTeam(models.Model):
     # Many-to-One relationship with JobRequisition
-    requisition = models.ForeignKey(JobRequisition, on_delete=models.CASCADE, related_name="interview_team")
+    # requisition = models.ForeignKey(JobRequisition, on_delete=models.CASCADE, related_name="interview_team")
+    requisition = models.ForeignKey(
+    JobRequisition,
+    to_field='RequisitionID',
+    on_delete=models.CASCADE,
+    related_name='interview_team'
+    )
     employee_id = models.CharField(max_length=50, null=True, blank=True, default="Unknown ID")
     name = models.CharField(max_length=255, null=True, blank=True, default="Unknown Interviewer")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -250,7 +366,13 @@ class InterviewTeam(models.Model):
 
 class Teams(models.Model):
     # Many-to-One relationship with JobRequisition
-    requisition = models.ForeignKey(JobRequisition, on_delete=models.CASCADE, related_name="teams")
+    # requisition = models.ForeignKey(JobRequisition, on_delete=models.CASCADE, related_name="teams")
+    requisition = models.ForeignKey(
+    JobRequisition,
+    to_field='RequisitionID',
+    on_delete=models.CASCADE,
+    related_name='teams'
+    )
     team_type = models.CharField(max_length=50, null=True, blank=True, default="General Team")
     team_name = models.CharField(max_length=255, null=True, blank=True, default="Unknown Team")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -262,6 +384,58 @@ class Teams(models.Model):
     def __str__(self):
         return f"Team {self.team_name} for {self.requisition}"
 
+class AssetDetails(models.Model):
+    requisition = models.OneToOneField(
+        JobRequisition,
+        to_field='RequisitionID',
+        on_delete=models.CASCADE,
+        related_name='asset_details'
+    )
+    laptop_type = models.CharField(max_length=100, null=True, blank=True, default="Not Specified")
+    laptop_needed = models.CharField(max_length=10, null=True, blank=True, default="No")
+    additional_questions = models.CharField(max_length=10, null=True, blank=True, default="No")
+    comments = models.TextField(null=True, blank=True, default="No Comments")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'asset_details'
+
+    def __str__(self):
+        return f"Assets for {self.requisition}"
+
+class RequisitionCompetency(models.Model):
+    requisition = models.ForeignKey(
+        JobRequisition,
+        to_field='RequisitionID',
+        on_delete=models.CASCADE,
+        related_name='requisition_competencies'
+    )
+    competency = models.CharField(max_length=50, null=True, blank=True)
+    library = models.CharField(max_length=50, null=True, blank=True)
+    category = models.CharField(max_length=50, null=True, blank=True)
+    expected_rating = models.CharField(max_length=50, null=True, blank=True)
+    weight = models.CharField(max_length=50, null=True, blank=True)
+
+    class Meta:
+        db_table = 'requisition_competency'
+
+class RequisitionQuestion(models.Model):
+    requisition = models.ForeignKey(
+        JobRequisition,
+        to_field='RequisitionID',
+        on_delete=models.CASCADE,
+        related_name='requisition_questions'
+    )
+    question = models.CharField(max_length=100, null=True, blank=True)
+    required = models.CharField(max_length=50, null=True, blank=True)
+    disqualifier = models.CharField(max_length=10, null=True, blank=True)
+    score = models.CharField(max_length=10, null=True, blank=True)
+    weight = models.CharField(max_length=10, null=True, blank=True)
+
+    class Meta:
+        db_table = 'requisition_question'
 
 class Posting(models.Model):
     PostingID  = models.AutoField(primary_key=True)
@@ -295,6 +469,7 @@ class Candidate(models.Model):
 
     Req_id_fk = models.ForeignKey(
         JobRequisition,
+        to_field='RequisitionID',
         on_delete=models.CASCADE,
         related_name="candidates",
         db_column="Req_id_fk"
@@ -343,6 +518,7 @@ class Interviewer(models.Model):
         JobRequisition,
         on_delete=models.CASCADE,
         related_name="interviewer",
+        to_field='RequisitionID',
         db_column="req_id"
     )
     client_id = models.CharField(max_length=100)
@@ -395,8 +571,8 @@ class InterviewReview(models.Model):
 
 class InterviewDesignScreen(models.Model):
     interview_design_id = models.AutoField(primary_key=True)
-    hiring_plan_id = models.IntegerField(default=0)
-    req_id = models.IntegerField(default=0)
+    hiring_plan_id = models.CharField(max_length=50,blank=True)
+    req_id = models.CharField(max_length=50,blank=True)
     position_role = models.CharField(max_length=255,blank=True)
     tech_stacks = models.CharField(max_length=255,blank=True)
     screening_type = models.CharField(max_length=255,blank=True)
@@ -411,7 +587,7 @@ class InterviewDesignScreen(models.Model):
 
 class InterviewDesignParameters(models.Model):
     interview_desing_params_id = models.AutoField(primary_key=True)
-    hiring_plan_id = models.IntegerField(default=0)
+    hiring_plan_id = models.CharField(max_length=50,blank=True)
     interview_design_id = models.IntegerField(default=0)
     score_card = models.CharField(max_length=255,blank=True)
     options = models.CharField(max_length=255,blank=True)
@@ -443,7 +619,7 @@ class CandidateInterviewStages(models.Model):
 
 class StageAlertResponsibility(models.Model):
     stage_id = models.AutoField(primary_key=True)
-    hiring_plan_id = models.IntegerField(default=0)
+    hiring_plan_id = models.CharField(max_length=50,blank=True)
     role_name = models.CharField(max_length=255,blank=True)
     application_review = models.IntegerField(default=0)
     phone_review = models.IntegerField(default=0)  
@@ -463,6 +639,7 @@ class StageAlertResponsibility(models.Model):
 class OfferNegotiation(models.Model):
     requisition = models.ForeignKey(
         JobRequisition,
+        to_field='RequisitionID',
         on_delete=models.CASCADE,
         related_name="offer_negotiations"
     )
@@ -515,6 +692,67 @@ class OfferNegotiation(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.position_applied} ({self.negotiation_status})"
+    
+    def save(self, *args, **kwargs):
+        notify = False
+        if self.pk:
+            prev = OfferNegotiation.objects.get(pk=self.pk)
+            if prev.negotiation_status != self.negotiation_status and self.negotiation_status == "Successful":
+                notify = True
+        else:
+            if self.negotiation_status == "Successful":
+                notify = True
+
+        super().save(*args, **kwargs)
+
+        if notify:
+            self.notify_pending_approvers()
+
+    def notify_pending_approvers(self):
+        try:
+            pending = ApprovalStatus.objects.filter(
+                offer_negotiation=self, status="Pending"
+            ).select_related('approver')
+
+            for approval in pending:
+                approver = approval.approver
+                if not approver.email:
+                    continue
+
+                # approve_url = f"http://localhost:8000/approval/approve/{self.pk}/?role={approver.role}&email={approver.email}"
+                # reject_url = f"http://localhost:8000/approval/reject/{self.pk}/?role={approver.role}&email={approver.email}"
+                approve_url = f"https://api.pixeladvant.com/approval/approve/{self.pk}/?role={approver.role}&email={approver.email}"
+                reject_url = f"https://api.pixeladvant.com/approval/reject/{self.pk}/?role={approver.role}&email={approver.email}"
+
+                subject = f"✅ Offer Finalized — Action Needed: {self.first_name} {self.last_name}"
+                html_message = f"""
+                <html><body style="font-family: Arial, sans-serif;">
+                    <h2>Offer Finalized</h2>
+                    <p>The offer for <strong>{self.first_name} {self.last_name}</strong> (Position: <strong>{self.position_applied}</strong>) has been marked as <strong>Successful</strong>.</p>
+                    <p><strong>Your approval is still pending.</strong></p>
+                    <p>
+                        <a href="{approve_url}" style="padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px;">✅ Approve</a>
+                        <a href="{reject_url}" style="padding: 10px 20px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 4px; margin-left: 15px;">❌ Reject</a>
+                    </p>
+                    <p><strong>Client:</strong> {self.client_name}</p>
+                    <p><strong>Requisition ID:</strong> {self.requisition.RequisitionID}</p>
+                    <p><strong>Comments:</strong> {self.comments or 'N/A'}</p>
+                    <p style="font-size: 12px; color: gray;">Sent on {now().strftime('%d %b %Y, %I:%M %p')}</p>
+                    <p>This is an automated system notification.</p>
+                </body></html>
+                """
+
+                send_mail(
+                    subject=subject,
+                    message="Please view this in HTML format.",
+                    html_message=html_message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[approver.email],
+                )
+
+        except Exception as e:
+            print(f"[OfferNegotiation] Email failed: {e}")
+
 
 
 class Benefit(models.Model):
@@ -555,7 +793,7 @@ class Approver(models.Model):
         ('COO', 'COO'),
     ]
 
-    hiring_plan = models.ForeignKey(HiringPlan, on_delete=models.CASCADE)
+    hiring_plan = models.ForeignKey(HiringPlan, to_field='hiring_plan_id',on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
@@ -569,4 +807,56 @@ class Approver(models.Model):
 
     class Meta:
         db_table = 'approver'  # optional: use custom table name
+        managed = False
+
+class ApprovalStatus(models.Model):
+    STATUS_CHOICES = [
+        ("Pending", "Pending"),
+        ("Approved", "Approved"),
+        ("Rejected", "Rejected")
+    ]
+
+    offer_negotiation = models.ForeignKey(
+        'OfferNegotiation',
+        on_delete=models.CASCADE,
+        related_name='approvals'
+    )
+    approver = models.ForeignKey(
+        'Approver',
+        on_delete=models.CASCADE
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="Pending"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'approval_status'
+        unique_together = ('offer_negotiation', 'approver')  # Optional: prevent duplicate approvals
+
+    def __str__(self):
+        return f"{self.approver} - {self.offer_negotiation} [{self.status}]"
+    
+
+class ConfigPositionRole(models.Model):
+    id = models.AutoField(primary_key=True)    
+    position_role = models.CharField(max_length=255,blank=True)
+    class Meta:
+        db_table = 'config_job_position'
+        managed = False
+    
+class ConfigScreeningType(models.Model):
+    id = models.AutoField(primary_key=True)    
+    screening_type_name = models.CharField(max_length=255,blank=True)
+    class Meta:
+        db_table = 'config_screening_type'
+        managed = False
+
+class ConfigScoreCard(models.Model):
+    id = models.AutoField(primary_key=True)    
+    score_card_name = models.CharField(max_length=255,blank=True)
+    class Meta:
+        db_table = 'config_score_card'
         managed = False

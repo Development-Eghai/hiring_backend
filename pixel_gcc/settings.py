@@ -24,15 +24,24 @@ from datetime import timedelta
 #     'ROTATE_REFRESH_TOKENS': False,
 #     'BLACKLIST_AFTER_ROTATION': True,
 # }
-
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Change based on your email provider
-EMAIL_USE_TLS = True
-EMAIL_PORT = 587
-print(config('App_PASSWORD'))
-EMAIL_HOST_USER = config('EMAIL_MAIN')
-EMAIL_HOST_PASSWORD = config('App_PASSWORD')
-SECRET_KEY = config('SECRET_KEY')
+EMAIL_HOST = 'smtp.zoho.in'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_USE_TLS = False
+
+ # Use SSL for port 465
+EMAIL_HOST_USER = 'hiring@pixeladvant.com'
+EMAIL_HOST_PASSWORD = config('App_PASSWORD')  # Use an app-specific password if 2FA is enabled
+DEFAULT_FROM_EMAIL = 'hiring@pixeladvant.com'
+
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'  # Change based on your email provider
+# EMAIL_USE_TLS = True
+# EMAIL_PORT = 587
+# EMAIL_HOST_USER = config('EMAIL_MAIN')
+# EMAIL_HOST_PASSWORD = config('App_PASSWORD')
+# SECRET_KEY = config('SECRET_KEY')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -65,10 +74,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'myapp',
+    'myapp.apps.MyappConfig',
     "pixel_gcc",
     'rest_framework_simplejwt',
     'corsheaders',
+    'rest_framework_simplejwt.token_blacklist'
     # 'django_filters',
 ]
 

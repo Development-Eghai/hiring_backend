@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Configuration</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+  
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Bootstrap Icons -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+
+<!-- <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script> -->
+
+<!-- <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script> -->
+
+
+  <script>
+    $(document).ready(function() {
+      // get_config_table_data("");
+    // $('#example').DataTable({
+    //   responsive: true
+    // });
+  });
+
+  function get_config_table_data(table_name)
+  {
+    
+    if(table_name === "")
+    {
+      alert("select Configuration Name");return;
+    }
+    $("#config_tbl_data tbody").empty();
+    $.ajax({url: "/"+table_name+"/",type: 'GET',success: function(result)
+      {
+            console.log(result.data);
+            for(var i=0;i<result.data.length;i++)
+            {
+              var field_value = "";
+              if(table_name === "config_position_role")
+              {
+                field_value = result.data[i].position_role;
+              }
+              else if(table_name === "config_screening_type")
+              {
+                field_value = result.data[i].screening_type_name;
+              }
+              else if(table_name === "config_score_card")
+              {
+                field_value = result.data[i].score_card_name;
+              }
+
+              var tbody = "<tr>\n" +
+"          <td>"+(i+1)+"</td>          \n" +
+"          <td>"+field_value+"</td>\n" +
+"          <td>\n" +
+"            <i class=\"bi bi-pencil-fill text-primary\" style=\"font-size:20px;\"></i>\n" +
+"          </td>\n" +
+"          <td onclick=\"delete_record('"+table_name+"','"+result.data[i].id+"')\">\n" +
+"            <i class=\"bi bi-trash-fill text-danger\" style=\"font-size:20px;\"></i>\n" +
+"          </td>\n" +
+"        </tr>";
+$("#config_tbl_data tbody").append(tbody);
+
+            }
+      }});
+  }
+
+  function save_config_data()
+  {
+    var table_name = $("#select_configuration").val();
+    var table_value = $("#tbl_value").val();
+    
+    if(table_name === "")
+    {
+      alert("select Configuration Name");return;
+    }
+    
+    if(table_value === "")
+    {
+      alert("Enter  Value Name");return;
+    }
+    json_data = {table_value: table_value}
+    $.ajax({url: "/"+table_name+"/",type: 'POST',data: json_data,success: function(result)
+      {
+            if(result.success)
+            {
+              get_config_table_data(table_name)
+            }
+      }});
+  }
+
+  function delete_record(table_name,id)
+  {  
+    
+    json_data = {id: id}
+    $.ajax({url: "/"+table_name+"/",type: 'DELETE',data: json_data,success: function(result)
+      {
+            if(result.success)
+            {
+              get_config_table_data(table_name)
+            }
+      }});
+  }
+
+  function calc_interview_planning()
+    {
+      let dead_line_days = $("#dead_line_days").val();
+      let working_hours_per_day = $("#working_hours_per_day").val();
+      let working_hrs_per_week = $("#working_hrs_per_week").val();
+      let offer_decline = $("#offer_decline").val();
+      let no_of_roles_to_hire = $("#no_of_roles_to_hire").val();     
+      let conversion_ratio = $("#conversion_ratio").val();     
+      let elimination = $("#elimination").val();     
+      let avg_interviewer_time_per_week_hrs = $("#avg_interviewer_time_per_week_hrs").val();     
+      let interview_round = $("#interview_round").val();           
+      let interview_time_per_round = $("#interview_time_per_round").val();     
+      let interviewer_leave_days = $("#interviewer_leave_days").val();     
+      let no_of_month_interview_happens = $("#no_of_month_interview_happens").val();    
+
+      json_data = {dead_line_days: dead_line_days,offer_decline:offer_decline,no_of_roles_to_hire:no_of_roles_to_hire,conversion_ratio:conversion_ratio,elimination:elimination,
+        avg_interviewer_time_per_week_hrs:avg_interviewer_time_per_week_hrs,interview_round:interview_round,interview_time_per_round:interview_time_per_round,
+        interviewer_leave_days:interviewer_leave_days,no_of_month_interview_happens:no_of_month_interview_happens,working_hours_per_day:working_hours_per_day,working_hrs_per_week:working_hrs_per_week
+
+      }
+
+      
+      $.ajax({url: "/interview_planner/",type: 'POST',data: json_data, success: function(result)
+      {
+            console.log(result);
+            $("#required_candidate").val(result["data"]["required_candidate"]);
+            $("#decline_adjust_count").val(result["data"]["decline_adjust_count"]);
+            $("#total_candidate_pipline").val(result["data"]["total_candidate_pipline"]);
+            $("#total_interviews_needed").val(result["data"]["total_interviews_needed"]);
+            $("#total_interview_hrs").val(result["data"]["total_interview_hrs"]);
+            $("#total_interview_weeks").val(result["data"]["total_interview_weeks"]);
+            $("#no_of_interviewer_need").val(result["data"]["no_of_interviewer_need"]);
+            $("#leave_adjustment").val(result["data"]["leave_adjustment"]);
+      }});
+    }
+  </script>
+</head>
+<body><br/><br/>
+  <h3 class="text-center text-primary">Configuration</h3>
+  <div class="container mt-5">
+    
+      <div class="row mb-3">
+        <div class="col-md-4">
+          &nbsp;
+        </div> 
+        <div class="col-md-4">
+          <label for="working_hours_per_day" class="form-label">Configuraiton  Name</label>
+          <select id="select_configuration" class="form-control" onchange="get_config_table_data(this.value)">
+            <option value="">Select Type</option>
+            <option value="config_position_role">Position Role</option>
+            <option value="config_screening_type">Screening Type</option>
+            <option value="config_score_card">Score Card</option>
+            
+          </select>
+        </div>  
+        <div class="col-md-4">
+            &nbsp;
+        </div>     
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-4">
+          &nbsp;
+        </div> 
+        <div class="col-md-4">
+          <label for="working_hours_per_day" class="form-label"> Name</label>
+          <input type="text" class="form-control" id="tbl_value" value="" />
+        </div>  
+        <div class="col-md-4"><br/>
+           <button class="btn btn-primary" onclick="save_config_data();">Save</button>
+        </div>     
+      </div>      
+
+  </div>
+  <div class="container mt-4">
+    <table id="config_tbl_data" class="table table-striped table-bordered dt-responsive nowrap" style="width:100%">
+      <thead>
+        <tr>
+          <th>Serial No</th>
+          <th>Name</th>
+          <th>&nbsp;</th>
+          <th>&nbsp;</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+      </tbody>
+    </table>
+  </div>
+  
+
+  
+</body>
+</html>

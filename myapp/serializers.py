@@ -1,5 +1,6 @@
+from datetime import datetime
 from rest_framework import serializers
-from .models import Approver, Benefit, CandidateInterviewStages, CandidateReview, Candidates, InterviewDesignParameters, InterviewDesignScreen, OfferNegotiation, OfferNegotiationBenefit, StageAlertResponsibility,UserDetails
+from .models import Approver, AssetDetails, Benefit, Candidate, CandidateInterviewStages, CandidateReference, CandidateReview, CandidateSubmission, Candidates, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
 from .models import CommunicationSkills,InterviewRounds,HiringPlan
@@ -53,6 +54,8 @@ class JobRequisitionSerializerget(serializers.ModelSerializer):
     working_model = serializers.SerializerMethodField()
     visa_requirements = serializers.SerializerMethodField()
     notice_period = serializers.SerializerMethodField()
+    requisition_date = serializers.SerializerMethodField()
+    due_requisition_date = serializers.SerializerMethodField()
 
     class Meta:
         model = JobRequisition
@@ -65,28 +68,28 @@ class JobRequisitionSerializerget(serializers.ModelSerializer):
             "career_level", "client_interview",
             "tech_stacks", "designation", "experience_range",
             "target_companies", "compensation", "working_model",
-            "visa_requirements", "notice_period"
+            "visa_requirements", "notice_period","requisition_date", "due_requisition_date"
         ]
 
     # RequisitionDetails methods
-    def get_division(self, obj): return getattr(obj.details, "division", None)
-    def get_department(self, obj): return getattr(obj.details, "department", None)
-    def get_location(self, obj): return getattr(obj.details, "location", None)
-    def get_internal_title(self, obj): return getattr(obj.details, "internal_title", None)
-    def get_external_title(self, obj): return getattr(obj.details, "external_title", None)
-    def get_job_position(self, obj): return getattr(obj.details, "job_position", None)
-    def get_business_line(self, obj): return getattr(obj.details, "business_line", None)
-    def get_geo_zone(self, obj): return getattr(obj.details, "geo_zone", None)
-    def get_primary_skills(self, obj): return getattr(obj.details, "primary_skills", None)
-    def get_secondary_skills(self, obj): return getattr(obj.details, "secondary_skills", None)
+    def get_division(self, obj): return getattr(obj.position_information, "division", None)
+    def get_department(self, obj): return getattr(obj.position_information, "department", None)
+    def get_location(self, obj): return getattr(obj.position_information, "location", None)
+    def get_internal_title(self, obj): return getattr(obj.position_information, "internal_title", None)
+    def get_external_title(self, obj): return getattr(obj.position_information, "external_title", None)
+    def get_job_position(self, obj): return getattr(obj.position_information, "job_position", None)
+    def get_business_line(self, obj): return getattr(obj.position_information, "business_line", None)
+    def get_geo_zone(self, obj): return getattr(obj.position_information, "geo_zone", None)
+    def get_primary_skills(self, obj): return getattr(obj.position_information, "primary_skills", None)
+    def get_secondary_skills(self, obj): return getattr(obj.position_information, "secondary_skills", None)
     def get_contract_start_date(self, obj):
-        return obj.details.contract_start_date.isoformat() if getattr(obj, "details", None) and obj.details.contract_start_date else None
+        return obj.position_information.contract_start_date.isoformat() if getattr(obj, "position_information", None) and obj.position_information.contract_start_date else None
     def get_contract_end_date(self, obj):
-        return obj.details.contract_end_date.isoformat() if getattr(obj, "details", None) and obj.details.contract_end_date else None
-    def get_band(self, obj): return getattr(obj.details, "band", None)
-    def get_sub_band(self, obj): return getattr(obj.details, "sub_band", None)
-    def get_career_level(self, obj): return getattr(obj.details, "career_level", None)
-    def get_client_interview(self, obj): return getattr(obj.details, "client_interview", None)
+        return obj.position_information.contract_end_date.isoformat() if getattr(obj, "position_information", None) and obj.position_information.contract_end_date else None
+    def get_band(self, obj): return getattr(obj.position_information, "band", None)
+    def get_sub_band(self, obj): return getattr(obj.position_information, "sub_band", None)
+    def get_career_level(self, obj): return getattr(obj.position_information, "career_level", None)
+    def get_client_interview(self, obj): return getattr(obj.position_information, "client_interview", None)
 
     # HiringPlan methods
     def get_tech_stacks(self, obj): return getattr(obj.Planning_id, "tech_stacks", None)
@@ -97,7 +100,11 @@ class JobRequisitionSerializerget(serializers.ModelSerializer):
     def get_working_model(self, obj): return getattr(obj.Planning_id, "working_model", None)
     def get_visa_requirements(self, obj): return getattr(obj.Planning_id, "visa_requirements", None)
     def get_notice_period(self, obj): return getattr(obj.Planning_id, "notice_period", None)
-
+    def get_requisition_date(self, obj):
+        return obj.position_information.requisition_date.isoformat() if getattr(obj, "position_information", None) and obj.position_information.requisition_date else None
+    def get_due_requisition_date(self, obj):
+        return obj.position_information.due_requisition_date.isoformat() if getattr(obj, "position_information", None) and obj.position_information.due_requisition_date else None
+    
 class BillingDetailsSerializer(serializers.ModelSerializer):
     requisition = serializers.PrimaryKeyRelatedField(
         queryset=JobRequisition.objects.all(), required=False
@@ -110,6 +117,9 @@ class PostingDetailsSerializer(serializers.ModelSerializer):
     requisition = serializers.PrimaryKeyRelatedField(
         queryset=JobRequisition.objects.all(), required=False
     )
+    internalDesc = serializers.CharField(source="internal_job_description", required=False)
+    externalDesc = serializers.CharField(source="external_job_description", required=False)
+
     class Meta:
         model = PostingDetails
         fields = '__all__'
@@ -137,6 +147,27 @@ class RequisitionDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RequisitionDetails
+        fields = '__all__'
+
+class AssetDetailsSerializer(serializers.ModelSerializer):
+    requisition = serializers.PrimaryKeyRelatedField(
+        queryset=JobRequisition.objects.all(), required=False
+    )
+
+    class Meta:
+        model = AssetDetails
+        fields = '__all__'
+
+class RequisitionQuestionSerializer(serializers.ModelSerializer):
+    requisition = serializers.PrimaryKeyRelatedField(queryset=JobRequisition.objects.all(), required=False)
+    class Meta:
+        model = RequisitionQuestion
+        fields = '__all__'
+
+class RequisitionCompetencySerializer(serializers.ModelSerializer):
+    requisition = serializers.PrimaryKeyRelatedField(queryset=JobRequisition.objects.all(), required=False)
+    class Meta:
+        model = RequisitionCompetency
         fields = '__all__'
 # class JobRequisitionSerializer(serializers.ModelSerializer):
 #     details = HiringPlanSerializer(required=False)
@@ -224,7 +255,7 @@ class JobRequisitionCompactSerializer(serializers.ModelSerializer):
 
     def get_job_template(self, obj):
         return JobTemplateSerializer({
-            "requisition_details": getattr(obj, "details", None),
+            "requisition_details": getattr(obj, "position_information", None),
             "billing": getattr(obj, "billing_details", None),
             "posting": getattr(obj, "posting_details", None),
             "interviewers": obj.interview_team.all() if hasattr(obj, "interview_team") else [],
@@ -232,129 +263,222 @@ class JobRequisitionCompactSerializer(serializers.ModelSerializer):
         }).data
 
 class JobRequisitionSerializer(serializers.ModelSerializer):
-    # Planning_id = serializers.PrimaryKeyRelatedField(queryset=HiringPlan.objects.all())  # ✅ Ensure it's treated as a ForeignKey
-    # details = HiringPlanSerializer(required=False)
-    details = RequisitionDetailsSerializer(required=False)
+    RequisitionID = serializers.CharField(read_only=False, required=False)
+    Planning_id = serializers.SlugRelatedField(
+        slug_field='hiring_plan_id',
+        queryset=HiringPlan.objects.all(),
+        required=True
+    )
+
+    position_information = RequisitionDetailsSerializer(required=False)
     billing_details = BillingDetailsSerializer(required=False)
     posting_details = PostingDetailsSerializer(required=False)
-    interview_team = InterviewTeamSerializer(many=True, required=False)
-    teams = TeamsSerializer(many=True, required=False)
+    asset_details = AssetDetailsSerializer(required=False)
+    requisition_questions = RequisitionQuestionSerializer(many=True, read_only=True)
+    requisition_competencies = RequisitionCompetencySerializer(many=True, read_only=True)
+
+
     class Meta:
         model = JobRequisition
         fields = '__all__'
 
     def create(self, validated_data):
-        """Insert JobRequisition and update related HiringPlan details."""
-        logger.info("Creating JobRequisition with data: %s", validated_data)
+        # Generate new RequisitionID
+        last_requisition = JobRequisition.objects.order_by('-id').first()
+        new_requisition_id = (
+            f"RQ{int(last_requisition.RequisitionID.replace('RQ', '')) + 1:04d}"
+            if last_requisition and last_requisition.RequisitionID.startswith("RQ")
+            else "RQ0001"
+        )
+        validated_data["RequisitionID"] = new_requisition_id
 
-        # details_data = validated_data.pop('details', None)
-        # planning_id1 = validated_data.pop('Planning_id', None)  # Extract as integer
-        # planning_id = planning_id1.pk
-        # if not isinstance(planning_id, int):  # Ensure Planning_id remains an integer
-        #     raise serializers.ValidationError({"error": "Planning_id must be an integer."})
-        details_data = validated_data.pop('details', None)
-        billing_data = validated_data.pop('billing_details', None)
-        posting_data = validated_data.pop('posting_details', None)
-        interview_data = validated_data.pop('interview_team', [])
-        teams_data = validated_data.pop('teams', [])
+        # Extract nested blocks
+        details_data = validated_data.pop("position_information", None)
+        billing_data = validated_data.pop("billing_details", None)
+        asset_data = self.initial_data.get("asset_details") or self.initial_data.get("asset_deatils", {})
+        validated_data.pop("posting_details", None)
 
-        
+        # ✅ Get posting_details block
+        posting_block = dict(self.initial_data.get("posting_details", {}))
 
-        # try:
-        #     hiring_plan = HiringPlan.objects.get(hiring_plan_id=planning_id)
-        # except HiringPlan.DoesNotExist:
-        #     raise serializers.ValidationError({"error": f"HiringPlan with ID {planning_id} not found"})
+        # Extract question & competency lists
+        questions_data = posting_block.get("questions", [])
+        competencies_data = posting_block.get("competencies") or posting_block.get("Competencies", [])
 
-        try:
-            # ✅ Assign the HiringPlan instance for database storage
-            # validated_data['Planning_id'] = hiring_plan  
-            # job_requisition = JobRequisition.objects.create(**validated_data)
-            # logger.info("JobRequisition created with ID: %s", job_requisition.RequisitionID)
-            # Step 1: Create JobRequisition
-            job_requisition = JobRequisition.objects.create(**validated_data)
-            logger.info("JobRequisition created with ID: %s", job_requisition.RequisitionID)
+        # Normalize competency fields
+        def normalize_competency_keys(raw):
+            return {
+                "competency": raw.get("Competency") or raw.get("competency"),
+                "library": raw.get("Library") or raw.get("library"),
+                "category": raw.get("Category") or raw.get("category"),
+                "expected_rating": raw.get("ExpectedRating") or raw.get("expected_rating"),
+                "weight": raw.get("Weight") or raw.get("weight")
+            }
 
-            # Step 2: Assign requisition to related tables
-            if details_data:
-                RequisitionDetails.objects.create(requisition=job_requisition, **details_data)
-                logger.info("RequisitionDetails created for JobRequisition ID: %s", job_requisition.RequisitionID)
+        job_requisition = JobRequisition.objects.create(**validated_data)
 
-            # Update HiringPlan details if provided
-            # if details_data:
-            #     for key, value in details_data.items():
-            #         setattr(hiring_plan, key, value)  # Dynamically update fields
-            #     hiring_plan.save()
-            #     logger.info("HiringPlan updated for ID: %s", planning_id)
-            if billing_data:
-                BillingDetails.objects.create(requisition=job_requisition, **billing_data)
-                logger.info("BillingDetails created for JobRequisition ID: %s", job_requisition.RequisitionID)
-            if posting_data:
-                PostingDetails.objects.create(requisition=job_requisition, **posting_data)
-                logger.info("PostingDetails created for JobRequisition ID: %s", job_requisition.RequisitionID)
-            for interviewer in interview_data:
-                InterviewTeam.objects.create(requisition=job_requisition, **interviewer)
-                logger.info("InterviewTeam added for JobRequisition ID: %s", job_requisition.RequisitionID)
-            for team in teams_data:
-                Teams.objects.create(requisition=job_requisition, **team)
-                logger.info("Teams added for JobRequisition ID: %s", job_requisition.RequisitionID)
+        if details_data:
+            skills_block = self.initial_data.get("skills_required", {})
+            primary = skills_block.get("primary_skills", [])
+            secondary = skills_block.get("secondary_skills", [])
 
-            return job_requisition
-        except Exception as e:
-            logger.error("Error while creating JobRequisition: %s", str(e))
-            raise serializers.ValidationError({"error": str(e)})
+            details_data["primary_skills"] = ", ".join(primary) if isinstance(primary, list) else str(primary)
+            details_data["secondary_skills"] = ", ".join(secondary) if isinstance(secondary, list) else str(secondary)
+
+
+            RequisitionDetails.objects.create(requisition=job_requisition, **details_data)
+        if billing_data:
+            BillingDetails.objects.create(requisition=job_requisition, **billing_data)
+        if posting_block:
+
+            PostingDetails.objects.create(
+                requisition=job_requisition,
+                experience=posting_block.get("experience"),
+                designation=posting_block.get("designation"),
+                job_category=posting_block.get("job_category"),
+                job_region=posting_block.get("job_region"),
+                qualification=posting_block.get("qualification"),
+                internal_job_description=posting_block.get("internalDesc", ""),
+                external_job_description=posting_block.get("externalDesc", "")
+            )
+
+
+        if asset_data:
+            AssetDetails.objects.create(requisition=job_requisition, **asset_data)
+
+        # ✅ Insert each question
+        for q in questions_data:
+            question_obj = {
+                "question": q.get("Question") or q.get("question"),
+                "required": q.get("Required") or q.get("required"),
+                "disqualifier": q.get("Disqualifier") or q.get("disqualifier"),
+                "score": q.get("Score") or q.get("score"),
+                "weight": q.get("Weight") or q.get("weight")
+            }
+            RequisitionQuestion.objects.create(requisition=job_requisition, **question_obj)
+
+        # ✅ Insert each competency
+        for c in competencies_data:
+            RequisitionCompetency.objects.create(requisition=job_requisition, **normalize_competency_keys(c))
+
+        return job_requisition
+
+
+
     def update(self, instance, validated_data):
-        logger.info("Updating JobRequisition ID %s with data: %s", instance.RequisitionID, validated_data)
+        # 🔧 Extract nested blocks
+        details_data = validated_data.pop("position_information", None)
+        billing_data = validated_data.pop("billing_details", None)
+        asset_data = validated_data.pop("asset_details", None)
+        validated_data.pop("posting_details", None)
 
-        # Extract nested data
-        details_data = validated_data.pop('details', None)
-        billing_data = validated_data.pop('billing_details', None)
-        posting_data = validated_data.pop('posting_details', None)
-        interview_data = validated_data.pop('interview_team', [])
-        teams_data = validated_data.pop('teams', [])
+        posting_block = dict(self.initial_data.get("posting_details", {}))
 
-        # Update top-level fields
+        # 🧠 Normalize lists → strings
+        def to_string(value):
+            return ", ".join(value) if isinstance(value, list) else value
+
+        posting_fields = {
+            "experience": to_string(posting_block.get("experience")),
+            "designation": to_string(posting_block.get("designation")),
+            "job_category": posting_block.get("job_category"),
+            "job_region": to_string(posting_block.get("job_region")),
+            "qualification": to_string(posting_block.get("qualification")),
+            "internal_job_description": posting_block.get("internalDesc", ""),
+            "external_job_description": posting_block.get("externalDesc", "")
+        }
+
+        # 🧩 Normalize skills
+        skills_block = self.initial_data.get("skills_required", {})
+        if details_data:
+            details_data["primary_skills"] = to_string(skills_block.get("primary_skills"))
+            details_data["secondary_skills"] = to_string(skills_block.get("secondary_skills"))
+
+        # 🧩 Normalize questions & competencies
+        def normalize_list(raw, lowercase_keys=True):
+            if isinstance(raw, dict): raw = [raw]
+            items = []
+            for entry in raw or []:
+                entry = {k.lower(): v for k, v in entry.items()} if lowercase_keys else entry
+                entry.pop("actions", None)
+                entry.pop("isnew", None)
+                entry.pop("id", None)
+                items.append(entry)
+            return items
+
+        def normalize_competency_keys(raw):
+            return {
+                "competency": raw.get("Competency") or raw.get("competency"),
+                "library": raw.get("Library") or raw.get("library"),
+                "category": raw.get("Category") or raw.get("category"),
+                "expected_rating": raw.get("ExpectedRating") or raw.get("expected_rating") or "Not Rated",
+                "weight": raw.get("Weight") or raw.get("weight"),
+            }
+
+        questions_data = normalize_list(posting_block.get("questions", []))
+        competencies_raw = normalize_list(posting_block.get("competencies", []) or posting_block.get("Competencies", []))
+        competencies_data = [normalize_competency_keys(c) for c in competencies_raw]
+
+        interview_data = posting_block.get("interview_teammate") or posting_block.get("interview_team", [])
+        teams_data = posting_block.get("teams", [])
+
+        # 🧱 Update main model fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Update or create related one-to-one fields
+        # 👤 Update one-to-one blocks
         if details_data:
-            if hasattr(instance, 'details'):
+            if hasattr(instance, "position_information"):
                 for attr, value in details_data.items():
-                    setattr(instance.details, attr, value)
-                instance.details.save()
+                    setattr(instance.position_information, attr, value)
+                instance.position_information.save()
             else:
                 RequisitionDetails.objects.create(requisition=instance, **details_data)
 
         if billing_data:
-            if hasattr(instance, 'billing_details'):
+            if hasattr(instance, "billing_details"):
                 for attr, value in billing_data.items():
                     setattr(instance.billing_details, attr, value)
                 instance.billing_details.save()
             else:
                 BillingDetails.objects.create(requisition=instance, **billing_data)
 
-        if posting_data:
-            if hasattr(instance, 'posting_details'):
-                for attr, value in posting_data.items():
+        if posting_fields:
+            if hasattr(instance, "posting_details"):
+                for attr, value in posting_fields.items():
                     setattr(instance.posting_details, attr, value)
                 instance.posting_details.save()
             else:
-                PostingDetails.objects.create(requisition=instance, **posting_data)
+                PostingDetails.objects.create(requisition=instance, **posting_fields)
 
-        # Refresh many-to-many-like data by clearing and recreating
-        if interview_data is not None:
-            instance.interview_team.all().delete()
-            for interviewer in interview_data:
-                InterviewTeam.objects.create(requisition=instance, **interviewer)
+        if asset_data:
+            if hasattr(instance, "asset_details"):
+                for attr, value in asset_data.items():
+                    setattr(instance.asset_details, attr, value)
+                instance.asset_details.save()
+            else:
+                AssetDetails.objects.create(requisition=instance, **asset_data)
 
-        if teams_data is not None:
-            instance.teams.all().delete()
-            for team in teams_data:
-                Teams.objects.create(requisition=instance, **team)
+        # 🔄 Refresh related tables
+        instance.requisition_questions.all().delete()
+        for q in questions_data:
+            RequisitionQuestion.objects.create(requisition=instance, **q)
 
-        logger.info("JobRequisition ID %s updated successfully", instance.RequisitionID)
+        instance.requisition_competencies.all().delete()
+        for c in competencies_data:
+            RequisitionCompetency.objects.create(requisition=instance, **c)
+
+        instance.interview_team.all().delete()
+        for i in interview_data:
+            InterviewTeam.objects.create(requisition=instance, **i)
+
+        instance.teams.all().delete()
+        for t in teams_data:
+            Teams.objects.create(requisition=instance, **t)
+
         return instance
+
     # def to_representation(self, instance):
     #     representation = super().to_representation(instance)
     #     representation['Planning_id'] = instance.Planning_id.hiring_plan_id  # ✅ Convert to integer
@@ -390,7 +514,87 @@ class InterviewerSerializer(serializers.ModelSerializer):
             InterviewSlot.objects.create(interviewer=interviewer, **slot)
         return interviewer
 
+class CandidateInterviewStagesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CandidateInterviewStages
+        fields = '__all__'
 
+class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
+    # interview_stages = serializers.SerializerMethodField()
+    Req_ID = serializers.SerializerMethodField()
+    Candidate_Id = serializers.SerializerMethodField()
+    Candidate_Name = serializers.SerializerMethodField()
+    Applied_Position = serializers.SerializerMethodField()
+    Time_in_Stage = serializers.SerializerMethodField()
+    JD_From_applied_Position = serializers.SerializerMethodField()
+    CV_Resume = serializers.SerializerMethodField()
+    Cover_Letter = serializers.SerializerMethodField()
+    Candidate_current_stage = serializers.SerializerMethodField()
+    Candidate_Next_Stage = serializers.SerializerMethodField()
+    Overall_Stage = serializers.SerializerMethodField()
+    Final_stage = serializers.SerializerMethodField()
+    Source = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Candidate
+        fields = [
+            "Req_ID", "Candidate_Id", "Candidate_Name", "Applied_Position", "Time_in_Stage",
+            "JD_From_applied_Position", "CV_Resume", "Cover_Letter", "Candidate_current_stage",
+            "Candidate_Next_Stage", "Overall_Stage", "Final_stage", "Source"
+        ]
+
+    # def get_interview_stages(self, obj):
+    #     stages = CandidateInterviewStages.objects.filter(candidate_id=obj.CandidateID)
+    #     return CandidateInterviewStagesSerializer(stages, many=True).data
+
+    def get_Req_ID(self, obj):
+        return obj.Req_id_fk.RequisitionID if obj.Req_id_fk else "N/A"
+
+    def get_Candidate_Id(self, obj):
+        return obj.CandidateID or "N/A"
+
+    def get_Candidate_Name(self, obj):
+        return obj.Name or "N/A"
+
+    def get_Applied_Position(self, obj):
+        details = getattr(obj.Req_id_fk, "position_information", None)
+        return details.job_position if details and details.job_position else "N/A"
+
+    def get_JD_From_applied_Position(self, obj):
+        posting = getattr(obj.Req_id_fk, "posting_details", None)
+        return posting.internal_job_description if posting and posting.internal_job_description else "N/A"
+
+    def get_CV_Resume(self, obj):
+        return obj.Resume or "N/A"
+
+    def get_Cover_Letter(self, obj):
+        return "N/A"  # if it's stored somewhere else, adjust logic
+
+    def get_Candidate_current_stage(self, obj):
+        stage = CandidateInterviewStages.objects.filter(candidate_id=obj.CandidateID).order_by('-interview_date').first()
+        return stage.interview_stage if stage and stage.interview_stage else "N/A"
+
+    def get_Candidate_Next_Stage(self, obj):
+        # Business logic placeholder: adjust how you determine next stage
+        return "N/A"
+
+    def get_Time_in_Stage(self, obj):
+        stage = CandidateInterviewStages.objects.filter(candidate_id=obj.CandidateID).order_by('-interview_date').first()
+        if stage and stage.interview_date:
+            delta = datetime.now().date() - stage.interview_date
+            return f"{delta.days} days"
+        return "N/A"
+
+    def get_Overall_Stage(self, obj):
+        return obj.Result or "N/A"
+
+    def get_Final_stage(self, obj):
+        return obj.Final_rating if obj.Final_rating is not None else "N/A"
+
+    def get_Source(self, obj):
+        return "N/A"  # Add actual source field logic if tracked
+
+    
 class CandidateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Candidates
@@ -420,10 +624,6 @@ class StageAlertResponsibilitySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class CandidateInterviewStagesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CandidateInterviewStages
-        fields = '__all__'
 
 
 class OfferNegotiationBenefitSerializer(serializers.ModelSerializer):
@@ -435,6 +635,11 @@ class OfferNegotiationBenefitSerializer(serializers.ModelSerializer):
 
 
 class OfferNegotiationSerializer(serializers.ModelSerializer):
+    requisition = serializers.SlugRelatedField(
+        slug_field='RequisitionID',  # refers to the unique string like "RQ0001"
+        queryset=JobRequisition.objects.all()
+    )
+
     benefits = serializers.ListField(child=serializers.CharField(), write_only=True, required=False)
     benefit_details = OfferNegotiationBenefitSerializer(source='offer_benefits', many=True, read_only=True)
 
@@ -470,4 +675,41 @@ class OfferNegotiationSerializer(serializers.ModelSerializer):
 class ApproverSerializer(serializers.ModelSerializer):
     class Meta:
         model = Approver
+        fields = '__all__'
+
+
+class CandidateReferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CandidateReference
+        exclude = ['candidate_submission']
+
+
+class CandidateSubmissionSerializer(serializers.ModelSerializer):
+    references = CandidateReferenceSerializer(many=True)
+    
+    class Meta:
+        model = CandidateSubmission
+        fields = '__all__'
+
+    def create(self, validated_data):
+        references_data = validated_data.pop('references', [])
+        candidate_submission = CandidateSubmission.objects.create(**validated_data)
+        for ref in references_data:
+            CandidateReference.objects.create(candidate_submission=candidate_submission, **ref)
+        return candidate_submission
+    
+
+class ConfigPositionRoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConfigPositionRole
+        fields = '__all__'
+
+class ConfigScreeningTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConfigScreeningType
+        fields = '__all__'
+
+class ConfigScoreCardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConfigScoreCard
         fields = '__all__'
