@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Jun 27, 2025 at 11:26 AM
+-- Generation Time: Jul 12, 2025 at 01:07 PM
 -- Server version: 9.1.0
 -- PHP Version: 8.3.14
 
@@ -37,7 +37,46 @@ CREATE TABLE IF NOT EXISTS `applications` (
   PRIMARY KEY (`ApplicationID`),
   KEY `CandidateID` (`CandidateID`),
   KEY `RequisitionID` (`RequisitionID`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `approval_status`
+--
+
+DROP TABLE IF EXISTS `approval_status`;
+CREATE TABLE IF NOT EXISTS `approval_status` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `offer_negotiation_id` int NOT NULL,
+  `approver_id` int NOT NULL,
+  `status` varchar(20) NOT NULL,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `offer_negotiation_id` (`offer_negotiation_id`),
+  KEY `approver_id` (`approver_id`)
+) ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `approver`
+--
+
+DROP TABLE IF EXISTS `approver`;
+CREATE TABLE IF NOT EXISTS `approver` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `hiring_plan_id` varchar(50) NOT NULL,
+  `role` varchar(20) NOT NULL,
+  `first_name` varchar(100) NOT NULL,
+  `last_name` varchar(100) NOT NULL,
+  `email` varchar(254) NOT NULL,
+  `contact_number` varchar(15) DEFAULT NULL,
+  `job_title` varchar(100) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id` (`id`)
+) ;
 
 -- --------------------------------------------------------
 
@@ -48,14 +87,27 @@ CREATE TABLE IF NOT EXISTS `applications` (
 DROP TABLE IF EXISTS `asset_details`;
 CREATE TABLE IF NOT EXISTS `asset_details` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `requisition_id` int NOT NULL,
-  `laptop_needed` tinyint(1) DEFAULT '0',
-  `laptop_type` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `requisition_id` varchar(50) NOT NULL,
+  `laptop_type` varchar(100) DEFAULT 'Not Specified',
+  `laptop_needed` varchar(10) DEFAULT 'no',
+  `additional_questions` varchar(10) DEFAULT 'no',
+  `comments` text,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `requisition_id` (`requisition_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  UNIQUE KEY `requisition_id` (`requisition_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `asset_details`
+--
+
+INSERT INTO `asset_details` (`id`, `requisition_id`, `laptop_type`, `laptop_needed`, `additional_questions`, `comments`, `created_at`, `updated_at`) VALUES
+(1, 'RQ0001', 'MacBook Pro', 'Yes', 'No', 'Prefer M2 chip configuration', '2025-07-10 05:18:17', '2025-07-10 05:18:17'),
+(2, 'RQ0002', 'ThinkPad X1', 'Yes', 'No', 'High-performance hardware required', '2025-07-10 05:22:05', '2025-07-10 05:45:17'),
+(3, 'RQ0003', 'MacBook Pro', 'Yes', 'No', 'Prefer M2 chip configuration', '2025-07-12 12:28:45', '2025-07-12 12:28:45'),
+(4, 'RQ0004', 'MacBook Pro', 'Yes', 'No', 'Prefer M2 chip configuration', '2025-07-12 12:29:43', '2025-07-12 12:29:43'),
+(5, 'RQ0005', 'MacBook Pro', 'Yes', 'No', 'Prefer M2 chip configuration', '2025-07-12 12:39:13', '2025-07-12 12:39:13');
 
 -- --------------------------------------------------------
 
@@ -69,7 +121,7 @@ CREATE TABLE IF NOT EXISTS `auth_group` (
   `name` varchar(150) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -86,7 +138,7 @@ CREATE TABLE IF NOT EXISTS `auth_group_permissions` (
   UNIQUE KEY `auth_group_permissions_group_id_permission_id_0cd325b0_uniq` (`group_id`,`permission_id`),
   KEY `auth_group_permissions_group_id_b120cbf9` (`group_id`),
   KEY `auth_group_permissions_permission_id_84c5c92e` (`permission_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -103,7 +155,7 @@ CREATE TABLE IF NOT EXISTS `auth_permission` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `auth_permission_content_type_id_codename_01ab375a_uniq` (`content_type_id`,`codename`),
   KEY `auth_permission_content_type_id_2f476e4b` (`content_type_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=69 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=69 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `auth_permission`
@@ -200,7 +252,7 @@ CREATE TABLE IF NOT EXISTS `auth_user` (
   `date_joined` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -217,7 +269,7 @@ CREATE TABLE IF NOT EXISTS `auth_user_groups` (
   UNIQUE KEY `auth_user_groups_user_id_group_id_94350c0c_uniq` (`user_id`,`group_id`),
   KEY `auth_user_groups_user_id_6a12ed8b` (`user_id`),
   KEY `auth_user_groups_group_id_97559544` (`group_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -234,7 +286,22 @@ CREATE TABLE IF NOT EXISTS `auth_user_user_permissions` (
   UNIQUE KEY `auth_user_user_permissions_user_id_permission_id_14a6b632_uniq` (`user_id`,`permission_id`),
   KEY `auth_user_user_permissions_user_id_a95ead1b` (`user_id`),
   KEY `auth_user_user_permissions_permission_id_1fbb5f2c` (`permission_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `benefit`
+--
+
+DROP TABLE IF EXISTS `benefit`;
+CREATE TABLE IF NOT EXISTS `benefit` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id` (`id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -245,21 +312,27 @@ CREATE TABLE IF NOT EXISTS `auth_user_user_permissions` (
 DROP TABLE IF EXISTS `billing_details`;
 CREATE TABLE IF NOT EXISTS `billing_details` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `requisition_id` int NOT NULL,
+  `requisition_id` varchar(50) NOT NULL,
   `billing_type` varchar(50) DEFAULT NULL,
   `billing_start_date` date DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `requisition_id` (`requisition_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `billing_end_date` date DEFAULT NULL,
+  `contract_start_date` date DEFAULT NULL,
+  `contract_end_date` date DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `billing_details`
 --
 
-INSERT INTO `billing_details` (`id`, `requisition_id`, `billing_type`, `billing_start_date`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Billable', '2025-06-05', '2025-06-20 23:21:57', '2025-06-20 23:21:57');
+INSERT INTO `billing_details` (`id`, `requisition_id`, `billing_type`, `billing_start_date`, `created_at`, `updated_at`, `billing_end_date`, `contract_start_date`, `contract_end_date`) VALUES
+(1, 'RQ0001', 'Billable', '2025-07-21', '2025-07-09 23:48:17', '2025-07-09 23:48:17', '2025-08-31', '2025-07-21', '2026-01-21'),
+(2, 'RQ0002', 'Non-Billable', '2025-08-01', '2025-07-09 23:52:05', '2025-07-10 00:15:17', '2025-12-31', '2025-08-01', '2026-01-31'),
+(3, 'RQ0003', 'Billable', '2025-07-21', '2025-07-12 06:58:45', '2025-07-12 06:58:45', '2025-08-31', '2025-07-21', '2026-01-21'),
+(4, 'RQ0004', 'Billable', '2025-07-21', '2025-07-12 06:59:43', '2025-07-12 06:59:43', '2025-08-31', '2025-07-21', '2026-01-21'),
+(5, 'RQ0005', 'Billable', '2025-07-21', '2025-07-12 07:09:13', '2025-07-12 07:09:13', '2025-08-31', '2025-07-21', '2026-01-21');
 
 -- --------------------------------------------------------
 
@@ -270,7 +343,7 @@ INSERT INTO `billing_details` (`id`, `requisition_id`, `billing_type`, `billing_
 DROP TABLE IF EXISTS `candidates`;
 CREATE TABLE IF NOT EXISTS `candidates` (
   `CandidateID` int NOT NULL AUTO_INCREMENT,
-  `Req_id_fk` int NOT NULL,
+  `Req_id_fk` varchar(50) NOT NULL,
   `Name` varchar(191) NOT NULL,
   `Email` varchar(191) NOT NULL,
   `Resume` text,
@@ -278,20 +351,23 @@ CREATE TABLE IF NOT EXISTS `candidates` (
   `Feedback` text,
   `Result` varchar(50) DEFAULT NULL,
   `ProfileCreated` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`CandidateID`),
-  KEY `can_req_fk_id` (`Req_id_fk`)
-) ENGINE=InnoDB AUTO_INCREMENT=121 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `CoverLetter` text,
+  `Source` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`CandidateID`)
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `candidates`
 --
 
-INSERT INTO `candidates` (`CandidateID`, `Req_id_fk`, `Name`, `Email`, `Resume`, `Final_rating`, `Feedback`, `Result`, `ProfileCreated`) VALUES
-(116, 1, 'Nitin Bansal', 'nitinbans@hotmail.com', 'media/resumes\\NITIN BANSAL - Resume (1).pdf', NULL, NULL, NULL, '2025-06-24 04:46:05'),
-(117, 1, 'Vinay Junghare', 'vinayjunghare@gmail.com', 'media/resumes\\Resume_Vinay_J.pdf', NULL, NULL, NULL, '2025-06-24 04:46:05'),
-(118, 1, 'SATHIANARAYANAN. R', 'rsathianarayanan@gmail.com', 'media/resumes\\sakthi _Resume.pdf', NULL, NULL, NULL, '2025-06-24 04:46:05'),
-(119, 1, 'TUSHAR BHATNAGAR', 'tusharbhatnagar13@gmail.com', 'media/resumes\\Tushar  Bhatnagar Resume.pdf', NULL, NULL, NULL, '2025-06-24 04:46:05'),
-(120, 1, 'Ritika Dogra', 'ritika_rati2@yahoo.co.in', 'media/resumes\\RitikaDogra_14Years.pdf', NULL, NULL, NULL, '2025-06-24 04:46:05');
+INSERT INTO `candidates` (`CandidateID`, `Req_id_fk`, `Name`, `Email`, `Resume`, `Final_rating`, `Feedback`, `Result`, `ProfileCreated`, `CoverLetter`, `Source`) VALUES
+(1, 'RQ0001', 'Anand', 'anand040593@gmail.com', 'media/resumes\\NITIN BANSAL - Resume (1).pdf', NULL, NULL, NULL, '2025-07-10 09:27:03', NULL, NULL),
+(2, 'RQ0002', 'Sakthi', 'sathiyanarayanan@gmail.com', 'media/resumes\\Resume_Vinay_J.pdf', NULL, NULL, NULL, '2025-07-10 09:27:03', NULL, NULL),
+(13, 'RQ0001', 'candidate3432', 'candidate3432@gmail.com', 'NITIN BANSAL - Resume (1).pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate3432.', 'Job Board'),
+(14, 'RQ0001', 'candidate5528', 'candidate5528@gmail.com', 'Resume_Vinay_J.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate5528.', 'Referral'),
+(15, 'RQ0001', 'candidate7484', 'candidate7484@gmail.com', 'sakthi _Resume.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate7484.', 'Referral'),
+(16, 'RQ0001', 'candidate4428', 'candidate4428@gmail.com', 'Tushar  Bhatnagar Resume.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate4428.', 'Campus Drive'),
+(17, 'RQ0001', 'candidate5768', 'candidate5768@gmail.com', 'RitikaDogra_14Years.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate5768.', 'Referral');
 
 -- --------------------------------------------------------
 
@@ -318,7 +394,28 @@ CREATE TABLE IF NOT EXISTS `candidate_interview_stages` (
 --
 
 INSERT INTO `candidate_interview_stages` (`interview_stage_id`, `interview_plan_id`, `candidate_id`, `recuiter_id`, `interview_stage`, `interview_date`, `mode_of_interview`, `feedback`, `status`) VALUES
-(1, 7, 116, 12, 'Technical Round', '2025-07-05', 'Google Meet', '', 'Scheduled');
+(1, 7, 1, 12, 'Technical Round', '2025-07-05', 'Google Meet', '', 'Scheduled');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `candidate_reference`
+--
+
+DROP TABLE IF EXISTS `candidate_reference`;
+CREATE TABLE IF NOT EXISTS `candidate_reference` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `candidate_submission_id` int NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `designation` varchar(100) NOT NULL,
+  `organization` varchar(100) NOT NULL,
+  `relationship` varchar(100) NOT NULL,
+  `phone_number` varchar(20) NOT NULL,
+  `email` varchar(254) NOT NULL,
+  `address` text NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_submission` (`candidate_submission_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -343,6 +440,38 @@ CREATE TABLE IF NOT EXISTS `candidate_reviews` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `candidate_submission`
+--
+
+DROP TABLE IF EXISTS `candidate_submission`;
+CREATE TABLE IF NOT EXISTS `candidate_submission` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `candidate_id` int NOT NULL,
+  `recruiter_email` varchar(254) NOT NULL,
+  `job_title` varchar(100) NOT NULL,
+  `start_date` date NOT NULL,
+  `city` varchar(100) NOT NULL,
+  `country` varchar(100) NOT NULL,
+  `currency` varchar(10) NOT NULL,
+  `salary` decimal(12,2) NOT NULL,
+  `variable_pay` decimal(12,2) DEFAULT NULL,
+  `status` varchar(50) NOT NULL,
+  `open_date` date NOT NULL,
+  `target_start_date` date NOT NULL,
+  `close_date` date DEFAULT NULL,
+  `close_reason` text,
+  `opening_salary_currency` varchar(10) NOT NULL,
+  `opening_salary_range` varchar(50) NOT NULL,
+  `driving_license_number` varchar(50) DEFAULT NULL,
+  `driving_license_validity` date DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_candidate` (`candidate_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `competency`
 --
 
@@ -357,7 +486,74 @@ CREATE TABLE IF NOT EXISTS `competency` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `requisition_id` (`requisition_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `config_job_position`
+--
+
+DROP TABLE IF EXISTS `config_job_position`;
+CREATE TABLE IF NOT EXISTS `config_job_position` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `position_role` varchar(500) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `config_job_position`
+--
+
+INSERT INTO `config_job_position` (`id`, `position_role`) VALUES
+(1, 'Project Manager'),
+(2, 'Backend Developer'),
+(3, 'Frontend Developer');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `config_score_card`
+--
+
+DROP TABLE IF EXISTS `config_score_card`;
+CREATE TABLE IF NOT EXISTS `config_score_card` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `score_card_name` varchar(500) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `config_score_card`
+--
+
+INSERT INTO `config_score_card` (`id`, `score_card_name`) VALUES
+(1, 'Technical Skills'),
+(2, 'Communication'),
+(3, 'Problem Solving');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `config_screening_type`
+--
+
+DROP TABLE IF EXISTS `config_screening_type`;
+CREATE TABLE IF NOT EXISTS `config_screening_type` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `screening_type_name` varchar(500) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `config_screening_type`
+--
+
+INSERT INTO `config_screening_type` (`id`, `screening_type_name`) VALUES
+(1, 'Online Test'),
+(2, 'Telephonic Screen'),
+(3, 'Video Screen'),
+(4, 'Technical Interview');
 
 -- --------------------------------------------------------
 
@@ -393,30 +589,7 @@ CREATE TABLE IF NOT EXISTS `django_content_type` (
   `model` varchar(100) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `django_content_type_app_label_model_76bd3d3b_uniq` (`app_label`,`model`)
-) ENGINE=MyISAM AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `django_content_type`
---
-
-INSERT INTO `django_content_type` (`id`, `app_label`, `model`) VALUES
-(1, 'admin', 'logentry'),
-(2, 'auth', 'permission'),
-(3, 'auth', 'group'),
-(4, 'auth', 'user'),
-(5, 'contenttypes', 'contenttype'),
-(6, 'sessions', 'session'),
-(7, 'myapp', 'candidates'),
-(8, 'myapp', 'userdetails'),
-(9, 'myapp', 'userroledetails'),
-(10, 'myapp', 'jobrequisition'),
-(11, 'myapp', 'posting'),
-(12, 'myapp', 'jobrequisitionextradetails'),
-(13, 'myapp', 'billingdetails'),
-(14, 'myapp', 'interviewteam'),
-(15, 'myapp', 'postingdetails'),
-(16, 'myapp', 'requisitiondetails'),
-(17, 'myapp', 'teams');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -431,7 +604,7 @@ CREATE TABLE IF NOT EXISTS `django_migrations` (
   `name` varchar(255) NOT NULL,
   `applied` datetime(6) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `django_migrations`
@@ -474,7 +647,7 @@ CREATE TABLE IF NOT EXISTS `django_session` (
   `expire_date` datetime(6) NOT NULL,
   PRIMARY KEY (`session_key`),
   KEY `django_session_expire_date_a5c62663` (`expire_date`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `django_session`
@@ -512,7 +685,7 @@ CREATE TABLE IF NOT EXISTS `interview` (
 DROP TABLE IF EXISTS `interviewer`;
 CREATE TABLE IF NOT EXISTS `interviewer` (
   `interviewer_id` bigint NOT NULL AUTO_INCREMENT,
-  `req_id` int NOT NULL,
+  `req_id` varchar(50) NOT NULL,
   `client_id` varchar(100) NOT NULL,
   `first_name` varchar(50) DEFAULT NULL,
   `last_name` varchar(50) DEFAULT NULL,
@@ -523,16 +696,8 @@ CREATE TABLE IF NOT EXISTS `interviewer` (
   `contact_number` varchar(15) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`interviewer_id`) USING BTREE,
-  UNIQUE KEY `email` (`email`),
-  KEY `int_req_fk_id` (`req_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `interviewer`
---
-
-INSERT INTO `interviewer` (`interviewer_id`, `req_id`, `client_id`, `first_name`, `last_name`, `job_title`, `interview_mode`, `interviewer_stage`, `email`, `contact_number`, `created_at`) VALUES
-(7, 1, 'HCL', 'Kumar', 'Sachidanand', 'PM', 'Online', 'Technical Round-1 & 2', 'kumar.sachidanand@gmail.com', '8904957029', '2025-06-25 02:39:44');
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -550,14 +715,6 @@ CREATE TABLE IF NOT EXISTS `interview_review` (
   PRIMARY KEY (`id`),
   KEY `fk_schedule` (`schedule_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `interview_review`
---
-
-INSERT INTO `interview_review` (`id`, `schedule_id`, `feedback`, `result`, `reviewed_at`) VALUES
-(1, 1, 'The candidate demonstrated strong analytical skills and clear communication.', 'Selected', '2025-06-26 12:05:30'),
-(2, 2, 'The candidate demonstrated strong analytical skills and clear communication.', 'Selected', '2025-06-26 12:06:33');
 
 -- --------------------------------------------------------
 
@@ -581,14 +738,6 @@ CREATE TABLE IF NOT EXISTS `interview_schedule` (
   KEY `fk_interviewer` (`interviewer_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
---
--- Dumping data for table `interview_schedule`
---
-
-INSERT INTO `interview_schedule` (`id`, `candidate_id`, `interviewer_id`, `round_name`, `date`, `start_time`, `end_time`, `meet_link`, `created_at`) VALUES
-(1, 116, 7, 'Technical', '2025-06-27', '10:00:00', '11:00:00', 'https://meet.google.com/vne-vpfb-mpt', '2025-06-26 08:00:55'),
-(2, 118, 7, 'Technical', '2025-06-27', '10:00:00', '11:00:00', 'https://meet.google.com/asm-qaya-pmw', '2025-06-26 08:03:47');
-
 -- --------------------------------------------------------
 
 --
@@ -605,15 +754,7 @@ CREATE TABLE IF NOT EXISTS `interview_slot` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `int_fk_id` (`interviewer_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `interview_slot`
---
-
-INSERT INTO `interview_slot` (`id`, `interviewer_id`, `date`, `start_time`, `end_time`, `created_at`) VALUES
-(3, 7, '2025-06-25', '10:00:00', '12:00:00', '2025-06-25 02:39:44'),
-(4, 7, '2025-06-25', '15:00:00', '17:00:00', '2025-06-25 02:39:44');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -624,22 +765,13 @@ INSERT INTO `interview_slot` (`id`, `interviewer_id`, `date`, `start_time`, `end
 DROP TABLE IF EXISTS `interview_team`;
 CREATE TABLE IF NOT EXISTS `interview_team` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `requisition_id` int NOT NULL,
+  `requisition_id` varchar(50) NOT NULL,
   `employee_id` varchar(50) DEFAULT NULL,
   `name` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `requisition_id` (`requisition_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `interview_team`
---
-
-INSERT INTO `interview_team` (`id`, `requisition_id`, `employee_id`, `name`, `created_at`, `updated_at`) VALUES
-(1, 1, 'EMP001', 'Robert Smith', '2025-06-20 23:21:57', '2025-06-20 23:21:57'),
-(2, 1, 'EMP002', 'Emily White', '2025-06-20 23:21:57', '2025-06-20 23:21:57');
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -649,26 +781,34 @@ INSERT INTO `interview_team` (`id`, `requisition_id`, `employee_id`, `name`, `cr
 
 DROP TABLE IF EXISTS `jobrequisition`;
 CREATE TABLE IF NOT EXISTS `jobrequisition` (
-  `RequisitionID` int NOT NULL AUTO_INCREMENT,
-  `Planning_id` bigint NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
+  `RequisitionID` varchar(50) NOT NULL DEFAULT '',
+  `Planning_id` varchar(50) NOT NULL DEFAULT '',
   `PositionTitle` varchar(191) NOT NULL,
   `HiringManagerID` int NOT NULL,
   `Recruiter` varchar(191) NOT NULL,
   `No_of_positions` int NOT NULL,
-  `Status` enum('Draft','Pending Approval','Approved','Posted') DEFAULT 'Draft',
+  `LegalEntityID` varchar(50) NOT NULL DEFAULT '',
+  `QualificationID` varchar(100) NOT NULL DEFAULT '',
+  `CommentFromBusinessOps` text NOT NULL,
+  `Status` enum('Pending Approval','Approved','Rejected','Need More Details') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'Pending Approval',
   `CreatedDate` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `UpdatedDate` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`RequisitionID`),
+  PRIMARY KEY (`id`),
   KEY `fk_hiring_manager` (`HiringManagerID`),
   KEY `plan_id_fk` (`Planning_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ;
 
 --
 -- Dumping data for table `jobrequisition`
 --
 
-INSERT INTO `jobrequisition` (`RequisitionID`, `Planning_id`, `PositionTitle`, `HiringManagerID`, `Recruiter`, `No_of_positions`, `Status`, `CreatedDate`, `UpdatedDate`) VALUES
-(1, 1, 'Software Engineer1', 1, 'John Doe', 2, 'Approved', '2025-06-20 23:21:57', '2025-06-20 23:23:13');
+INSERT INTO `jobrequisition` (`id`, `RequisitionID`, `Planning_id`, `PositionTitle`, `HiringManagerID`, `Recruiter`, `No_of_positions`, `LegalEntityID`, `QualificationID`, `CommentFromBusinessOps`, `Status`, `CreatedDate`, `UpdatedDate`) VALUES
+(1, 'RQ0001', '1', 'Senior Backend Developer', 1, 'Not Assigned', 1, '0', 'B.Tech', 'Budget confirmed. Proceeding with approval.', 'Approved', '2025-07-09 23:48:17', '2025-07-10 00:16:06'),
+(2, 'RQ0002', '1', 'Principal Backend Architect', 1, 'Not Assigned', 1, '0', 'B.Tech', 'Budget confirmed. Proceeding with approval.', 'Approved', '2025-07-09 23:52:05', '2025-07-10 00:16:06'),
+(3, 'RQ0003', '1', 'Senior Backend Developer', 1, 'Not Assigned', 1, '0', 'B.Tech', '', 'Pending Approval', '2025-07-12 06:58:45', '2025-07-12 06:58:45'),
+(4, 'RQ0004', '1', 'Senior Backend Developer', 1, 'Not Assigned', 1, '0', 'B.Tech', '', 'Pending Approval', '2025-07-12 06:59:43', '2025-07-12 06:59:43'),
+(5, 'RQ0005', '1', 'Senior Backend Developer', 1, 'Not Assigned', 1, '0', 'B.Tech', '', 'Pending Approval', '2025-07-12 07:09:13', '2025-07-12 07:09:13');
 
 -- --------------------------------------------------------
 
@@ -679,12 +819,11 @@ INSERT INTO `jobrequisition` (`RequisitionID`, `Planning_id`, `PositionTitle`, `
 DROP TABLE IF EXISTS `job_communication_skills`;
 CREATE TABLE IF NOT EXISTS `job_communication_skills` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `requisition_id` bigint NOT NULL,
+  `plan_id` varchar(50) NOT NULL,
   `skill_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
   `skill_value` varchar(200) NOT NULL DEFAULT '',
   `updt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `plan_skill_fk` (`requisition_id`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
@@ -695,50 +834,57 @@ CREATE TABLE IF NOT EXISTS `job_communication_skills` (
 
 DROP TABLE IF EXISTS `job_hiring_overview`;
 CREATE TABLE IF NOT EXISTS `job_hiring_overview` (
-  `hiring_plan_id` bigint NOT NULL AUTO_INCREMENT,
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `hiring_plan_id` varchar(50) NOT NULL DEFAULT '',
   `job_position` varchar(500) NOT NULL DEFAULT '',
   `tech_stacks` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
-  `jd_details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `jd_details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
   `designation` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
-  `experience_range` varchar(500) NOT NULL DEFAULT '',
-  `target_companies` varchar(500) NOT NULL,
-  `compensation` varchar(500) NOT NULL,
-  `working_model` varchar(50) NOT NULL DEFAULT '',
-  `interview_status` varchar(500) NOT NULL,
-  `location` varchar(500) NOT NULL,
-  `education_decision` varchar(50) NOT NULL,
-  `relocation` varchar(500) NOT NULL,
-  `travel_opportunities` varchar(500) NOT NULL,
-  `domain_knowledge` varchar(500) NOT NULL,
-  `visa_requirements` varchar(500) NOT NULL,
-  `background_verification` varchar(50) NOT NULL,
-  `shift_timings` varchar(50) NOT NULL,
-  `role_type` varchar(100) NOT NULL,
-  `job_type` varchar(100) NOT NULL,
-  `communication_language` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `notice_period` varchar(500) NOT NULL,
-  `additional_comp` varchar(500) NOT NULL,
-  `citizen_requirement` varchar(100) NOT NULL,
-  `career_gap` varchar(50) NOT NULL,
-  `sabbatical` varchar(50) NOT NULL,
+  `experience_range` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `target_companies` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `compensation` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `working_model` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `interview_status` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `location` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `education_decision` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `relocation` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `travel_opportunities` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `domain_knowledge` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `visa_requirements` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `background_verification` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `shift_timings` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `role_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `job_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `communication_language` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `notice_period` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `additional_comp` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `citizen_requirement` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `career_gap` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `sabbatical` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `screening_questions` text,
-  `job_health_requirements` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `social_media_links` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `language_proficiency` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `job_health_requirements` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `social_media_links` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `language_proficiency` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `requisition_template` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `no_of_openings` int DEFAULT '0',
   `Created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`hiring_plan_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `mode_of_working` varchar(255) DEFAULT NULL,
+  `relocation_amount` varchar(255) DEFAULT NULL,
+  `domain_yn` varchar(255) DEFAULT NULL,
+  `domain_name` varchar(255) DEFAULT NULL,
+  `education_qualification` varchar(255) DEFAULT NULL,
+  `visa_country` varchar(255) DEFAULT NULL,
+  `visa_type` varchar(255) DEFAULT NULL,
+  `github_link` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `job_hiring_overview`
 --
 
-INSERT INTO `job_hiring_overview` (`hiring_plan_id`, `job_position`, `tech_stacks`, `jd_details`, `designation`, `experience_range`, `target_companies`, `compensation`, `working_model`, `interview_status`, `location`, `education_decision`, `relocation`, `travel_opportunities`, `domain_knowledge`, `visa_requirements`, `background_verification`, `shift_timings`, `role_type`, `job_type`, `communication_language`, `notice_period`, `additional_comp`, `citizen_requirement`, `career_gap`, `sabbatical`, `screening_questions`, `job_health_requirements`, `social_media_links`, `language_proficiency`, `Created_at`) VALUES
-(1, 'Software Engineer', 'Python, Django', 'Develop and maintain scalable web applications.', 'Senior Developer', '3-5 years', 'Google, Microsoft, Amazon', '12-15 LPA', 'Hybrid', 'Ongoing', 'Bangalore, India', 'Bachelor\'s in Computer Science', 'Available', 'Occasional', 'Web Development, AI', 'None', 'Required', 'General', 'Individual Contributor', 'Full-time', 'English', '30 days', 'Stock options, bonuses', 'Indian citizen preferred', 'Allowed up to 1 year', 'Considered case-by-case', 'Technical assessments, behavioral interview', 'No specific requirements', 'LinkedIn, GitHub', 'English - Fluent', '2025-06-20 23:21:40'),
-(8, 'Software Engineer', 'Python, Django', 'Develop and maintain scalable web applications.', 'Senior Developer', '3-5 years', 'Google, Microsoft, Amazon', '12-15 LPA', 'Hybrid', 'Ongoing', 'Bangalore, India', 'Bachelor\'s in Computer Science', 'Available', 'Occasional', 'Web Development, AI', 'None', 'Required', 'General', 'Individual Contributor', 'Full-time', 'English', '30 days', 'Stock options, bonuses', 'Indian citizen preferred', 'Allowed up to 1 year', 'Considered case-by-case', 'Technical assessments, behavioral interview', 'No specific requirements', 'LinkedIn, GitHub', 'English - Fluent', '2025-06-22 02:34:10'),
-(9, 'Software Engineer', 'Python, Django', 'Develop and maintain scalable web applications.', 'Senior Developer', '3-5 years', 'Google, Microsoft, Amazon', '12-15 LPA', 'Hybrid', 'Ongoing', 'Bangalore, India', 'Bachelor\'s in Computer Science', 'Available', 'Occasional', 'Web Development, AI', 'None', 'Required', 'General', 'Individual Contributor', 'Full-time', 'English', '30 days', 'Stock options, bonuses', 'Indian citizen preferred', 'Allowed up to 1 year', 'Considered case-by-case', 'Technical assessments, behavioral interview', 'No specific requirements', 'LinkedIn, GitHub', 'English - Fluent', '2025-06-22 02:34:11'),
-(10, 'Software Engineer', 'Python, Django', 'Develop and maintain scalable web applications.', 'Senior Developer', '3-5 years', 'Google, Microsoft, Amazon', '12-15 LPA', 'Hybrid', 'Ongoing', 'Bangalore, India', 'Bachelor\'s in Computer Science', 'Available', 'Occasional', 'Web Development, AI', 'None', 'Required', 'General', 'Individual Contributor', 'Full-time', 'English', '30 days', 'Stock options, bonuses', 'Indian citizen preferred', 'Allowed up to 1 year', 'Considered case-by-case', 'Technical assessments, behavioral interview', 'No specific requirements', 'LinkedIn, GitHub', 'English - Fluent', '2025-06-22 02:34:13'),
-(11, 'Software Engineer', 'Python, Django', 'Develop and maintain scalable web applications.', 'Senior Developer', '3-5 years', 'Google, Microsoft, Amazon', '12-15 LPA', 'Hybrid', 'Ongoing', 'Bangalore, India', 'Bachelor\'s in Computer Science', 'Available', 'Occasional', 'Web Development, AI', 'None', 'Required', 'General', 'Individual Contributor', 'Full-time', 'English', '30 days', 'Stock options, bonuses', 'Indian citizen preferred', 'Allowed up to 1 year', 'Considered case-by-case', 'Technical assessments, behavioral interview', 'No specific requirements', 'LinkedIn, GitHub', 'English - Fluent', '2025-06-22 02:34:14');
+INSERT INTO `job_hiring_overview` (`id`, `hiring_plan_id`, `job_position`, `tech_stacks`, `jd_details`, `designation`, `experience_range`, `target_companies`, `compensation`, `working_model`, `interview_status`, `location`, `education_decision`, `relocation`, `travel_opportunities`, `domain_knowledge`, `visa_requirements`, `background_verification`, `shift_timings`, `role_type`, `job_type`, `communication_language`, `notice_period`, `additional_comp`, `citizen_requirement`, `career_gap`, `sabbatical`, `screening_questions`, `job_health_requirements`, `social_media_links`, `language_proficiency`, `requisition_template`, `no_of_openings`, `Created_at`, `mode_of_working`, `relocation_amount`, `domain_yn`, `domain_name`, `education_qualification`, `visa_country`, `visa_type`, `github_link`) VALUES
+(1, 'PL0001', 'Backend API Developer', 'Node.js, MongoDB, Redis, GraphQL', 'Design scalable backend APIs, manage databases, and integrate third-party services.', 'Software Engineer II', '3-6', 'Google, Amazon, Stripe', '₹18-22 LPA', 'Remote', '', 'Chennai', '', 'No', 'Quarterly client visits', '', 'Yes', 'Yes', 'Flexible', 'Individual Contributor', 'Full time', 'English', '', '', 'No', 'Allowed up to 2 years', '', '', 'Vaccinated', 'LinkedIn, GitHub', 'Advanced', '', 4, '2025-07-09 23:18:25', 'Online', 'N/A', 'Yes', 'FinTech', 'B.E./B.Tech in Computer Science', 'Singapore', 'Work Visa', 'https://github.com/developer42');
 
 -- --------------------------------------------------------
 
@@ -749,7 +895,7 @@ INSERT INTO `job_hiring_overview` (`hiring_plan_id`, `job_position`, `tech_stack
 DROP TABLE IF EXISTS `job_interview_design_parameters`;
 CREATE TABLE IF NOT EXISTS `job_interview_design_parameters` (
   `interview_desing_params_id` int NOT NULL AUTO_INCREMENT,
-  `hiring_plan_id` int NOT NULL DEFAULT '0',
+  `hiring_plan_id` varchar(50) NOT NULL DEFAULT '',
   `interview_design_id` int NOT NULL DEFAULT '0',
   `score_card` varchar(500) NOT NULL DEFAULT '',
   `options` varchar(500) NOT NULL DEFAULT '',
@@ -760,15 +906,7 @@ CREATE TABLE IF NOT EXISTS `job_interview_design_parameters` (
   `mode` varchar(1000) NOT NULL DEFAULT '',
   `feedback` varchar(500) NOT NULL DEFAULT '',
   PRIMARY KEY (`interview_desing_params_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `job_interview_design_parameters`
---
-
-INSERT INTO `job_interview_design_parameters` (`interview_desing_params_id`, `hiring_plan_id`, `interview_design_id`, `score_card`, `options`, `guideline`, `min_questions`, `screen_type`, `duration`, `mode`, `feedback`) VALUES
-(8, 1, 4, 'Coding Assessment', 'Multiple Choice', 'Focus on logic', 5, 'Online Test', 60, 'Remote', ''),
-(9, 1, 4, 'System Design', 'Discussion', 'Architecture understanding', 3, 'Interview', 45, 'In-person', '');
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -779,8 +917,8 @@ INSERT INTO `job_interview_design_parameters` (`interview_desing_params_id`, `hi
 DROP TABLE IF EXISTS `job_interview_design_screen`;
 CREATE TABLE IF NOT EXISTS `job_interview_design_screen` (
   `interview_design_id` int NOT NULL AUTO_INCREMENT,
-  `hiring_plan_id` int NOT NULL DEFAULT '0',
-  `req_id` int NOT NULL DEFAULT '0',
+  `hiring_plan_id` varchar(50) NOT NULL DEFAULT '',
+  `req_id` varchar(50) NOT NULL DEFAULT '',
   `position_role` varchar(500) NOT NULL DEFAULT '',
   `tech_stacks` varchar(500) NOT NULL DEFAULT '',
   `screening_type` varchar(500) NOT NULL DEFAULT '',
@@ -789,14 +927,7 @@ CREATE TABLE IF NOT EXISTS `job_interview_design_screen` (
   `status` varchar(800) NOT NULL,
   `feedback` varchar(1000) NOT NULL,
   PRIMARY KEY (`interview_design_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `job_interview_design_screen`
---
-
-INSERT INTO `job_interview_design_screen` (`interview_design_id`, `hiring_plan_id`, `req_id`, `position_role`, `tech_stacks`, `screening_type`, `no_of_interview_round`, `final_rating`, `status`, `feedback`) VALUES
-(4, 1, 1, 'Backend Developer', 'Python, Django', 'Technical', 3, 0, 'Draft', '');
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -807,20 +938,11 @@ INSERT INTO `job_interview_design_screen` (`interview_design_id`, `hiring_plan_i
 DROP TABLE IF EXISTS `job_request_interview_rounds`;
 CREATE TABLE IF NOT EXISTS `job_request_interview_rounds` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `requisition_id` bigint NOT NULL,
+  `plan_id` varchar(50) NOT NULL,
   `round_name` varchar(500) NOT NULL,
   `updt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `plan_fk` (`requisition_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `job_request_interview_rounds`
---
-
-INSERT INTO `job_request_interview_rounds` (`id`, `requisition_id`, `round_name`, `updt`) VALUES
-(1, 1, 'Technical', '2025-06-26 06:17:00'),
-(2, 1, 'HR', '2025-06-26 06:17:00');
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -831,7 +953,7 @@ INSERT INTO `job_request_interview_rounds` (`id`, `requisition_id`, `round_name`
 DROP TABLE IF EXISTS `job_stage_responsibility`;
 CREATE TABLE IF NOT EXISTS `job_stage_responsibility` (
   `stage_id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
-  `hiring_plan_id` int DEFAULT '0',
+  `hiring_plan_id` varchar(50) NOT NULL DEFAULT '',
   `role_name` varchar(255) DEFAULT NULL,
   `application_review` int DEFAULT '0',
   `phone_review` int DEFAULT '0',
@@ -845,15 +967,14 @@ CREATE TABLE IF NOT EXISTS `job_stage_responsibility` (
   `phone_no` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`stage_id`),
   UNIQUE KEY `stage_id` (`stage_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `job_stage_responsibility`
 --
 
 INSERT INTO `job_stage_responsibility` (`stage_id`, `hiring_plan_id`, `role_name`, `application_review`, `phone_review`, `reference_check`, `face_to_face`, `verbal_offer`, `other`, `first_name`, `last_name`, `email_id`, `phone_no`) VALUES
-(1, 1, '', 0, 0, 0, 0, 0, 0, '', '', '', ''),
-(2, 1, 'Tech Lead', 1, 1, 0, 1, 0, 0, 'Anand', 'S', 'anand@example.com', '+91-9876543210');
+(1, 'PL0001', 'Tech Lead', 1, 1, 0, 1, 0, 0, 'Anand', 'S', 'anand@example.com', '+91-9876543210');
 
 -- --------------------------------------------------------
 
@@ -872,7 +993,56 @@ CREATE TABLE IF NOT EXISTS `offerletter` (
   PRIMARY KEY (`OfferID`),
   KEY `CandidateID` (`CandidateID`),
   KEY `RequisitionID` (`RequisitionID`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `offer_negotiation`
+--
+
+DROP TABLE IF EXISTS `offer_negotiation`;
+CREATE TABLE IF NOT EXISTS `offer_negotiation` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `requisition_id` varchar(50) NOT NULL,
+  `client_name` varchar(100) NOT NULL,
+  `first_name` varchar(100) NOT NULL,
+  `last_name` varchar(100) NOT NULL,
+  `position_applied` varchar(150) NOT NULL,
+  `expected_salary` decimal(10,2) DEFAULT NULL,
+  `offered_salary` decimal(10,2) DEFAULT NULL,
+  `expected_title` varchar(150) DEFAULT NULL,
+  `offered_title` varchar(150) DEFAULT NULL,
+  `expected_location` varchar(100) DEFAULT NULL,
+  `offered_location` varchar(100) DEFAULT NULL,
+  `expected_doj` date DEFAULT NULL,
+  `offered_doj` date DEFAULT NULL,
+  `expected_work_mode` varchar(50) DEFAULT NULL,
+  `offered_work_mode` varchar(50) DEFAULT NULL,
+  `negotiation_status` varchar(50) NOT NULL,
+  `comments` text,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `offer_negotiation_benefits`
+--
+
+DROP TABLE IF EXISTS `offer_negotiation_benefits`;
+CREATE TABLE IF NOT EXISTS `offer_negotiation_benefits` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `offer_negotiation_id` int NOT NULL,
+  `benefit_id` int NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id` (`id`),
+  UNIQUE KEY `offernegotiation_id` (`offer_negotiation_id`,`benefit_id`),
+  KEY `benefit_id` (`benefit_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -883,25 +1053,29 @@ CREATE TABLE IF NOT EXISTS `offerletter` (
 DROP TABLE IF EXISTS `posting_details`;
 CREATE TABLE IF NOT EXISTS `posting_details` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `requisition_id` int NOT NULL,
+  `requisition_id` varchar(50) NOT NULL,
   `experience` varchar(255) DEFAULT NULL,
   `designation` varchar(255) DEFAULT NULL,
   `job_category` varchar(255) DEFAULT NULL,
   `job_region` varchar(255) DEFAULT NULL,
   `internal_job_description` text,
   `external_job_description` text,
+  `qualification` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `requisition_id` (`requisition_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `posting_details`
 --
 
-INSERT INTO `posting_details` (`id`, `requisition_id`, `experience`, `designation`, `job_category`, `job_region`, `internal_job_description`, `external_job_description`, `created_at`, `updated_at`) VALUES
-(1, 1, '5+ years', 'Software Engineer I', 'Development', 'US', 'Backend development using Django.', 'Looking for an experienced Software Engineer proficient in Python and Django.', '2025-06-20 23:21:57', '2025-06-20 23:21:57');
+INSERT INTO `posting_details` (`id`, `requisition_id`, `experience`, `designation`, `job_category`, `job_region`, `internal_job_description`, `external_job_description`, `qualification`, `created_at`, `updated_at`) VALUES
+(1, 'RQ0001', '5-8 years', 'Senior Developer', NULL, 'India', '<p>Responsible for building scalable APIs and backend modules</p>', '<p>Join our team to architect and develop backend solutions</p>', 'B.E, MCA', '2025-07-09 23:48:17', '2025-07-09 23:48:17'),
+(2, 'RQ0002', '8-12 years', 'Principal Engineer', NULL, 'India, EMEA', '<p>Drive backend architecture and lead cross-team initiatives</p>', '<p>Looking for an expert in scalable systems and leadership</p>', 'M.Tech, PhD', '2025-07-09 23:52:05', '2025-07-10 00:15:17'),
+(3, 'RQ0003', '5-8 years', 'Senior Developer', NULL, 'India', '<p>Responsible for building scalable APIs and backend modules</p>', '<p>Join our team to architect and develop backend solutions</p>', 'B.E, MCA', '2025-07-12 06:58:45', '2025-07-12 06:58:45'),
+(4, 'RQ0004', '5-8 years', 'Senior Developer', NULL, 'India', '<p>Responsible for building scalable APIs and backend modules</p>', '<p>Join our team to architect and develop backend solutions</p>', 'B.E, MCA', '2025-07-12 06:59:43', '2025-07-12 06:59:43'),
+(5, 'RQ0005', '5-8 years', 'Senior Developer', NULL, 'India', '<p>Responsible for building scalable APIs and backend modules</p>', '<p>Join our team to architect and develop backend solutions</p>', 'B.E, MCA', '2025-07-12 07:09:13', '2025-07-12 07:09:13');
 
 -- --------------------------------------------------------
 
@@ -922,7 +1096,38 @@ CREATE TABLE IF NOT EXISTS `questions` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `requisition_id` (`requisition_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `requisition_competency`
+--
+
+DROP TABLE IF EXISTS `requisition_competency`;
+CREATE TABLE IF NOT EXISTS `requisition_competency` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `requisition_id` varchar(50) NOT NULL,
+  `competency` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `library` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `expected_rating` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `weight` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id` (`id`),
+  KEY `requisition_id` (`requisition_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `requisition_competency`
+--
+
+INSERT INTO `requisition_competency` (`id`, `requisition_id`, `competency`, `library`, `category`, `expected_rating`, `weight`) VALUES
+(1, 'RQ0001', 'Scalability Engineering', 'Architecture', 'Technical', '4', '3'),
+(3, 'RQ0002', 'Leadership', 'Behavioral', 'Management', 'Not Rated', '4'),
+(4, 'RQ0003', 'Scalability Engineering', 'Architecture', 'Technical', '4', '3'),
+(5, 'RQ0004', 'Scalability Engineering', 'Architecture', 'Technical', '4', '3'),
+(6, 'RQ0005', 'Scalability Engineering', 'Architecture', 'Technical', '4', '3');
 
 -- --------------------------------------------------------
 
@@ -933,7 +1138,7 @@ CREATE TABLE IF NOT EXISTS `questions` (
 DROP TABLE IF EXISTS `requisition_details`;
 CREATE TABLE IF NOT EXISTS `requisition_details` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `requisition_id` int NOT NULL,
+  `requisition_id` varchar(50) NOT NULL DEFAULT '',
   `internal_title` varchar(255) NOT NULL,
   `external_title` varchar(255) NOT NULL,
   `job_position` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
@@ -948,13 +1153,14 @@ CREATE TABLE IF NOT EXISTS `requisition_details` (
   `contract_start_date` date DEFAULT NULL,
   `contract_end_date` date DEFAULT NULL,
   `career_level` varchar(50) DEFAULT NULL,
+  `company_client_name` varchar(255) DEFAULT NULL,
   `band` varchar(50) DEFAULT NULL,
   `sub_band` varchar(50) DEFAULT NULL,
   `primary_skills` text,
   `secondary_skills` text,
   `working_model` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `requisition_type` varchar(50) DEFAULT NULL,
-  `client_interview` tinyint(1) DEFAULT '0',
+  `client_interview` varchar(10) DEFAULT 'NO',
   `required_score` int DEFAULT NULL,
   `onb_coordinator` varchar(255) DEFAULT NULL,
   `onb_coordinator_team` text,
@@ -962,16 +1168,52 @@ CREATE TABLE IF NOT EXISTS `requisition_details` (
   `interviewer_teammate_employee_id` varchar(50) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `req_id_fk` (`requisition_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `requisition_date` date DEFAULT NULL,
+  `due_requisition_date` date DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `requisition_details`
 --
 
-INSERT INTO `requisition_details` (`id`, `requisition_id`, `internal_title`, `external_title`, `job_position`, `business_line`, `business_unit`, `division`, `department`, `location`, `geo_zone`, `employee_group`, `employee_sub_group`, `contract_start_date`, `contract_end_date`, `career_level`, `band`, `sub_band`, `primary_skills`, `secondary_skills`, `working_model`, `requisition_type`, `client_interview`, `required_score`, `onb_coordinator`, `onb_coordinator_team`, `isg_team`, `interviewer_teammate_employee_id`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Senior Software Engineer1', 'Software Engineer1 I', 'Software Engineer1', 'General Business', 'General Unit', 'Engineering', 'Software Development', 'New York', 'US-East', 'Software Engineers', 'Backend Developers', '2025-06-01', '2026-06-01', 'Senior', 'B1', 'SB2', 'Python, Django, REST APIs', 'Docker, Kubernetes', 'Hybrid', 'Permanent', 1, 85, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-06-20 23:21:57', '2025-06-20 23:21:57');
+INSERT INTO `requisition_details` (`id`, `requisition_id`, `internal_title`, `external_title`, `job_position`, `business_line`, `business_unit`, `division`, `department`, `location`, `geo_zone`, `employee_group`, `employee_sub_group`, `contract_start_date`, `contract_end_date`, `career_level`, `company_client_name`, `band`, `sub_band`, `primary_skills`, `secondary_skills`, `working_model`, `requisition_type`, `client_interview`, `required_score`, `onb_coordinator`, `onb_coordinator_team`, `isg_team`, `interviewer_teammate_employee_id`, `created_at`, `updated_at`, `requisition_date`, `due_requisition_date`) VALUES
+(1, 'RQ0001', 'Backend Specialist', 'Senior Node.js Engineer', 'Backend Developer', 'Platform Engineering', 'Core Services', 'Engineering', 'Backend Infrastructure', 'Hyderabad', 'APAC', 'General Employee Group', 'General Sub Group', NULL, NULL, 'Mid-Level', 'TechNova Inc.', 'Band 2', 'Sub Band B', 'Node.js, MongoDB, Express.js', 'Docker, Redis, GraphQL', 'Hybrid', 'Immediate', 'YES', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-07-09 23:48:17', '2025-07-10 17:55:53', NULL, NULL),
+(2, 'RQ0002', 'Backend Architect', 'Principal Engineer', 'Lead Backend Developer', 'SaaS Infrastructure', 'Product Core', 'Engineering', 'Platform Services', 'Bangalore', 'APAC', 'General Employee Group', 'General Sub Group', NULL, NULL, 'Senior-Level', 'CodeFusion Ltd', 'Band 3', 'Sub Band C', 'Node.js, NestJS, PostgreSQL', 'Kubernetes, AWS, Kafka', 'Remote', 'Strategic', 'NO', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-07-09 23:52:05', '2025-07-10 17:55:58', NULL, NULL),
+(3, 'RQ0003', 'Backend Specialist', 'Senior Node.js Engineer', 'Backend Developer', 'Platform Engineering', 'Core Services', 'Engineering', 'Backend Infrastructure', 'Hyderabad', 'APAC', 'General Employee Group', 'General Sub Group', NULL, NULL, 'Mid-Level', 'TechNova Inc.', 'Band 2', 'Sub Band B', 'Node.js, MongoDB, Express.js', 'Docker, Redis, GraphQL', 'Hybrid', 'Immediate', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-07-12 06:58:45', '2025-07-12 06:58:45', NULL, NULL),
+(4, 'RQ0004', 'Backend Specialist', 'Senior Node.js Engineer', 'Backend Developer', 'Platform Engineering', 'Core Services', 'Engineering', 'Backend Infrastructure', 'Hyderabad', 'APAC', 'General Employee Group', 'General Sub Group', NULL, NULL, 'Mid-Level', 'TechNova Inc.', 'Band 2', 'Sub Band B', 'Node.js, MongoDB, Express.js', 'Docker, Redis, GraphQL', 'Hybrid', 'Immediate', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-07-12 06:59:43', '2025-07-12 06:59:43', NULL, NULL),
+(5, 'RQ0005', 'Backend Specialist', 'Senior Node.js Engineer', 'Backend Developer', 'Platform Engineering', 'Core Services', 'Engineering', 'Backend Infrastructure', 'Hyderabad', 'APAC', 'General Employee Group', 'General Sub Group', NULL, NULL, 'Mid-Level', 'TechNova Inc.', 'Band 2', 'Sub Band B', 'Node.js, MongoDB, Express.js', 'Docker, Redis, GraphQL', 'Hybrid', 'Immediate', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-07-12 07:09:13', '2025-07-12 07:09:13', NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `requisition_question`
+--
+
+DROP TABLE IF EXISTS `requisition_question`;
+CREATE TABLE IF NOT EXISTS `requisition_question` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `requisition_id` varchar(50) NOT NULL,
+  `question` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `required` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `disqualifier` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `score` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `weight` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id` (`id`),
+  KEY `requisition_id` (`requisition_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `requisition_question`
+--
+
+INSERT INTO `requisition_question` (`id`, `requisition_id`, `question`, `required`, `disqualifier`, `score`, `weight`) VALUES
+(1, 'RQ0001', 'Do you have experience with microservices?', 'Yes', 'No', '10', '3'),
+(3, 'RQ0002', 'Have you led a team of backend developers?', 'Yes', 'No', '15', '2'),
+(4, 'RQ0003', 'Do you have experience with microservices?', 'Yes', 'No', '10', '3'),
+(5, 'RQ0004', 'Do you have experience with microservices?', 'Yes', 'No', '10', '3'),
+(6, 'RQ0005', 'Do you have experience with microservices?', 'Yes', 'No', '10', '3');
 
 -- --------------------------------------------------------
 
@@ -982,22 +1224,13 @@ INSERT INTO `requisition_details` (`id`, `requisition_id`, `internal_title`, `ex
 DROP TABLE IF EXISTS `teams`;
 CREATE TABLE IF NOT EXISTS `teams` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `requisition_id` int NOT NULL,
+  `requisition_id` varchar(50) NOT NULL,
   `team_type` varchar(50) DEFAULT NULL,
   `team_name` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `requisition_id` (`requisition_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `teams`
---
-
-INSERT INTO `teams` (`id`, `requisition_id`, `team_type`, `team_name`, `created_at`, `updated_at`) VALUES
-(1, 1, 'ONB Coordinator', 'HR Team', '2025-06-20 23:21:57', '2025-06-20 23:21:57'),
-(2, 1, 'ISG Team', 'Infrastructure Team', '2025-06-20 23:21:57', '2025-06-20 23:21:57');
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -1010,7 +1243,7 @@ CREATE TABLE IF NOT EXISTS `userrole` (
   `RoleID` int NOT NULL AUTO_INCREMENT,
   `RoleName` enum('Hiring Manager','Recruiter','Business Ops','Interviewer') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   PRIMARY KEY (`RoleID`)
-) ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `userrole`
@@ -1040,7 +1273,7 @@ CREATE TABLE IF NOT EXISTS `users_details` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `Email` (`Email`),
   KEY `RoleID` (`RoleID`)
-) ENGINE=MyISAM AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `users_details`
@@ -1051,7 +1284,7 @@ INSERT INTO `users_details` (`id`, `Name`, `RoleID`, `Email`, `PasswordHash`, `R
 (2, 'PixelREQ', 2, 'pixelreq@gmail.com', 'pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=', NULL, '2025-05-26 05:10:52'),
 (3, 'PixelBO', 3, 'pixelbo@gmail.com', 'pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=', NULL, '2025-05-26 05:10:52'),
 (4, 'PixelCan', 4, 'pixelcan@gmail.com', 'pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=', NULL, '2025-05-26 05:10:52'),
-(5, 'ANAND', 1, 'anand040593@gmail.com', 'pbkdf2_sha256$1000000$s5wZjZTM19ND2LpAqQOOzD$lNsk5Rxt9kUB3yHXp0c9EUo3ZmW7CB/BsddEbUcQWSA=', NULL, '2025-05-26 05:10:52'),
+(5, 'ANAND', 1, 'anand040593@gmail.com', 'pbkdf2_sha256$1000000$s5wZjZTM19ND2LpAqQOOzD$lNsk5Rxt9kUB3yHXp0c9EUo3ZmW7CB/BsddEbUcQWSA=', 'KulesSJQnXgQqCyZOhoE71udhj6ukHnz', '2025-05-26 05:10:52'),
 (6, 'Kumar', 4, 'kumar.sachidanand@gmail.com', 'pbkdf2_sha256$1000000$s5wZjZTM19ND2LpAqQOOzD$lNsk5Rxt9kUB3yHXp0c9EUo3ZmW7CB/BsddEbUcQWSA=', NULL, '2025-05-26 05:10:52');
 
 --
@@ -1059,22 +1292,10 @@ INSERT INTO `users_details` (`id`, `Name`, `RoleID`, `Email`, `PasswordHash`, `R
 --
 
 --
--- Constraints for table `candidates`
---
-ALTER TABLE `candidates`
-  ADD CONSTRAINT `can_req_fk_id` FOREIGN KEY (`Req_id_fk`) REFERENCES `jobrequisition` (`RequisitionID`) ON DELETE CASCADE ON UPDATE RESTRICT;
-
---
 -- Constraints for table `candidate_reviews`
 --
 ALTER TABLE `candidate_reviews`
   ADD CONSTRAINT `can_id_fk` FOREIGN KEY (`CandidateID`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE ON UPDATE RESTRICT;
-
---
--- Constraints for table `interviewer`
---
-ALTER TABLE `interviewer`
-  ADD CONSTRAINT `int_req_fk_id` FOREIGN KEY (`req_id`) REFERENCES `jobrequisition` (`RequisitionID`) ON DELETE CASCADE ON UPDATE RESTRICT;
 
 --
 -- Constraints for table `interview_review`
@@ -1094,30 +1315,6 @@ ALTER TABLE `interview_schedule`
 --
 ALTER TABLE `interview_slot`
   ADD CONSTRAINT `int_fk_id` FOREIGN KEY (`interviewer_id`) REFERENCES `interviewer` (`interviewer_id`) ON DELETE CASCADE ON UPDATE RESTRICT;
-
---
--- Constraints for table `jobrequisition`
---
-ALTER TABLE `jobrequisition`
-  ADD CONSTRAINT `plan_id_fk` FOREIGN KEY (`Planning_id`) REFERENCES `job_hiring_overview` (`hiring_plan_id`) ON DELETE CASCADE ON UPDATE RESTRICT;
-
---
--- Constraints for table `job_communication_skills`
---
-ALTER TABLE `job_communication_skills`
-  ADD CONSTRAINT `plan_skill_fk` FOREIGN KEY (`requisition_id`) REFERENCES `job_hiring_overview` (`hiring_plan_id`) ON DELETE CASCADE ON UPDATE RESTRICT;
-
---
--- Constraints for table `job_request_interview_rounds`
---
-ALTER TABLE `job_request_interview_rounds`
-  ADD CONSTRAINT `plan_fk` FOREIGN KEY (`requisition_id`) REFERENCES `job_hiring_overview` (`hiring_plan_id`) ON DELETE CASCADE ON UPDATE RESTRICT;
-
---
--- Constraints for table `requisition_details`
---
-ALTER TABLE `requisition_details`
-  ADD CONSTRAINT `req_id_fk` FOREIGN KEY (`requisition_id`) REFERENCES `jobrequisition` (`RequisitionID`) ON DELETE CASCADE ON UPDATE RESTRICT;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

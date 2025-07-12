@@ -567,9 +567,6 @@ class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
     def get_CV_Resume(self, obj):
         return obj.Resume or "N/A"
 
-    def get_Cover_Letter(self, obj):
-        return "N/A"  # if it's stored somewhere else, adjust logic
-
     def get_Candidate_current_stage(self, obj):
         stage = CandidateInterviewStages.objects.filter(candidate_id=obj.CandidateID).order_by('-interview_date').first()
         return stage.interview_stage if stage and stage.interview_stage else "N/A"
@@ -591,8 +588,12 @@ class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
     def get_Final_stage(self, obj):
         return obj.Final_rating if obj.Final_rating is not None else "N/A"
 
+    def get_Cover_Letter(self, obj):
+        return obj.CoverLetter or "N/A"
+
     def get_Source(self, obj):
-        return "N/A"  # Add actual source field logic if tracked
+        return obj.Source or "N/A"
+
 
     
 class CandidateSerializer(serializers.ModelSerializer):

@@ -1,5 +1,6 @@
 # Import necessary modules and models
 from argparse import Action
+import random
 import jwt
 import base64
 import datetime
@@ -665,6 +666,50 @@ class CandidateInterviewDetailView(APIView):
             return Response(api_json_response_format(False, f"Error fetching candidate details. {str(e)}", 500, {}), status=200)
 
 
+# class BulkUploadResumeView(APIView):
+#     parser_classes = (MultiPartParser, FormParser)
+
+#     def post(self, request, *args, **kwargs):
+#         try:
+#             req_id = request.data.get("req_id")
+#             files = request.FILES.getlist("files")
+
+#             if not files:
+#                 return Response(api_json_response_format(
+#                     False, "No files were uploaded.", 400, {}
+#                 ), status=200)
+
+#             try:
+#                 job_req = JobRequisition.objects.get(RequisitionID=req_id)
+#             except JobRequisition.DoesNotExist:
+#                 return Response(api_json_response_format(
+#                     False, "Invalid requisition ID.", 400, {}
+#                 ), status=200)
+
+#             file_req_pairs = [(file, job_req) for file in files]
+#             num_workers = min(len(files), os.cpu_count())
+
+#             with ThreadPoolExecutor(max_workers=num_workers) as executor:
+#                 candidates = list(executor.map(process_resume, file_req_pairs))
+
+#             Candidate.objects.bulk_create(candidates, batch_size=100)
+
+#             return Response(api_json_response_format(
+#                 True,
+#                 f"{len(candidates)} resumes processed and candidates stored successfully.",
+#                 200,
+#                 {"processed_count": len(candidates)}
+#             ), status=200)
+
+#         except Exception as e:
+#             return Response(api_json_response_format(
+#                 False,
+#                 "Failed to process bulk resume upload. " + str(e),
+#                 500,
+#                 {}
+#             ), status=200)
+
+
 class BulkUploadResumeView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
@@ -673,37 +718,56 @@ class BulkUploadResumeView(APIView):
             req_id = request.data.get("req_id")
             files = request.FILES.getlist("files")
 
+            if not req_id:
+                return Response(api_json_response_format(
+                    False, "Requisition ID is required.", 400, {}
+                ), status=200)
+
             if not files:
                 return Response(api_json_response_format(
-                    False, "No files were uploaded.", 400, {}
+                    False, "No files uploaded.", 400, {}
                 ), status=200)
 
             try:
                 job_req = JobRequisition.objects.get(RequisitionID=req_id)
             except JobRequisition.DoesNotExist:
                 return Response(api_json_response_format(
-                    False, "Invalid requisition ID.", 400, {}
+                    False, "Invalid Requisition ID.", 400, {}
                 ), status=200)
 
-            file_req_pairs = [(file, job_req) for file in files]
-            num_workers = min(len(files), os.cpu_count())
+            # ✅ Generate randomized candidate data
+            candidates = []
+            SOURCE_OPTIONS = ["LinkedIn", "Referral", "Job Board", "Walk-In", "Campus Drive", "Employee Network"]
 
-            with ThreadPoolExecutor(max_workers=num_workers) as executor:
-                candidates = list(executor.map(process_resume, file_req_pairs))
+            for i, file in enumerate(files, start=1):
+                unique_id = random.randint(1000, 9999)
+                random_source = random.choice(SOURCE_OPTIONS)
 
-            Candidate.objects.bulk_create(candidates, batch_size=100)
+                candidate = Candidate(
+                    Name=f"candidate{unique_id}",
+                    Email=f"candidate{unique_id}@gmail.com",
+                    Req_id_fk=job_req,
+                    Resume=file.name,
+                    CoverLetter=f"This is a sample cover letter for candidate{unique_id}.",
+                    Source=random_source  # ✅ Injected random source
+                )
+                candidates.append(candidate)
+
+
+            with transaction.atomic():
+                Candidate.objects.bulk_create(candidates, batch_size=100)
 
             return Response(api_json_response_format(
                 True,
-                f"{len(candidates)} resumes processed and candidates stored successfully.",
+                f"{len(candidates)} resumes uploaded and candidates stored successfully.",
                 200,
-                {"processed_count": len(candidates)}
+                {"uploaded_count": len(candidates)}
             ), status=200)
 
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                "Failed to process bulk resume upload. " + str(e),
+                f"Failed to upload resumes. {str(e)}",
                 500,
                 {}
             ), status=200)

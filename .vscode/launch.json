@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Python Debugger: Django",
             "type": "debugpy",
@@ -15,7 +16,7 @@
             "autoStartBrowser": false,
             "program": "${workspaceFolder}\\manage.py",
             "env": {
-    "PYTHONPATH": "${workspaceFolder}\\gccenv\\Scripts\\python.exe",
+    "PYTHONPATH": "C:\\Users\\anand\\OneDrive\\Pictures\\Documents\\new_pixcel",
     "DJANGO_SETTINGS_MODULE": "pixel_gcc.settings"
 }
 

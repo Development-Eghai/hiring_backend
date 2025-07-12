@@ -478,6 +478,8 @@ class Candidate(models.Model):
     Name = models.CharField(max_length=191)
     Email = models.CharField(max_length=191)
     Resume = models.TextField(null=True, blank=True)
+    CoverLetter = models.TextField(null=True, blank=True)  # ✅ New
+    Source = models.CharField(max_length=100, null=True, blank=True)  # ✅ New
     Final_rating = models.IntegerField(null=True, blank=True)
     Feedback = models.TextField(null=True, blank=True)
     Result = models.CharField(max_length=50, null=True, blank=True)
