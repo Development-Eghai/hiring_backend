@@ -267,7 +267,9 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
     Planning_id = serializers.SlugRelatedField(
         slug_field='hiring_plan_id',
         queryset=HiringPlan.objects.all(),
-        required=True
+        required=False,
+        allow_null=True
+
     )
 
     position_information = RequisitionDetailsSerializer(required=False)
@@ -534,13 +536,15 @@ class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
     Overall_Stage = serializers.SerializerMethodField()
     Final_stage = serializers.SerializerMethodField()
     Source = serializers.SerializerMethodField()
+    Score = serializers.SerializerMethodField()
+    Phone_no = serializers.SerializerMethodField()
 
     class Meta:
         model = Candidate
         fields = [
             "Req_ID", "Candidate_Id", "Candidate_Name", "Applied_Position", "Time_in_Stage",
             "JD_From_applied_Position", "CV_Resume", "Cover_Letter", "Candidate_current_stage",
-            "Candidate_Next_Stage", "Overall_Stage", "Final_stage", "Source"
+            "Candidate_Next_Stage", "Overall_Stage", "Final_stage", "Source","Score","Phone_no"
         ]
 
     # def get_interview_stages(self, obj):
@@ -593,6 +597,12 @@ class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
 
     def get_Source(self, obj):
         return obj.Source or "N/A"
+    
+    def get_Score(self, obj):
+        return obj.Score or "N/A"
+    
+    def get_Phone_no(self, obj):
+        return obj.Phone_no or "N/A"
 
 
     

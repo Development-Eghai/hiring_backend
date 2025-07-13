@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Jul 12, 2025 at 01:07 PM
+-- Generation Time: Jul 13, 2025 at 10:50 AM
 -- Server version: 9.1.0
 -- PHP Version: 8.3.14
 
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS `asset_details` (
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `requisition_id` (`requisition_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `asset_details`
@@ -104,10 +104,7 @@ CREATE TABLE IF NOT EXISTS `asset_details` (
 
 INSERT INTO `asset_details` (`id`, `requisition_id`, `laptop_type`, `laptop_needed`, `additional_questions`, `comments`, `created_at`, `updated_at`) VALUES
 (1, 'RQ0001', 'MacBook Pro', 'Yes', 'No', 'Prefer M2 chip configuration', '2025-07-10 05:18:17', '2025-07-10 05:18:17'),
-(2, 'RQ0002', 'ThinkPad X1', 'Yes', 'No', 'High-performance hardware required', '2025-07-10 05:22:05', '2025-07-10 05:45:17'),
-(3, 'RQ0003', 'MacBook Pro', 'Yes', 'No', 'Prefer M2 chip configuration', '2025-07-12 12:28:45', '2025-07-12 12:28:45'),
-(4, 'RQ0004', 'MacBook Pro', 'Yes', 'No', 'Prefer M2 chip configuration', '2025-07-12 12:29:43', '2025-07-12 12:29:43'),
-(5, 'RQ0005', 'MacBook Pro', 'Yes', 'No', 'Prefer M2 chip configuration', '2025-07-12 12:39:13', '2025-07-12 12:39:13');
+(2, 'RQ0002', 'ThinkPad X1', 'Yes', 'No', 'High-performance hardware required', '2025-07-10 05:22:05', '2025-07-10 05:45:17');
 
 -- --------------------------------------------------------
 
@@ -321,7 +318,7 @@ CREATE TABLE IF NOT EXISTS `billing_details` (
   `contract_start_date` date DEFAULT NULL,
   `contract_end_date` date DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `billing_details`
@@ -329,10 +326,7 @@ CREATE TABLE IF NOT EXISTS `billing_details` (
 
 INSERT INTO `billing_details` (`id`, `requisition_id`, `billing_type`, `billing_start_date`, `created_at`, `updated_at`, `billing_end_date`, `contract_start_date`, `contract_end_date`) VALUES
 (1, 'RQ0001', 'Billable', '2025-07-21', '2025-07-09 23:48:17', '2025-07-09 23:48:17', '2025-08-31', '2025-07-21', '2026-01-21'),
-(2, 'RQ0002', 'Non-Billable', '2025-08-01', '2025-07-09 23:52:05', '2025-07-10 00:15:17', '2025-12-31', '2025-08-01', '2026-01-31'),
-(3, 'RQ0003', 'Billable', '2025-07-21', '2025-07-12 06:58:45', '2025-07-12 06:58:45', '2025-08-31', '2025-07-21', '2026-01-21'),
-(4, 'RQ0004', 'Billable', '2025-07-21', '2025-07-12 06:59:43', '2025-07-12 06:59:43', '2025-08-31', '2025-07-21', '2026-01-21'),
-(5, 'RQ0005', 'Billable', '2025-07-21', '2025-07-12 07:09:13', '2025-07-12 07:09:13', '2025-08-31', '2025-07-21', '2026-01-21');
+(2, 'RQ0002', 'Non-Billable', '2025-08-01', '2025-07-09 23:52:05', '2025-07-10 00:15:17', '2025-12-31', '2025-08-01', '2026-01-31');
 
 -- --------------------------------------------------------
 
@@ -353,6 +347,8 @@ CREATE TABLE IF NOT EXISTS `candidates` (
   `ProfileCreated` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `CoverLetter` text,
   `Source` varchar(100) DEFAULT NULL,
+  `Score` int DEFAULT NULL,
+  `Phone_no` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`CandidateID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -360,14 +356,14 @@ CREATE TABLE IF NOT EXISTS `candidates` (
 -- Dumping data for table `candidates`
 --
 
-INSERT INTO `candidates` (`CandidateID`, `Req_id_fk`, `Name`, `Email`, `Resume`, `Final_rating`, `Feedback`, `Result`, `ProfileCreated`, `CoverLetter`, `Source`) VALUES
-(1, 'RQ0001', 'Anand', 'anand040593@gmail.com', 'media/resumes\\NITIN BANSAL - Resume (1).pdf', NULL, NULL, NULL, '2025-07-10 09:27:03', NULL, NULL),
-(2, 'RQ0002', 'Sakthi', 'sathiyanarayanan@gmail.com', 'media/resumes\\Resume_Vinay_J.pdf', NULL, NULL, NULL, '2025-07-10 09:27:03', NULL, NULL),
-(13, 'RQ0001', 'candidate3432', 'candidate3432@gmail.com', 'NITIN BANSAL - Resume (1).pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate3432.', 'Job Board'),
-(14, 'RQ0001', 'candidate5528', 'candidate5528@gmail.com', 'Resume_Vinay_J.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate5528.', 'Referral'),
-(15, 'RQ0001', 'candidate7484', 'candidate7484@gmail.com', 'sakthi _Resume.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate7484.', 'Referral'),
-(16, 'RQ0001', 'candidate4428', 'candidate4428@gmail.com', 'Tushar  Bhatnagar Resume.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate4428.', 'Campus Drive'),
-(17, 'RQ0001', 'candidate5768', 'candidate5768@gmail.com', 'RitikaDogra_14Years.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate5768.', 'Referral');
+INSERT INTO `candidates` (`CandidateID`, `Req_id_fk`, `Name`, `Email`, `Resume`, `Final_rating`, `Feedback`, `Result`, `ProfileCreated`, `CoverLetter`, `Source`, `Score`, `Phone_no`) VALUES
+(1, 'RQ0001', 'Anand', 'anand040593@gmail.com', 'media/resumes\\NITIN BANSAL - Resume (1).pdf', NULL, NULL, NULL, '2025-07-10 09:27:03', NULL, NULL, NULL, NULL),
+(2, 'RQ0002', 'Sakthi', 'sathiyanarayanan@gmail.com', 'media/resumes\\Resume_Vinay_J.pdf', NULL, NULL, NULL, '2025-07-10 09:27:03', NULL, NULL, NULL, NULL),
+(13, 'RQ0001', 'candidate3432', 'candidate3432@gmail.com', 'NITIN BANSAL - Resume (1).pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate3432.', 'Job Board', NULL, NULL),
+(14, 'RQ0001', 'candidate5528', 'candidate5528@gmail.com', 'Resume_Vinay_J.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate5528.', 'Referral', NULL, NULL),
+(15, 'RQ0001', 'candidate7484', 'candidate7484@gmail.com', 'sakthi _Resume.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate7484.', 'Referral', NULL, NULL),
+(16, 'RQ0001', 'candidate4428', 'candidate4428@gmail.com', 'Tushar  Bhatnagar Resume.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate4428.', 'Campus Drive', NULL, NULL),
+(17, 'RQ0001', 'candidate5768', 'candidate5768@gmail.com', 'RitikaDogra_14Years.pdf', NULL, NULL, NULL, '2025-07-12 07:28:35', 'This is a sample cover letter for candidate5768.', 'Referral', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -783,7 +779,7 @@ DROP TABLE IF EXISTS `jobrequisition`;
 CREATE TABLE IF NOT EXISTS `jobrequisition` (
   `id` int NOT NULL AUTO_INCREMENT,
   `RequisitionID` varchar(50) NOT NULL DEFAULT '',
-  `Planning_id` varchar(50) NOT NULL DEFAULT '',
+  `Planning_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `PositionTitle` varchar(191) NOT NULL,
   `HiringManagerID` int NOT NULL,
   `Recruiter` varchar(191) NOT NULL,
@@ -805,10 +801,7 @@ CREATE TABLE IF NOT EXISTS `jobrequisition` (
 
 INSERT INTO `jobrequisition` (`id`, `RequisitionID`, `Planning_id`, `PositionTitle`, `HiringManagerID`, `Recruiter`, `No_of_positions`, `LegalEntityID`, `QualificationID`, `CommentFromBusinessOps`, `Status`, `CreatedDate`, `UpdatedDate`) VALUES
 (1, 'RQ0001', '1', 'Senior Backend Developer', 1, 'Not Assigned', 1, '0', 'B.Tech', 'Budget confirmed. Proceeding with approval.', 'Approved', '2025-07-09 23:48:17', '2025-07-10 00:16:06'),
-(2, 'RQ0002', '1', 'Principal Backend Architect', 1, 'Not Assigned', 1, '0', 'B.Tech', 'Budget confirmed. Proceeding with approval.', 'Approved', '2025-07-09 23:52:05', '2025-07-10 00:16:06'),
-(3, 'RQ0003', '1', 'Senior Backend Developer', 1, 'Not Assigned', 1, '0', 'B.Tech', '', 'Pending Approval', '2025-07-12 06:58:45', '2025-07-12 06:58:45'),
-(4, 'RQ0004', '1', 'Senior Backend Developer', 1, 'Not Assigned', 1, '0', 'B.Tech', '', 'Pending Approval', '2025-07-12 06:59:43', '2025-07-12 06:59:43'),
-(5, 'RQ0005', '1', 'Senior Backend Developer', 1, 'Not Assigned', 1, '0', 'B.Tech', '', 'Pending Approval', '2025-07-12 07:09:13', '2025-07-12 07:09:13');
+(2, 'RQ0002', '1', 'Principal Backend Architect', 1, 'Not Assigned', 1, '0', 'B.Tech', 'Budget confirmed. Proceeding with approval.', 'Approved', '2025-07-09 23:52:05', '2025-07-10 00:16:06');
 
 -- --------------------------------------------------------
 
@@ -1064,7 +1057,7 @@ CREATE TABLE IF NOT EXISTS `posting_details` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `posting_details`
@@ -1072,10 +1065,7 @@ CREATE TABLE IF NOT EXISTS `posting_details` (
 
 INSERT INTO `posting_details` (`id`, `requisition_id`, `experience`, `designation`, `job_category`, `job_region`, `internal_job_description`, `external_job_description`, `qualification`, `created_at`, `updated_at`) VALUES
 (1, 'RQ0001', '5-8 years', 'Senior Developer', NULL, 'India', '<p>Responsible for building scalable APIs and backend modules</p>', '<p>Join our team to architect and develop backend solutions</p>', 'B.E, MCA', '2025-07-09 23:48:17', '2025-07-09 23:48:17'),
-(2, 'RQ0002', '8-12 years', 'Principal Engineer', NULL, 'India, EMEA', '<p>Drive backend architecture and lead cross-team initiatives</p>', '<p>Looking for an expert in scalable systems and leadership</p>', 'M.Tech, PhD', '2025-07-09 23:52:05', '2025-07-10 00:15:17'),
-(3, 'RQ0003', '5-8 years', 'Senior Developer', NULL, 'India', '<p>Responsible for building scalable APIs and backend modules</p>', '<p>Join our team to architect and develop backend solutions</p>', 'B.E, MCA', '2025-07-12 06:58:45', '2025-07-12 06:58:45'),
-(4, 'RQ0004', '5-8 years', 'Senior Developer', NULL, 'India', '<p>Responsible for building scalable APIs and backend modules</p>', '<p>Join our team to architect and develop backend solutions</p>', 'B.E, MCA', '2025-07-12 06:59:43', '2025-07-12 06:59:43'),
-(5, 'RQ0005', '5-8 years', 'Senior Developer', NULL, 'India', '<p>Responsible for building scalable APIs and backend modules</p>', '<p>Join our team to architect and develop backend solutions</p>', 'B.E, MCA', '2025-07-12 07:09:13', '2025-07-12 07:09:13');
+(2, 'RQ0002', '8-12 years', 'Principal Engineer', NULL, 'India, EMEA', '<p>Drive backend architecture and lead cross-team initiatives</p>', '<p>Looking for an expert in scalable systems and leadership</p>', 'M.Tech, PhD', '2025-07-09 23:52:05', '2025-07-10 00:15:17');
 
 -- --------------------------------------------------------
 
@@ -1116,7 +1106,7 @@ CREATE TABLE IF NOT EXISTS `requisition_competency` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`),
   KEY `requisition_id` (`requisition_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `requisition_competency`
@@ -1124,10 +1114,7 @@ CREATE TABLE IF NOT EXISTS `requisition_competency` (
 
 INSERT INTO `requisition_competency` (`id`, `requisition_id`, `competency`, `library`, `category`, `expected_rating`, `weight`) VALUES
 (1, 'RQ0001', 'Scalability Engineering', 'Architecture', 'Technical', '4', '3'),
-(3, 'RQ0002', 'Leadership', 'Behavioral', 'Management', 'Not Rated', '4'),
-(4, 'RQ0003', 'Scalability Engineering', 'Architecture', 'Technical', '4', '3'),
-(5, 'RQ0004', 'Scalability Engineering', 'Architecture', 'Technical', '4', '3'),
-(6, 'RQ0005', 'Scalability Engineering', 'Architecture', 'Technical', '4', '3');
+(3, 'RQ0002', 'Leadership', 'Behavioral', 'Management', 'Not Rated', '4');
 
 -- --------------------------------------------------------
 
@@ -1171,7 +1158,7 @@ CREATE TABLE IF NOT EXISTS `requisition_details` (
   `requisition_date` date DEFAULT NULL,
   `due_requisition_date` date DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `requisition_details`
@@ -1179,10 +1166,7 @@ CREATE TABLE IF NOT EXISTS `requisition_details` (
 
 INSERT INTO `requisition_details` (`id`, `requisition_id`, `internal_title`, `external_title`, `job_position`, `business_line`, `business_unit`, `division`, `department`, `location`, `geo_zone`, `employee_group`, `employee_sub_group`, `contract_start_date`, `contract_end_date`, `career_level`, `company_client_name`, `band`, `sub_band`, `primary_skills`, `secondary_skills`, `working_model`, `requisition_type`, `client_interview`, `required_score`, `onb_coordinator`, `onb_coordinator_team`, `isg_team`, `interviewer_teammate_employee_id`, `created_at`, `updated_at`, `requisition_date`, `due_requisition_date`) VALUES
 (1, 'RQ0001', 'Backend Specialist', 'Senior Node.js Engineer', 'Backend Developer', 'Platform Engineering', 'Core Services', 'Engineering', 'Backend Infrastructure', 'Hyderabad', 'APAC', 'General Employee Group', 'General Sub Group', NULL, NULL, 'Mid-Level', 'TechNova Inc.', 'Band 2', 'Sub Band B', 'Node.js, MongoDB, Express.js', 'Docker, Redis, GraphQL', 'Hybrid', 'Immediate', 'YES', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-07-09 23:48:17', '2025-07-10 17:55:53', NULL, NULL),
-(2, 'RQ0002', 'Backend Architect', 'Principal Engineer', 'Lead Backend Developer', 'SaaS Infrastructure', 'Product Core', 'Engineering', 'Platform Services', 'Bangalore', 'APAC', 'General Employee Group', 'General Sub Group', NULL, NULL, 'Senior-Level', 'CodeFusion Ltd', 'Band 3', 'Sub Band C', 'Node.js, NestJS, PostgreSQL', 'Kubernetes, AWS, Kafka', 'Remote', 'Strategic', 'NO', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-07-09 23:52:05', '2025-07-10 17:55:58', NULL, NULL),
-(3, 'RQ0003', 'Backend Specialist', 'Senior Node.js Engineer', 'Backend Developer', 'Platform Engineering', 'Core Services', 'Engineering', 'Backend Infrastructure', 'Hyderabad', 'APAC', 'General Employee Group', 'General Sub Group', NULL, NULL, 'Mid-Level', 'TechNova Inc.', 'Band 2', 'Sub Band B', 'Node.js, MongoDB, Express.js', 'Docker, Redis, GraphQL', 'Hybrid', 'Immediate', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-07-12 06:58:45', '2025-07-12 06:58:45', NULL, NULL),
-(4, 'RQ0004', 'Backend Specialist', 'Senior Node.js Engineer', 'Backend Developer', 'Platform Engineering', 'Core Services', 'Engineering', 'Backend Infrastructure', 'Hyderabad', 'APAC', 'General Employee Group', 'General Sub Group', NULL, NULL, 'Mid-Level', 'TechNova Inc.', 'Band 2', 'Sub Band B', 'Node.js, MongoDB, Express.js', 'Docker, Redis, GraphQL', 'Hybrid', 'Immediate', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-07-12 06:59:43', '2025-07-12 06:59:43', NULL, NULL),
-(5, 'RQ0005', 'Backend Specialist', 'Senior Node.js Engineer', 'Backend Developer', 'Platform Engineering', 'Core Services', 'Engineering', 'Backend Infrastructure', 'Hyderabad', 'APAC', 'General Employee Group', 'General Sub Group', NULL, NULL, 'Mid-Level', 'TechNova Inc.', 'Band 2', 'Sub Band B', 'Node.js, MongoDB, Express.js', 'Docker, Redis, GraphQL', 'Hybrid', 'Immediate', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-07-12 07:09:13', '2025-07-12 07:09:13', NULL, NULL);
+(2, 'RQ0002', 'Backend Architect', 'Principal Engineer', 'Lead Backend Developer', 'SaaS Infrastructure', 'Product Core', 'Engineering', 'Platform Services', 'Bangalore', 'APAC', 'General Employee Group', 'General Sub Group', NULL, NULL, 'Senior-Level', 'CodeFusion Ltd', 'Band 3', 'Sub Band C', 'Node.js, NestJS, PostgreSQL', 'Kubernetes, AWS, Kafka', 'Remote', 'Strategic', 'NO', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-07-09 23:52:05', '2025-07-10 17:55:58', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1202,7 +1186,7 @@ CREATE TABLE IF NOT EXISTS `requisition_question` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`),
   KEY `requisition_id` (`requisition_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `requisition_question`
@@ -1213,7 +1197,9 @@ INSERT INTO `requisition_question` (`id`, `requisition_id`, `question`, `require
 (3, 'RQ0002', 'Have you led a team of backend developers?', 'Yes', 'No', '15', '2'),
 (4, 'RQ0003', 'Do you have experience with microservices?', 'Yes', 'No', '10', '3'),
 (5, 'RQ0004', 'Do you have experience with microservices?', 'Yes', 'No', '10', '3'),
-(6, 'RQ0005', 'Do you have experience with microservices?', 'Yes', 'No', '10', '3');
+(6, 'RQ0005', 'Do you have experience with microservices?', 'Yes', 'No', '10', '3'),
+(7, 'RQ0006', 'Do you have experience with microservices?', 'Yes', 'No', '10', '3'),
+(8, 'RQ0007', 'Do you have experience with microservices?', 'Yes', 'No', '10', '3');
 
 -- --------------------------------------------------------
 

@@ -749,6 +749,7 @@ class BulkUploadResumeView(APIView):
                     Req_id_fk=job_req,
                     Resume=file.name,
                     CoverLetter=f"This is a sample cover letter for candidate{unique_id}.",
+                    Phone_no = "9999999999",
                     Source=random_source  # ✅ Injected random source
                 )
                 candidates.append(candidate)

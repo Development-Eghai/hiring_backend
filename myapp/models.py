@@ -199,6 +199,7 @@ class JobRequisition(models.Model):
     Planning_id = models.ForeignKey(
     'myapp.HiringPlan',  # Explicitly reference the app name
     on_delete=models.CASCADE,
+    to_field='hiring_plan_id',
     db_column="Planning_id",
     related_name="requisition"
     )
@@ -483,6 +484,8 @@ class Candidate(models.Model):
     Final_rating = models.IntegerField(null=True, blank=True)
     Feedback = models.TextField(null=True, blank=True)
     Result = models.CharField(max_length=50, null=True, blank=True)
+    Score = models.IntegerField(null=True, blank=True)
+    Phone_no = models.CharField(max_length=50, null=True, blank=True)
     ProfileCreated = models.DateTimeField(auto_now_add=True)
 
     class Meta:
