@@ -1,75 +1,54 @@
 # Import necessary modules and models
-from argparse import Action
-import random
-import jwt
 import base64
 import datetime
-from io import BytesIO
 import os
-from pyexpat.errors import messages
-from django.http import HttpResponse,JsonResponse
-from django.shortcuts import get_object_or_404, render, redirect
-import fitz
-import ollama
-from rest_framework import generics
-from rest_framework.generics import ListAPIView
-# from django.contrib import messages
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import login_required
-# from django.contrib.auth.models import Us
-from django.contrib.auth import logout
-from django.db import connection
-from django.conf import settings
-from django.contrib.auth.hashers import check_password
-from .models import ApprovalStatus, Approver, CandidateInterviewStages, CandidateReview, CandidateSubmission, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewReview, InterviewSchedule, Interviewer, OfferNegotiation, Posting, RequisitionDetails, StageAlertResponsibility, UserDetails,Candidates,UserroleDetails
-from rest_framework.parsers import MultiPartParser, FormParser
-from django.views.decorators.csrf import csrf_exempt
-import json
-from .models import JobRequisition
-from django.db import transaction
-from django.db.models.signals import post_save
-from django.dispatch import receiver
+import random
 
-
-
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-import json
-from django.views.decorators.http import require_POST
-from django.core.mail import send_mail
-from django.conf import settings
-from django.http import JsonResponse
-from django.core.serializers.json import DjangoJSONEncoder
-from .models import JobRequisition
 import PyPDF2 as pdf
+import jwt
+from django.conf import settings
+# from django.contrib import messages
+from django.contrib.auth import get_user_model
+# from django.contrib.auth.models import Us
+from django.contrib.auth.hashers import check_password
+from django.contrib.auth.hashers import make_password
+from django.core.mail import send_mail
+from django.db import transaction
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, render
+from django.utils.crypto import get_random_string
+from django.views.decorators.csrf import csrf_exempt
 from langchain_ollama import OllamaLLM
-from .serializers import ApproverSerializer, CandidateDetailWithInterviewSerializer, CandidateInterviewStagesSerializer, CandidateSerializer, CandidateSubmissionSerializer, ConfigPositionRoleSerializer, ConfigScoreCardSerializer, ConfigScreeningTypeSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, InterviewerSerializer, JobRequisitionCompactSerializer, JobRequisitionSerializer,JobRequisitionSerializerget, JobTemplateSerializer, OfferNegotiationSerializer, StageAlertResponsibilitySerializer
+from rest_framework import generics
+from rest_framework import status
 from rest_framework import viewsets
-from .models import Candidate
+from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
 # from .utils import extract_info_from_resume  # Import the parsing function
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import action
+
+from .models import ApprovalStatus, Approver, CandidateInterviewStages, CandidateReview, CandidateSubmission, \
+    ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, \
+    InterviewReview, InterviewSchedule, Interviewer, OfferNegotiation, RequisitionDetails, StageAlertResponsibility, \
+    UserDetails, UserroleDetails
 from .models import Candidate
-import re
-import fitz 
-from concurrent.futures import ThreadPoolExecutor
-from django.utils.crypto import get_random_string
-from django.contrib.auth.hashers import make_password
-from .models import InterviewRounds,HiringPlan
-from .serializers import HiringInterviewRoundsSerializer,HiringSkillsSerializer,HiringPlanSerializer
+from .models import InterviewRounds, HiringPlan
+from .models import JobRequisition
+from .serializers import ApproverSerializer, CandidateDetailWithInterviewSerializer, CandidateInterviewStagesSerializer, \
+    CandidateSubmissionSerializer, ConfigPositionRoleSerializer, ConfigScoreCardSerializer, \
+    ConfigScreeningTypeSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, \
+    InterviewerSerializer, JobRequisitionSerializer, JobTemplateSerializer, OfferNegotiationSerializer, \
+    StageAlertResponsibilitySerializer
+from .serializers import HiringInterviewRoundsSerializer, HiringSkillsSerializer, HiringPlanSerializer
+
 SECRET_KEY = settings.SECRET_KEY
 from rest_framework.decorators import api_view,permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
-from .jwt_token import jwt_required,api_json_response_format
+from .jwt_token import api_json_response_format
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .google_calendar import schedule_google_meet
-from datetime import datetime, timedelta
 from datetime import timezone
-
-import pytz
 
 from datetime import datetime
 import pytz
@@ -80,6 +59,9 @@ from .serializers import JobRequisitionDetailSerializer
 
 # ollama.base_url = "http://ollama:11434"
 
+
+# required for JWT
+User = get_user_model()
 
 class ApproverCreateListView(generics.ListCreateAPIView):
     queryset = Approver.objects.all()
@@ -1572,17 +1554,27 @@ def login_page(request):
         return Response(api_json_response_format(False, "Invalid credentials encoding. " + str(e), 401, {}))
 
     try:
-        user = UserDetails.objects.get(Email=username)
-        userrole = UserroleDetails.objects.get(RoleID=user.RoleID)
+        user_details = UserDetails.objects.get(Email=username)
+        userrole = UserroleDetails.objects.get(RoleID=user_details.RoleID)
 
-        if not check_password(password, user.PasswordHash):
+        if not check_password(password, user_details.PasswordHash):
             raise UserDetails.DoesNotExist  # reuse the same error logic
 
+        user, created = User.objects.get_or_create(
+            email=username,
+            defaults={
+                'username': username,
+                'password': make_password(password)  # user should be able to sign-in via Django
+            }
+        )
+
+        user = User.objects.get(email=username)
         refresh = RefreshToken.for_user(user)
+
         response_data = {
             'role': userrole.RoleName,
             'user_id':user.id,
-            'username': user.Name,
+            'username': user.get_username(),
             'access': str(refresh.access_token),
             'refresh': str(refresh)
         }

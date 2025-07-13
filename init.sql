@@ -1,3 +1,9 @@
+-- Create the database if it doesn't exist
+-- CREATE DATABASE IF NOT EXISTS `pixeladvant_hiring` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+-- Use the database
+-- USE `pixeladvant_hiring`;
+
 -- phpMyAdmin SQL Dump
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
