@@ -326,6 +326,17 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
 
             details_data["primary_skills"] = ", ".join(primary) if isinstance(primary, list) else str(primary)
             details_data["secondary_skills"] = ", ".join(secondary) if isinstance(secondary, list) else str(secondary)
+            last_client = RequisitionDetails.objects.order_by('-id').first()
+            if details_data.get("company_client_name"):
+                last_client = RequisitionDetails.objects.exclude(client_id__isnull=True).order_by('-id').first()
+                new_client_id = (
+                    f"CL{int(str(last_client.client_id).replace('CL', '')) + 1:04d}"
+                    if last_client and str(last_client.client_id).startswith("CL") and str(last_client.client_id).replace("CL", "").isdigit()
+                    else "CL0001"
+                )
+                details_data["client_id"] = new_client_id
+            else:
+                details_data["client_id"] = None 
 
 
             RequisitionDetails.objects.create(requisition=job_requisition, **details_data)

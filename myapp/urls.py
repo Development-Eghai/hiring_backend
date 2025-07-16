@@ -106,7 +106,13 @@ urlpatterns = [
     path('design_screen_list_data/', design_screen_list_data, name='design_screen_list_data'),
     path('manage-requisition/', ManageRequisitionView.as_view(), name='manage_requisition'),
 
-     path('api/candidates/interview-details/', CandidateInterviewDetailView.as_view(), name='candidate-interview-details'),
+    path('api/candidates/interview-details/', CandidateInterviewDetailView.as_view(), name='candidate-interview-details'),
+    path("api/candidates/all-details/", CandidateAllRequisitionsView.as_view(), name="candidate-all-details"),
+    path("api/candidates/update-details/", CandidateUpdateView.as_view(), name="candidate-update-details"),
+    path("api/candidates/resume/", ResumeAccessView.as_view(), name="candidate-resume-url"),
+    path("api/candidates/export-excel/", CandidateExcelExportView.as_view(), name="candidate-export-excel")
+
+
 
 ]
 

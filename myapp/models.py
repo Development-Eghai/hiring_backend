@@ -199,7 +199,7 @@ class JobRequisition(models.Model):
     Planning_id = models.ForeignKey(
     'myapp.HiringPlan',  # Explicitly reference the app name
     on_delete=models.CASCADE,
-    to_field='hiring_plan_id',
+    # to_field='hiring_plan_id',
     db_column="Planning_id",
     related_name="requisition"
     )
@@ -261,6 +261,7 @@ class RequisitionDetails(models.Model):
     employee_group = models.CharField(max_length=255, null=True, blank=True, default="General Employee Group")
     employee_sub_group = models.CharField(max_length=255, null=True, blank=True, default="General Sub Group")
     company_client_name = models.CharField(max_length=255, null=True, blank=True, default="")
+    client_id = models.CharField(max_length=50, null=True, blank=True, default="")
     contract_start_date = models.DateField(null=True, blank=True, default=None)
     contract_end_date = models.DateField(null=True, blank=True, default=None)
     

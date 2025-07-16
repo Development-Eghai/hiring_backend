@@ -5,6 +5,9 @@ import jwt
 import base64
 import datetime
 from io import BytesIO
+import openpyxl
+from openpyxl.styles import Font
+from urllib.parse import quote
 import os
 from pyexpat.errors import messages
 from django.http import HttpResponse,JsonResponse
@@ -631,6 +634,176 @@ def process_resume(file_req_tuple):
         Resume=file_path,
         Req_id_fk=req_id
     )
+
+
+import os
+from django.core.files.base import ContentFile
+
+class ResumeAccessView(APIView):
+    def post(self, request):
+        try:
+            candidate_id = request.data.get("candidate_id")
+            if not candidate_id:
+                return Response(api_json_response_format(False, "candidate_id is required.", 400, {}), status=200)
+
+            candidate = Candidate.objects.select_related("Req_id_fk").filter(CandidateID=candidate_id).first()
+            if not candidate:
+                return Response(api_json_response_format(False, "Candidate not found.", 404, {}), status=200)
+
+            # Resume
+            resume_path = candidate.Resume
+            resume_url = request.build_absolute_uri(settings.MEDIA_URL + "resumes/" + str(resume_path)) if resume_path else "N/A"
+
+            # Cover Letter
+            cover_path = candidate.CoverLetter
+            cover_url = request.build_absolute_uri(settings.MEDIA_URL + "resumes/" + str(cover_path)) if cover_path else "N/A"
+
+            # JD as HTML file
+            jd_url = "N/A"
+            if candidate.Req_id_fk and hasattr(candidate.Req_id_fk, "posting_details"):
+                jd_html = candidate.Req_id_fk.posting_details.internal_job_description
+                if jd_html:
+                    # Create JD file dynamically
+                    jd_filename = f"jd_candidate_{candidate_id}.html"
+                    jd_dir = os.path.join(settings.MEDIA_ROOT, "jd_descriptions")
+                    os.makedirs(jd_dir, exist_ok=True)
+                    jd_path = os.path.join(jd_dir, jd_filename)
+
+                    with open(jd_path, "w", encoding="utf-8") as jd_file:
+                        jd_file.write(jd_html)
+
+                    jd_url = request.build_absolute_uri(settings.MEDIA_URL + "jd_descriptions/" + jd_filename)
+
+            return Response(api_json_response_format(True, "Resume and related details fetched successfully.", 200, {
+                "resume_url": resume_url,
+                "cover_letter_url": cover_url,
+                "JD_url": jd_url
+            }), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error fetching resume details. {str(e)}", 500, {}), status=200)
+
+class CandidateUpdateView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def put(self, request):
+        try:
+            candidate_id = request.data.get("candidate_id")
+            if not candidate_id:
+                return Response(api_json_response_format(False, "candidate_id is required.", 400, {}), status=200)
+
+            candidate = Candidate.objects.filter(CandidateID=candidate_id).first()
+            if not candidate:
+                return Response(api_json_response_format(False, "Candidate not found.", 404, {}), status=200)
+
+            # 🔁 Update basic fields
+            updatable_fields = ["Name", "Email", "Feedback", "Final_rating", "Result", "Source", "Score", "Phone_no"]
+            for field in updatable_fields:
+                if field in request.data:
+                    setattr(candidate, field, request.data[field] or None)
+
+            # 📎 File uploads
+            resume = request.FILES.get("Resume")
+            cover_letter = request.FILES.get("CoverLetter")
+
+            if resume:
+                candidate.Resume = resume
+
+            if cover_letter:
+                candidate.CoverLetter = cover_letter
+
+            candidate.save()
+
+            return Response(api_json_response_format(True, "Candidate updated successfully with files.", 200, {}), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error during candidate update. {str(e)}", 500, {}), status=200)
+
+class CandidateExcelExportView(APIView):
+    def get(self, request):
+        try:
+            candidates = Candidate.objects.select_related("Req_id_fk").all()
+
+            if not candidates.exists():
+                return Response(api_json_response_format(False, "No candidates to export.", 404, {}), status=200)
+
+            # Create Excel workbook
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Candidate Details"
+
+            headers = [
+                "Candidate ID", "Candidate Name", "Requisition ID", "Applied Position",
+                "Job Description URL", "Resume URL", "Cover Letter URL", "Current Stage",
+                "Next Stage", "Time in Stage", "Overall Stage", "Final Stage",
+                "Source", "Score", "Phone Number"
+            ]
+            ws.append(headers)
+            for cell in ws[1]:  # Bold headers
+                cell.font = Font(bold=True)
+
+            for candidate in candidates:
+                # URLs
+                jd = candidate.Req_id_fk.posting_details.internal_job_description if getattr(candidate.Req_id_fk, "posting_details", None) else None
+                jd_url = request.build_absolute_uri(f"/api/candidates/{candidate.CandidateID}/jd/") if jd else "N/A"
+
+                resume_url = request.build_absolute_uri(settings.MEDIA_URL + "resumes/" + quote(str(candidate.Resume))) if candidate.Resume else "N/A"
+                cover_url = request.build_absolute_uri(settings.MEDIA_URL + "resumes/" + quote(str(candidate.CoverLetter))) if candidate.CoverLetter else "N/A"
+
+                stage = CandidateInterviewStages.objects.filter(candidate_id=candidate.CandidateID).order_by('-interview_date').first()
+                time_in_stage = f"{(datetime.now().date() - stage.interview_date).days} days" if stage and stage.interview_date else "N/A"
+                current_stage = stage.interview_stage if stage else "N/A"
+
+                ws.append([
+                    candidate.CandidateID,
+                    candidate.Name,
+                    candidate.Req_id_fk.RequisitionID if candidate.Req_id_fk else "N/A",
+                    candidate.Req_id_fk.position_information.job_position if candidate.Req_id_fk and hasattr(candidate.Req_id_fk, "position_information") else "N/A",
+                    jd_url,
+                    resume_url,
+                    cover_url,
+                    current_stage,
+                    "N/A",  # Next Stage placeholder
+                    time_in_stage,
+                    candidate.Result or "N/A",
+                    candidate.Final_rating if candidate.Final_rating is not None else "N/A",
+                    candidate.Source or "N/A",
+                    candidate.Score or "N/A",
+                    candidate.Phone_no or "N/A"
+                ])
+
+            # Return as downloadable Excel file
+            response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = 'attachment; filename="candidate_details.xlsx"'
+            wb.save(response)
+            return response
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error exporting Excel. {str(e)}", 500, {}), status=200)
+
+
+class CandidateAllRequisitionsView(APIView):
+    def get(self, request):
+        try:
+            candidates = Candidate.objects.select_related("Req_id_fk").all()
+
+            if not candidates.exists():
+                return Response(api_json_response_format(False, "No candidate records found.", 404, {}), status=200)
+
+            candidate_data = []
+            for candidate in candidates:
+                serializer = CandidateDetailWithInterviewSerializer(candidate)
+                serialized_data = serializer.data
+
+                # Optional cleanup: remove unused interview_stages field
+                serialized_data.pop("interview_stages", None)
+
+                candidate_data.append(serialized_data)
+
+            return Response(api_json_response_format(True, "All candidate details retrieved successfully.", 200, candidate_data), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error fetching all candidate data. {str(e)}", 500, {}), status=200)
 
 
 class CandidateInterviewDetailView(APIView):
@@ -1273,11 +1446,14 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                 end_date = billing.contract_end_date if billing else None
                 age = (current_date - start_date).days if start_date else "N/A"
                 age = max(age, 0) if isinstance(age, int) else "N/A"
+                planning_obj = getattr(requisition, "Planning_id", None)
+                planning_id = planning_obj.hiring_plan_id if planning_obj else "Not Provided"
 
                 data.append({
-                    "PlanningID": getattr(requisition.Planning_id, "hiring_plan_id", "Not Provided"),
+                    "PlanningID": planning_id,
                     "RequisitionID": requisition.RequisitionID,
                     "ClientName": getattr(info, "company_client_name", "Not Provided"),
+                    "ClientID": getattr(info, "client_id", "Not Provided"),
                     "JobTitle": requisition.PositionTitle,
                     "HiringManager": getattr(requisition.HiringManager, "Name", "Unknown"),
                     "JobPosting": getattr(requisition, "PostingSource", "Not Specified"),
