@@ -18,11 +18,12 @@ from django.contrib.auth.hashers import check_password
 from django.contrib.auth.hashers import make_password
 from django.core.mail import send_mail
 from django.db import transaction
-from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.crypto import get_random_string
 from django.views.decorators.csrf import csrf_exempt
 from langchain_ollama import OllamaLLM
+import requests
 from rest_framework import generics
 from rest_framework import status
 from rest_framework import viewsets
@@ -30,6 +31,8 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 # from .utils import extract_info_from_resume  # Import the parsing function
 from rest_framework.permissions import IsAuthenticated
+
+from myapp.zoom_utils import schedule_zoom_meet
 
 from .models import ApprovalStatus, Approver, CandidateInterviewStages, CandidateReview, CandidateSubmission, \
     ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, \
@@ -420,36 +423,47 @@ class InterviewerListCreateAPIView(generics.ListCreateAPIView):
             )
 
 
-
 class ScheduleMeetView(APIView):
     def post(self, request):
         try:
-            candidate_id = request.data.get("candidate_id")
+            candidate_id   = request.data.get("candidate_id")
             interviewer_id = request.data.get("interviewer_id")
-            start_str = request.data.get("start_datetime")
-            end_str = request.data.get("end_datetime")
-            round_name = request.data.get("round_name")  # ✅ New
-            summary = request.data.get("summary", "Candidate Interview")
-            
-            if candidate_id is None or interviewer_id is None or not start_str or not end_str or not round_name:
-                return Response(api_json_response_format(
-                    False, "Missing required fields", 400, {}
-                ), status=200)
+            start_str      = request.data.get("start_datetime")
+            end_str        = request.data.get("end_datetime")
+            round_name     = request.data.get("round_name")
+            summary        = request.data.get("summary", f"{round_name} Interview")
 
-            tz = pytz.timezone("Asia/Kolkata")
+            # Validate required fields
+            if None in (candidate_id, interviewer_id) or not (start_str and end_str and round_name):
+                return Response(
+                    api_json_response_format(False, "Missing required fields", 400, {}),
+                    status=200
+                )
+
+            # Parse and localize datetimes
+            tz    = pytz.timezone("Asia/Kolkata")
             start = tz.localize(datetime.fromisoformat(start_str))
-            end = tz.localize(datetime.fromisoformat(end_str))
+            end   = tz.localize(datetime.fromisoformat(end_str))
 
-            candidate = Candidate.objects.get(CandidateID=candidate_id)
+            # Compute duration in minutes
+            delta         = end - start
+            duration_mins = int(delta.total_seconds() // 60)
+
+            # Fetch your models
+            candidate   = Candidate.objects.get(CandidateID=candidate_id)
             interviewer = Interviewer.objects.get(interviewer_id=interviewer_id)
 
-            meet_link = schedule_google_meet(
-                summary,
-                start.isoformat(),
-                end.isoformat(),
-                attendees=[candidate.Email, interviewer.email]
+            # Create a Zoom meeting and get join_url
+            topic     = summary
+            iso_start = start.isoformat()
+            join_url  = schedule_zoom_meet(
+                topic=topic,
+                start_time_iso=iso_start,
+                duration_minutes=duration_mins,
+                timezone="Asia/Kolkata"
             )
 
+            # Persist the interview schedule
             InterviewSchedule.objects.create(
                 candidate=candidate,
                 interviewer=interviewer,
@@ -457,18 +471,42 @@ class ScheduleMeetView(APIView):
                 start_time=start.time(),
                 end_time=end.time(),
                 round_name=round_name,
-                meet_link=meet_link
+                meet_link=join_url
             )
 
-            return Response(api_json_response_format(
-                True, "Interview scheduled successfully", 200,
-                {"meet_link": meet_link}
-            ), status=200)
+            return Response(
+                api_json_response_format(
+                    True,
+                    "Interview scheduled successfully",
+                    200,
+                    {"meet_link": join_url}
+                ),
+                status=200
+            )
 
+        except Candidate.DoesNotExist:
+            return Response(
+                api_json_response_format(False, "Invalid candidate_id", 400, {}),
+                status=200
+            )
+        except Interviewer.DoesNotExist:
+            return Response(
+                api_json_response_format(False, "Invalid interviewer_id", 400, {}),
+                status=200
+            )
+        except ValueError as e:
+            # in case of datetime parsing errors
+            return Response(
+                api_json_response_format(False, f"Invalid datetime format: {e}", 400, {}),
+                status=200
+            )
         except Exception as e:
-            return Response(api_json_response_format(
-                False, f"Failed to schedule: {e}", 500, {}
-            ), status=200)
+            # includes HTTPError from Zoom or any other unexpected issue
+            return Response(
+                api_json_response_format(False, f"Failed to schedule: {e}", 500, {}),
+                status=200
+            )
+
 
 
 

@@ -110,7 +110,8 @@ urlpatterns = [
     path("api/candidates/all-details/", CandidateAllRequisitionsView.as_view(), name="candidate-all-details"),
     path("api/candidates/update-details/", CandidateUpdateView.as_view(), name="candidate-update-details"),
     path("api/candidates/resume/", ResumeAccessView.as_view(), name="candidate-resume-url"),
-    path("api/candidates/export-excel/", CandidateExcelExportView.as_view(), name="candidate-export-excel")
+    path("api/candidates/export-excel/", CandidateExcelExportView.as_view(), name="candidate-export-excel"),
+
 
 
 

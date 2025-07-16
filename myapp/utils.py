@@ -2,7 +2,8 @@ import re
 import ollama
 import re
 import pdfplumber
-from .models import Candidate
+import requests
+
 
 def extract_info_from_resume(file_path):
     text = extract_text_from_pdf(file_path)  # Extract text from PDF

@@ -559,7 +559,7 @@ class InterviewSchedule(models.Model):
     date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
-    meet_link = models.URLField()
+    meet_link = models.URLField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -866,3 +866,4 @@ class ConfigScoreCard(models.Model):
     class Meta:
         db_table = 'config_score_card'
         managed = False
+
