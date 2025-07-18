@@ -94,6 +94,7 @@ urlpatterns = [
     path('api/candidate-submissions/get-submissions-by-candidate-id/', CandidateSubmissionViewSet.as_view({'post': 'get_submissions_by_candidate_id'})),
     path('approval/approve/<int:negotiation_id>/', views.approve_offer, name='approve-offer'),
     path('approval/reject/<int:negotiation_id>/', views.reject_offer, name='reject-offer'),
+    path('candidate-approver-status/', CandidateApprovalStatusView.as_view(), name='candidate-approver-status'),
 
 
     path('configuration/', admin_configuration, name='configuration'),
@@ -111,7 +112,8 @@ urlpatterns = [
     path("api/candidates/update-details/", CandidateUpdateView.as_view(), name="candidate-update-details"),
     path("api/candidates/resume/", ResumeAccessView.as_view(), name="candidate-resume-url"),
     path("api/candidates/export-excel/", CandidateExcelExportView.as_view(), name="candidate-export-excel"),
-
+    path("candidates/delete/", CandidateDeleteView.as_view(), name="candidate-delete"),
+    path('interviewer_bandwidth_dashboard/', InterviewerBandwidthDashboard.as_view(), name='interviewer_bandwidth_dashboard'),
 
 
 

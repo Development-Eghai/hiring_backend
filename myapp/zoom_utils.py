@@ -1,41 +1,65 @@
 # myapp/zoom_utils.py
 
-import os
+import time
+import threading
 import requests
 from requests.auth import HTTPBasicAuth
+from decouple import config
 
-# Zoom’s Server-to-Server token URL
-ZOOM_OAUTH_TOKEN_URL = "https://zoom.us/oauth/token"
-ZOOM_API_BASE       = "https://api.zoom.us/v2"
-ZOOM_HOST_USER      = "me"
+# OAuth token & API endpoints
+_TOKEN_URL = "https://zoom.us/oauth/token"
+_API_BASE  = "https://api.zoom.us/v2"
+_HOST_USER = "me"
 
-# You must set this in your env alongside CLIENT_ID and CLIENT_SECRET
-ZOOM_ACCOUNT_ID     = os.getenv("ZOOM_ACCOUNT_ID", "")
+# Simple in-process cache for the access token
+_token_lock   = threading.Lock()
+_token_value  = None
+_token_expiry = 0
+
+
+def _load_credentials():
+    """
+    Read Zoom credentials via python-decouple.
+    Will raise a MissingOptionError if any var is absent.
+    """
+    client_id     = config("ZOOM_CLIENT_ID")
+    client_secret = config("ZOOM_CLIENT_SECRET")
+    account_id    = config("ZOOM_ACCOUNT_ID")
+    return client_id, client_secret, account_id
 
 
 def get_zoom_access_token() -> str:
     """
-    Fetch a Server-to-Server OAuth access token via account_credentials grant.
+    Fetch (and cache) a Server-to-Server OAuth access token via account_credentials grant.
     """
-    client_id     = os.getenv("ZOOM_CLIENT_ID")
-    client_secret = os.getenv("ZOOM_CLIENT_SECRET")
-    account_id    = ZOOM_ACCOUNT_ID
+    global _token_value, _token_expiry
 
-    if not all([client_id, client_secret, account_id]):
-        raise RuntimeError(
-            "Missing one of ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET or ZOOM_ACCOUNT_ID"
+    client_id, client_secret, account_id = _load_credentials()
+    now = time.time()
+
+    # Return cached token if still valid
+    if _token_value and now < _token_expiry:
+        return _token_value
+
+    with _token_lock:
+        if _token_value and now < _token_expiry:
+            return _token_value
+
+        # Build token‐request URL
+        url = (
+            f"{_TOKEN_URL}"
+            f"?grant_type=account_credentials"
+            f"&account_id={account_id}"
         )
+        resp = requests.post(url, auth=HTTPBasicAuth(client_id, client_secret), timeout=10)
+        resp.raise_for_status()
 
-    # Note grant_type=account_credentials & include your account_id
-    url = (
-        f"{ZOOM_OAUTH_TOKEN_URL}"
-        f"?grant_type=account_credentials"
-        f"&account_id={account_id}"
-    )
+        data = resp.json()
+        _token_value  = data["access_token"]
+        # Zoom returns expires_in (seconds)
+        _token_expiry = now + data.get("expires_in", 3600) - 30  # 30s safety buffer
 
-    resp = requests.post(url, auth=HTTPBasicAuth(client_id, client_secret))
-    resp.raise_for_status()
-    return resp.json()["access_token"]
+        return _token_value
 
 
 def schedule_zoom_meet(
@@ -48,7 +72,7 @@ def schedule_zoom_meet(
     Create a scheduled Zoom meeting and return its join_url.
     """
     token = get_zoom_access_token()
-    url   = f"{ZOOM_API_BASE}/users/{ZOOM_HOST_USER}/meetings"
+    url   = f"{_API_BASE}/users/{_HOST_USER}/meetings"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type":  "application/json"
@@ -67,6 +91,6 @@ def schedule_zoom_meet(
         }
     }
 
-    resp = requests.post(url, headers=headers, json=payload)
+    resp = requests.post(url, headers=headers, json=payload, timeout=10)
     resp.raise_for_status()
     return resp.json().get("join_url")

@@ -477,11 +477,12 @@ class Candidate(models.Model):
         db_column="Req_id_fk"
     )
 
-    Name = models.CharField(max_length=191)
+    candidate_first_name = models.CharField(max_length=100)
+    candidate_last_name = models.CharField(max_length=100)
     Email = models.CharField(max_length=191)
     Resume = models.TextField(null=True, blank=True)
-    CoverLetter = models.TextField(null=True, blank=True)  # ✅ New
-    Source = models.CharField(max_length=100, null=True, blank=True)  # ✅ New
+    CoverLetter = models.TextField(null=True, blank=True)
+    Source = models.CharField(max_length=100, null=True, blank=True)
     Final_rating = models.IntegerField(null=True, blank=True)
     Feedback = models.TextField(null=True, blank=True)
     Result = models.CharField(max_length=50, null=True, blank=True)
@@ -493,7 +494,9 @@ class Candidate(models.Model):
         db_table = 'candidates'
 
     def __str__(self):
-        return f"{self.CandidateID} - {self.Name}"
+        return f"{self.CandidateID} - {self.candidate_first_name} {self.candidate_last_name}"
+
+
 
 
 class CandidateReview(models.Model):
@@ -799,21 +802,80 @@ class Approver(models.Model):
         ('COO', 'COO'),
     ]
 
-    hiring_plan = models.ForeignKey(HiringPlan, to_field='hiring_plan_id',on_delete=models.CASCADE)
+    APPROVER_STATUS_CHOICES = [
+        ('Yes', 'Yes'),
+        ('Maybe', 'Maybe'),
+        ('NA', 'Not Applicable'),
+    ]
+    id = models.AutoField(primary_key=True)  
+    hiring_plan = models.ForeignKey(HiringPlan, to_field='hiring_plan_id', on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     email = models.EmailField()
     contact_number = models.CharField(max_length=15, blank=True, null=True)
     job_title = models.CharField(max_length=100)
+    set_as_approver = models.CharField(max_length=10, choices=APPROVER_STATUS_CHOICES, default='NA')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.role})"
 
     class Meta:
-        db_table = 'approver'  # optional: use custom table name
+        db_table = 'approver'
         managed = False
+
+
+class CandidateApproval(models.Model):
+    candidate = models.ForeignKey(
+        Candidate,
+        on_delete=models.CASCADE,
+        related_name="approval_records"
+    )
+
+    approver = models.ForeignKey(
+        Approver,
+        on_delete=models.CASCADE,
+        related_name="candidate_reviews",
+        db_column="approver_id"
+    )
+
+    role = models.CharField(
+        max_length=20,
+        choices=Approver.ROLE_CHOICES
+    )
+
+    decision = models.CharField(
+        max_length=20,
+        choices=[
+            ("Approved", "Approved"),
+            ("Rejected", "Rejected"),
+            ("Awaiting", "Awaiting")
+        ],
+        default="Awaiting"
+    )
+
+    comment = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    reviewed_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    assigned_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        db_table = "candidate_approval"
+        unique_together = ("candidate", "approver", "role")
+
+    def __str__(self):
+        return f"{self.candidate} → {self.approver} [{self.role}] - {self.decision}"
+
 
 class ApprovalStatus(models.Model):
     STATUS_CHOICES = [
@@ -867,3 +929,33 @@ class ConfigScoreCard(models.Model):
         db_table = 'config_score_card'
         managed = False
 
+
+class InterviewPlanner(models.Model):
+    interview_plan_id = models.AutoField(primary_key=True)
+    # interview_plan_id = models.CharField(max_length=50,blank=True)
+    hiring_plan_id = models.CharField(max_length=50,blank=True)
+    requisition_id = models.CharField(max_length=50,blank=True)
+    dead_line_days = models.IntegerField(default=0)
+    offer_decline = models.IntegerField(default=0)
+    working_hours_per_day = models.IntegerField(default=0)
+    no_of_roles_to_hire = models.IntegerField(default=0)
+    conversion_ratio = models.IntegerField(default=0)
+    elimination = models.IntegerField(default=0)
+    avg_interviewer_time_per_week_hrs = models.IntegerField(default=0)
+    interview_round = models.IntegerField(default=0)
+    interview_time_per_round = models.IntegerField(default=0)
+    interviewer_leave_days = models.IntegerField(default=0)
+    no_of_month_interview_happens = models.IntegerField(default=0)
+    working_hrs_per_week = models.IntegerField(default=0)
+    required_candidate = models.IntegerField(default=0)
+    decline_adjust_count = models.FloatField(default=0)
+    total_candidate_pipline = models.FloatField(default=0)
+    total_interviews_needed = models.FloatField(default=0)
+    total_interview_hrs = models.FloatField(default=0)
+    total_interview_weeks = models.FloatField(default=0)
+    no_of_interviewer_need = models.FloatField(default=0)
+    leave_adjustment = models.FloatField(default=0)
+
+    class Meta:
+        db_table = 'job_interview_planning'
+        managed = False

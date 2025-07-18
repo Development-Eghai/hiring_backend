@@ -1,6 +1,6 @@
 from datetime import datetime
 from rest_framework import serializers
-from .models import Approver, AssetDetails, Benefit, Candidate, CandidateInterviewStages, CandidateReference, CandidateReview, CandidateSubmission, Candidates, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
+from .models import Approver, AssetDetails, Benefit, Candidate, CandidateInterviewStages, CandidateReference, CandidateReview, CandidateSubmission, Candidates, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
 from .models import CommunicationSkills,InterviewRounds,HiringPlan
@@ -536,7 +536,8 @@ class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
     # interview_stages = serializers.SerializerMethodField()
     Req_ID = serializers.SerializerMethodField()
     Candidate_Id = serializers.SerializerMethodField()
-    Candidate_Name = serializers.SerializerMethodField()
+    Candidate_First_Name = serializers.SerializerMethodField()
+    Candidate_Last_Name = serializers.SerializerMethodField()
     Applied_Position = serializers.SerializerMethodField()
     Time_in_Stage = serializers.SerializerMethodField()
     JD_From_applied_Position = serializers.SerializerMethodField()
@@ -549,18 +550,32 @@ class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
     Source = serializers.SerializerMethodField()
     Score = serializers.SerializerMethodField()
     Phone_no = serializers.SerializerMethodField()
+    Status = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Candidate
         fields = [
-            "Req_ID", "Candidate_Id", "Candidate_Name", "Applied_Position", "Time_in_Stage",
+            "Req_ID", "Candidate_Id", "Candidate_First_Name","Candidate_Last_Name", "Applied_Position", "Time_in_Stage",
             "JD_From_applied_Position", "CV_Resume", "Cover_Letter", "Candidate_current_stage",
-            "Candidate_Next_Stage", "Overall_Stage", "Final_stage", "Source","Score","Phone_no"
+            "Candidate_Next_Stage", "Overall_Stage", "Final_stage", "Source","Score","Phone_no","Status"
         ]
 
     # def get_interview_stages(self, obj):
     #     stages = CandidateInterviewStages.objects.filter(candidate_id=obj.CandidateID)
     #     return CandidateInterviewStagesSerializer(stages, many=True).data
+    def get_Status(self, obj):
+        """
+        Return the `status` of the most recent interview stage,
+        or "N/A" if none exists.
+        """
+        last_stage = (
+            CandidateInterviewStages.objects
+            .filter(candidate_id=obj.CandidateID)
+            .order_by('-interview_date')
+            .first()
+        )
+        return last_stage.status if last_stage and last_stage.status else "N/A"
 
     def get_Req_ID(self, obj):
         return obj.Req_id_fk.RequisitionID if obj.Req_id_fk else "N/A"
@@ -568,8 +583,12 @@ class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
     def get_Candidate_Id(self, obj):
         return obj.CandidateID or "N/A"
 
-    def get_Candidate_Name(self, obj):
-        return obj.Name or "N/A"
+    def get_Candidate_First_Name(self, obj):
+        return obj.candidate_first_name or "N/A"
+    
+    def get_Candidate_Last_Name(self, obj):
+        return obj.candidate_last_name or "N/A"
+
 
     def get_Applied_Position(self, obj):
         details = getattr(obj.Req_id_fk, "position_information", None)
@@ -699,6 +718,17 @@ class ApproverSerializer(serializers.ModelSerializer):
         model = Approver
         fields = '__all__'
 
+class CandidateApprovalStatusSerializer(serializers.Serializer):
+    req_id = serializers.CharField()
+    client_id = serializers.CharField()
+    client_name = serializers.CharField()
+    candidate_id = serializers.CharField()
+    candidate_first_name = serializers.CharField()
+    candidate_last_name = serializers.CharField()
+    hm_approver_status = serializers.CharField()
+    fpna_approver_status = serializers.CharField()
+    overall_status = serializers.CharField()
+
 
 class CandidateReferenceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -734,4 +764,10 @@ class ConfigScreeningTypeSerializer(serializers.ModelSerializer):
 class ConfigScoreCardSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConfigScoreCard
+        fields = '__all__'
+
+
+class InterviewPlannerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterviewPlanner
         fields = '__all__'

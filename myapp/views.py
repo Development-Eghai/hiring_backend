@@ -34,16 +34,16 @@ from rest_framework.permissions import IsAuthenticated
 
 from myapp.zoom_utils import schedule_zoom_meet
 
-from .models import ApprovalStatus, Approver, CandidateInterviewStages, CandidateReview, CandidateSubmission, \
-    ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, \
+from .models import ApprovalStatus, Approver, CandidateApproval, CandidateInterviewStages, CandidateReview, CandidateSubmission, \
+    ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, \
     InterviewReview, InterviewSchedule, Interviewer, OfferNegotiation, RequisitionDetails, StageAlertResponsibility, \
     UserDetails, UserroleDetails
 from .models import Candidate
 from .models import InterviewRounds, HiringPlan
 from .models import JobRequisition
-from .serializers import ApproverSerializer, CandidateDetailWithInterviewSerializer, CandidateInterviewStagesSerializer, \
+from .serializers import ApproverSerializer, CandidateApprovalStatusSerializer, CandidateDetailWithInterviewSerializer, CandidateInterviewStagesSerializer, \
     CandidateSubmissionSerializer, ConfigPositionRoleSerializer, ConfigScoreCardSerializer, \
-    ConfigScreeningTypeSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, \
+    ConfigScreeningTypeSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, InterviewPlannerSerializer, \
     InterviewerSerializer, JobRequisitionSerializer, JobTemplateSerializer, OfferNegotiationSerializer, \
     StageAlertResponsibilitySerializer
 from .serializers import HiringInterviewRoundsSerializer, HiringSkillsSerializer, HiringPlanSerializer
@@ -55,7 +55,8 @@ from .jwt_token import api_json_response_format
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .google_calendar import schedule_google_meet
-from datetime import timezone
+from django.utils import timezone
+
 
 from datetime import datetime
 import pytz
@@ -110,6 +111,191 @@ class ApproverCreateListView(generics.ListCreateAPIView):
                 500,
                 {}
             ), status=200)
+
+    def put(self, request, *args, **kwargs):
+        try:
+            approver_id = request.data.get('id')
+            approver = Approver.objects.get(id=approver_id)
+            serializer = self.get_serializer(approver, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(api_json_response_format(
+                True,
+                "Approver updated successfully!",
+                200,
+                serializer.data
+            ), status=200)
+        except Approver.DoesNotExist:
+            return Response(api_json_response_format(
+                False,
+                "Approver not found.",
+                404,
+                {}
+            ), status=200)
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Error updating approver. {str(e)}",
+                500,
+                {}
+            ), status=200)
+
+    def delete(self, request, *args, **kwargs):
+        try:
+            approver_id = request.data.get('id')
+            approver = Approver.objects.get(id=approver_id)
+            approver.delete()
+            return Response(api_json_response_format(
+                True,
+                "Approver deleted successfully!",
+                200,
+                {}
+            ), status=200)
+        except Approver.DoesNotExist:
+            return Response(api_json_response_format(
+                False,
+                "Approver not found.",
+                404,
+                {}
+            ), status=200)
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Error deleting approver. {str(e)}",
+                500,
+                {}
+            ), status=200)
+        
+
+def compute_overall_status(approvals):
+    decisions = [a.decision for a in approvals if a]
+
+    if not decisions or all(d == "Awaiting" for d in decisions):
+        return "Awaiting Approval"
+    elif "Rejected" in decisions:
+        return "Rejected"
+    elif all(d == "Approved" for d in decisions):
+        return "Fully Approved"
+    elif any(d == "Approved" for d in decisions):
+        return "Partially Approved"
+    else:
+        return "Pending Review"
+
+
+
+class CandidateApprovalStatusView(APIView):
+    
+    def post(self, request):
+        try:
+            req_id = request.data.get('req_id')
+            if not req_id:
+                raise ValueError("Missing req_id in request")
+
+            candidates = Candidate.objects.filter(Req_id_fk=req_id)
+            results = []
+
+            for candidate in candidates:
+                requisition = candidate.Req_id_fk
+                details = getattr(requisition, 'position_information', None)
+
+                approvals = CandidateApproval.objects.filter(candidate=candidate)
+                hm_approval = approvals.filter(role='HM').first()
+                fpna_approval = approvals.filter(role='FPNA').first()
+
+                results.append({
+                    "req_id": requisition.RequisitionID,
+                    "client_name": details.company_client_name if details else "",
+                    "client_id": details.client_id if details else "",
+                    "candidate_id": candidate.CandidateID,
+                    "candidate_first_name": candidate.candidate_first_name,
+                    "candidate_last_name": candidate.candidate_last_name,
+                    "hm_approver_status": hm_approval.decision if hm_approval else "Awaiting",
+                    "fpna_approver_status": fpna_approval.decision if fpna_approval else "Awaiting",
+                    "overall_status": compute_overall_status(approvals)
+                })
+
+            serializer = CandidateApprovalStatusSerializer(results, many=True)
+            return Response(api_json_response_format(
+                True,
+                "Candidate approval status retrieved!",
+                200,
+                serializer.data
+            ), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Error retrieving approval status. {str(e)}",
+                500,
+                []
+            ), status=200)
+
+    def put(self, request):
+        try:
+            candidate_id = request.data.get("candidate_id")
+            role_id = request.data.get("role_id")  # 1 for HM, 3 for FPNA
+            decision = request.data.get("decision")
+            comment = request.data.get("comment", "")
+
+            if not candidate_id or not role_id or not decision:
+                raise ValueError("Missing candidate_id, role_id, or decision")
+
+            role_map = {
+                1: "HM",
+                3: "FPNA"
+            }
+            role = role_map.get(int(role_id))
+            if not role:
+                raise ValueError("Invalid role_id")
+
+            candidate = Candidate.objects.get(pk=candidate_id)
+            approval = CandidateApproval.objects.filter(candidate=candidate, role=role).first()
+
+            if not approval:
+                return Response(api_json_response_format(
+                    False,
+                    f"No approval record found for role '{role}' and candidate ID {candidate_id}",
+                    404,
+                    {}
+                ), status=200)
+
+            approval.decision = decision
+            approval.comment = comment
+            approval.reviewed_at = timezone.now()
+            approval.save()
+
+            all_approvals = CandidateApproval.objects.filter(candidate=candidate)
+            overall_status = compute_overall_status(all_approvals)
+
+            return Response(api_json_response_format(
+                True,
+                f"{role} decision updated successfully",
+                200,
+                {
+                    "candidate_id": candidate.CandidateID,
+                    "role": role,
+                    "decision": approval.decision,
+                    "comment": approval.comment,
+                    "reviewed_at": approval.reviewed_at,
+                    "overall_status": overall_status
+                }
+            ), status=200)
+
+        except Candidate.DoesNotExist:
+            return Response(api_json_response_format(
+                False,
+                "Candidate not found",
+                404,
+                {}
+            ), status=200)
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Error updating approval decision: {str(e)}",
+                500,
+                {}
+            ), status=200)
+
 
 
 class ApproverFilterView(APIView):
@@ -704,6 +890,34 @@ class ResumeAccessView(APIView):
         except Exception as e:
             return Response(api_json_response_format(False, f"Error fetching resume details. {str(e)}", 500, {}), status=200)
 
+
+class CandidateDeleteView(APIView):
+    def delete(self, request):
+        try:
+            candidate_id = request.data.get("candidate_id")
+
+            if not candidate_id:
+                return Response(api_json_response_format(
+                    False, "Missing candidate_id in request body", 400, {}
+                ), status=200)
+
+            candidate = Candidate.objects.filter(CandidateID=candidate_id).first()
+            if not candidate:
+                return Response(api_json_response_format(
+                    False, "Candidate not found", 404, {}
+                ), status=200)
+
+            candidate.delete()
+            return Response(api_json_response_format(
+                True, "Candidate deleted successfully", 200, {}
+            ), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(
+                False, f"Error deleting candidate: {str(e)}", 500, {}
+            ), status=200)
+
+
 class CandidateUpdateView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
@@ -825,6 +1039,8 @@ class CandidateAllRequisitionsView(APIView):
 
         except Exception as e:
             return Response(api_json_response_format(False, f"Error fetching all candidate data. {str(e)}", 500, {}), status=200)
+
+
 
 
 class CandidateInterviewDetailView(APIView):
@@ -1192,22 +1408,22 @@ class CandidateScreeningView(APIView):
         final_feedback = request.data.get("final_feedback")
         result = request.data.get("result")
 
-        review_instances = []
-        for review in reviews_data:
-            review_instances.append(
-                CandidateReview(
-                    CandidateID=candidate,
-                    ParameterDefined=review.get("ParameterDefined"),
-                    Guidelines=review.get("Guidelines"),
-                    MinimumQuestions=review.get("MinimumQuestions"),
-                    ActualRating=review.get("ActualRating"),
-                    Feedback=review.get("Feedback")
-                )
+        review_instances = [
+            CandidateReview(
+                CandidateID=candidate,
+                ParameterDefined=review.get("ParameterDefined"),
+                Guidelines=review.get("Guidelines"),
+                MinimumQuestions=review.get("MinimumQuestions"),
+                ActualRating=review.get("ActualRating"),
+                Feedback=review.get("Feedback")
             )
+            for review in reviews_data
+        ]
 
         try:
             with transaction.atomic():
                 CandidateReview.objects.bulk_create(review_instances)
+
                 if final_rating is not None:
                     candidate.Final_rating = final_rating
                 if final_feedback:
@@ -1215,6 +1431,21 @@ class CandidateScreeningView(APIView):
                 if result:
                     candidate.Result = result
                 candidate.save()
+
+                # 🔁 Insert CandidateApproval records for assigned approvers
+                hiring_plan_id = candidate.Req_id_fk.Planning_id.hiring_plan_id
+                approvers = Approver.objects.filter(hiring_plan_id=hiring_plan_id, set_as_approver__in=["Yes", "Maybe"])
+
+                approval_instances = [
+                    CandidateApproval(
+                        candidate=candidate,
+                        approver=approver,
+                        role=approver.role,
+                        decision="Awaiting"
+                    )
+                    for approver in approvers
+                ]
+                CandidateApproval.objects.bulk_create(approval_instances)
 
             return Response(api_json_response_format(
                 True, "Screening data submitted successfully", 200, {}
@@ -1880,10 +2111,49 @@ class ResetPasswordView(APIView):
                 500,
                 {}
             ), status=200)
-    
+        
 class InterviewPlannerCalculation(APIView):
+    def get(self, request):
+        try:   
+            plan_id = request.data.get('plan_id')
+            req_id = request.data.get('req_id') 
+            if plan_id and req_id:
+                filters = {}
+                if plan_id:
+                    filters['hiring_plan_id'] = plan_id
+                if req_id:
+                    filters['requisition_id'] = req_id
+
+                queryset = InterviewPlanner.objects.filter(**filters)
+                serializer = InterviewPlannerSerializer(queryset, many=True)            
+                return Response(api_json_response_format(True,"Interview planning calculation",200,serializer.data), status=200)
+            else:
+                excluded_plan_ids = InterviewPlanner.objects.values_list('hiring_plan_id', flat=True)            
+                filtered_overview = HiringPlan.objects.exclude(hiring_plan_id__in=excluded_plan_ids).values_list('hiring_plan_id', flat=True)            
+                return Response(api_json_response_format(True,"Hiring Plan ID ",0,{"plan_id":filtered_overview}), status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(api_json_response_format(False,"Error in interview planning calculation get method "+str(e),500,{}), status=status.HTTP_200_OK)
+
+
+
     def post(self, request):
         try:
+            plan_id = request.data.get('plan_id')
+            req_id = request.data.get('req_id')
+            if not plan_id:
+                    return Response(api_json_response_format(False,"plan_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200)
+            if not req_id:
+                return Response(api_json_response_format(False,"req_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200) 
+            filters = {}
+            if plan_id:
+                filters['hiring_plan_id'] = plan_id
+            if req_id:
+                filters['requisition_id'] = req_id
+
+            queryset = InterviewPlanner.objects.filter(**filters)
+            if queryset.exists():
+                    return Response(api_json_response_format(True, "Already Bandwidth created "+plan_id+" and "+req_id+" ", status.HTTP_200_OK, {}), status=200)
+            
             dead_line_days = int(request.data.get('dead_line_days'))
             offer_decline = int(request.data.get('offer_decline'))
             working_hours_per_day = int(request.data.get('working_hours_per_day'))
@@ -1898,24 +2168,34 @@ class InterviewPlannerCalculation(APIView):
             working_hrs_per_week = int(request.data.get('working_hrs_per_week'))
 
             required_candidate = int(no_of_roles_to_hire * conversion_ratio)
-            decline_adjust_count = ((required_candidate * offer_decline) / 100)
-            total_candidate_pipline = (required_candidate + decline_adjust_count)
-            total_interviews_needed = (total_candidate_pipline * interview_round)
-            total_interview_hrs = (total_interviews_needed * interview_time_per_round)
-            total_interview_weeks = (total_interview_hrs / working_hrs_per_week)
-            no_of_interviewer_need = (total_interview_hrs / dead_line_days)
+            decline_adjust_count = (required_candidate * offer_decline) / 100
+            total_candidate_pipline = required_candidate + decline_adjust_count
+            total_interviews_needed = total_candidate_pipline * interview_round
+            total_interview_hrs = total_interviews_needed * interview_time_per_round
+            total_interview_weeks = total_interview_hrs / working_hrs_per_week
+            no_of_interviewer_need = total_interview_hrs / dead_line_days
             leave_adjustment = round(
                 no_of_interviewer_need + (
                     ((interviewer_leave_days * avg_interviewer_time_per_week_hrs) /
                      (dead_line_days * working_hours_per_day)) * no_of_interviewer_need
                 )
-            )
-
-            return Response(api_json_response_format(
-                True,
-                "Interview planning calculation completed.",
-                200,
-                {
+            )    
+                 
+            data = request.data.copy()  
+            data["hiring_plan_id"] = plan_id    
+            data["requisition_id"] = req_id
+            data["required_candidate"] = required_candidate
+            data["decline_adjust_count"] = decline_adjust_count
+            data["total_candidate_pipline"] = total_candidate_pipline
+            data["total_interviews_needed"] = total_interviews_needed
+            data["total_interview_hrs"] = total_interview_hrs
+            data["total_interview_weeks"] = total_interview_weeks
+            data["no_of_interviewer_need"] = no_of_interviewer_need
+            data["leave_adjustment"] = leave_adjustment             
+            serializer = InterviewPlannerSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                interview_plan_data = {
                     "required_candidate": required_candidate,
                     "decline_adjust_count": decline_adjust_count,
                     "total_candidate_pipline": total_candidate_pipline,
@@ -1926,14 +2206,102 @@ class InterviewPlannerCalculation(APIView):
                     "no_of_interviewer_need": no_of_interviewer_need,
                     "leave_adjustment": leave_adjustment
                 }
-            ), status=200)
+                return Response(api_json_response_format(True,"Interview planning calculation completed.",201,interview_plan_data), status=200)
+
+            return Response(api_json_response_format(True,"Interview planning calculation completed.",201,{
+                    "required_candidate": required_candidate,
+                    "decline_adjust_count": decline_adjust_count,
+                    "total_candidate_pipline": total_candidate_pipline,
+                    "total_interviews_needed": total_interviews_needed,
+                    "total_interview_hrs": total_interview_hrs,
+                    "working_hrs_per_week": working_hrs_per_week,
+                    "total_interview_weeks": total_interview_weeks,
+                    "no_of_interviewer_need": no_of_interviewer_need,
+                    "leave_adjustment": leave_adjustment
+                }
+            ), status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            return Response(api_json_response_format(
-                False,
-                "Error during interview planning calculation.",500,
-                {}
-            ), status=200)
+            return Response(api_json_response_format(False,"Error in interview planning calculation post method "+str(e),500,{}), status=status.HTTP_200_OK)
+
+    def put(self, request):
+        try:
+            plan_id = request.data.get('plan_id')
+            req_id = request.data.get('req_id')            
+            
+            try:
+                if not plan_id:
+                        return Response(api_json_response_format(False,"plan_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200)
+                if not req_id:
+                    return Response(api_json_response_format(False,"req_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200) 
+                filters = {}
+                if plan_id:
+                    filters['hiring_plan_id'] = plan_id
+                if req_id:
+                    filters['requisition_id'] = req_id
+
+                queryset = InterviewPlanner.objects.filter(**filters)
+                
+            except InterviewPlanner.DoesNotExist:
+                return Response(api_json_response_format(False,"No matching for plan_id,req_id.",404,{}), status=200)            
+            for obj in queryset:
+                serializer = InterviewPlannerSerializer(obj, data=request.data, partial=True)
+                if serializer.is_valid():            
+                    serializer.save()  
+                    result_data = serializer.data
+                else:
+                    return Response(api_json_response_format(False,"error "+str(serializer.errors),400,{}), status=200)
+
+                return Response(api_json_response_format(True,"interview planning calculation updated successfully.",200,result_data), status=200)
+            return Response(api_json_response_format(False,"could not update interview planning calculation.",400,{"errors": serializer.errors}), status=200)
+        except Exception as error:
+            return Response(api_json_response_format(False,"could not update interview planning calculation."+str(error),500,{}), status=200)
+
+    def delete(self, request):
+        try:
+            plan_id = request.data.get('plan_id')
+            req_id = request.data.get('req_id')            
+            if not plan_id:
+                return Response(api_json_response_format(False,"plan_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200)
+            if not req_id:
+                return Response(api_json_response_format(False,"req_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200)
+            
+            filters = {}
+            if plan_id:
+                filters['hiring_plan_id'] = plan_id
+            if req_id:
+                filters['requisition_id'] = req_id
+
+            queryset = InterviewPlanner.objects.filter(**filters)
+            queryset.delete()            
+            return Response(api_json_response_format(True,"Record deleted successfully.",200,{}), status=200)             
+        except Exception as error:
+            return Response(api_json_response_format(False,"Could not delete data ."+str(error),500,{}), status=204)
+ 
+
+
+class InterviewerBandwidthDashboard(APIView):
+    def post(self, request):
+        try:           
+            fields = request.data.get('filed_names', ["hiring_plan_id","requisition_id","leave_adjustment"])
+            if not isinstance(fields, list):
+                return Response({"error": "fields must be a list"}, status=400)
+            
+            model_fields = [f.name for f in InterviewPlanner._meta.fields]
+            for field in fields:
+                if field not in model_fields:
+                    return Response({"error": f"Invalid field: {field}"}, status=400)            
+            queryset = InterviewPlanner.objects.all()            
+            result = []
+            for obj in queryset:
+                row = {field: getattr(obj, field) for field in fields}
+                result.append(row)
+            return Response(api_json_response_format(True,"Interviewer Bandwidth Dashboard ",200,result), status=200)            
+
+        except Exception as e:
+            return Response(api_json_response_format(False,"Error in Interviewer Bandwidth Dashboard post method "+str(e),500,{}), status=status.HTTP_200_OK)
+
+
 
 class ManageRequisitionView(APIView):
     def post(self, request):
