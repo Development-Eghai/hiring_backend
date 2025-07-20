@@ -14,7 +14,7 @@ LOCAL_DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "media", "resumes")
 os.makedirs(LOCAL_DOWNLOAD_FOLDER, exist_ok=True)
 
 # 📄 Resume to process
-resume_filename = "Anurag Cv.pdf"
+resume_filename = "Resume_Vinay_J.pdf"
 local_resume_path = os.path.join(LOCAL_DOWNLOAD_FOLDER, resume_filename)
 
 # 🌐 SCP download from server
@@ -49,46 +49,61 @@ def extract_text_from_pdf(file_path):
 def get_matching_score(job_description, resume_text, resume_name):
     prompt = f"""
     You are an AI-powered resume analysis agent.
-    Given a job description, analyze resumes for relevance and extract key details.
+    Given a job description and resume content, extract relevance score and candidate contact info.
 
     Return ONLY this JSON:
     {{
         "resume_name": "{resume_name}",
         "percentage": 90,
-        "name": "[Candidate Full Name]",
+        "candidate_first_name": "[First Name]",
+        "candidate_last_name": "[Last Name]",
         "email": "[Candidate Email Address]",
         "phone": "[Phone Number]"
     }}
 
-    Do NOT include additional analysis.
+    Do NOT include any extra commentary or formatting.
 
-    Job Description: {job_description}
-    Resume Text: {resume_text[:2000]}
+    Job Description:
+    {job_description}
+
+    Resume Text:
+    {resume_text[:2000]}
     """
+
     ai_output = ollama_model.invoke(prompt)
-    name, email, phone = extract_candidate_info(ai_output, resume_text)
-    return ai_output.strip(), name, email, phone
+    first_name, last_name, email, phone = extract_candidate_info(ai_output, resume_text)
+    return ai_output.strip(), first_name, last_name, email, phone
+
 
 # 🛠️ Extract from AI output or fallback regex
 def extract_candidate_info(ai_output, fallback_text):
     try:
-        name = re.search(r'"name":\s*"([^"]+)"', ai_output)
+        first_name = re.search(r'"candidate_first_name":\s*"([^"]+)"', ai_output)
+        last_name = re.search(r'"candidate_last_name":\s*"([^"]+)"', ai_output)
         email = re.search(r'"email":\s*"([^"]+)"', ai_output)
         phone = re.search(r'"phone":\s*"([^"]+)"', ai_output)
-        if name and email and phone:
-            return name.group(1), email.group(1), phone.group(1)
+
+        if first_name and last_name and email and phone:
+            return (
+                first_name.group(1).strip(),
+                last_name.group(1).strip(),
+                email.group(1).strip(),
+                phone.group(1).strip()
+            )
     except Exception as e:
         print("Parse error:", e)
 
-    name_fallback = re.search(r"Name:\s*(.*)", fallback_text)
+    # 🔁 Fallback regex if AI output fails
+    name_fallback = re.search(r"Name:\s*(\w+)\s*(\w*)", fallback_text)
     email_fallback = re.search(r"Email:\s*([\w\.-]+@[\w\.-]+)", fallback_text)
     phone_fallback = re.search(r"Phone:\s*([\+]?[\d\s\-\(\)]+)", fallback_text)
 
-    name = name_fallback.group(1).strip() if name_fallback else "Unknown"
+    first_name = name_fallback.group(1) if name_fallback else "Unknown"
+    last_name = name_fallback.group(2) if name_fallback and name_fallback.group(2) else ""
     email = email_fallback.group(1).strip() if email_fallback else "Not found"
     phone = phone_fallback.group(1).strip() if phone_fallback else "Not found"
 
-    return name, email, phone
+    return first_name, last_name, email, phone
 
 # 🚀 Main Execution
 def main():
@@ -97,7 +112,8 @@ def main():
 
     job_description = "Backend engineer skilled in Python, Django, REST APIs, and scalable systems."
     resume_text = extract_text_from_pdf(local_resume_path)
-    raw_score, name, email, phone = get_matching_score(job_description, resume_text, resume_filename)
+
+    raw_score, first_name, last_name, email, phone = get_matching_score(job_description, resume_text, resume_filename)
 
     try:
         parsed = json.loads(raw_score)
@@ -106,7 +122,7 @@ def main():
         print("⚠️ JSON parse failed:", e)
         score = 0
 
-    print(f"📊 {resume_filename}: {score}% match | Name: {name} | Email: {email} | Phone: {phone}")
+    print(f"📊 {resume_filename}: {score}% match | Name: {first_name} {last_name} | Email: {email} | Phone: {phone}")
 
     # 🔄 Update DB
     conn = mysql.connector.connect(
@@ -120,14 +136,19 @@ def main():
 
     update_cursor.execute("""
         UPDATE candidates
-        SET Score = %s, Name = %s, Email = %s, Phone_no = %s
+        SET Score = %s,
+            candidate_first_name = %s,
+            candidate_last_name = %s,
+            Email = %s,
+            Phone_no = %s
         WHERE Resume = %s
-    """, (score, name, email, phone, resume_filename))
+    """, (score, first_name, last_name, email, phone, resume_filename))
 
     conn.commit()
     update_cursor.close()
     conn.close()
     print("✅ Database updated successfully.")
+
 
 if __name__ == "__main__":
     main()

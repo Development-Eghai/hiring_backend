@@ -81,19 +81,60 @@ class ApproverCreateListView(generics.ListCreateAPIView):
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.get_queryset()
-            serializer = self.get_serializer(queryset, many=True)
+            if not queryset:
+                return Response(api_json_response_format(
+                    False,
+                    "No approvers found.",
+                    404,
+                    {}
+                ), status=200)
+
+            # 🔍 Grab shared requisition from first approver
+            first_approver = queryset[0]
+            requisition = getattr(first_approver, "requisition", None)
+
+            # 🎯 Extract requisition details
+            req_id = requisition.RequisitionID if requisition else "Unknown"
+            planning_id = requisition.Planning_id.hiring_plan_id if requisition and requisition.Planning_id else ""
+            client_name = requisition.company_client_name if requisition else ""
+            client_id = requisition.client_id if requisition else ""
+
+            # 🧩 Serialize approvers (flat fields only)
+            approvers_data = [
+                {
+                    "role": approver.role,
+                    "job_title": approver.job_title,
+                    "first_name": approver.first_name,
+                    "last_name": approver.last_name,
+                    "email": approver.email,
+                    "contact_number": approver.contact_number,
+                    "set_as_approver": approver.set_as_approver
+                }
+                for approver in queryset
+            ]
+
+            response_payload = {
+                "req_id": req_id,
+                "planning_id": planning_id,
+                "client_name": client_name,
+                "client_id": client_id,
+                "no_of_approvers": len(queryset),
+                "approvers": approvers_data
+            }
+
             return Response(api_json_response_format(
                 True,
                 "Approvers retrieved successfully!",
                 200,
-                serializer.data
+                response_payload
             ), status=200)
+
         except Exception as e:
             return Response(api_json_response_format(
                 False,
                 f"Error retrieving approvers. {str(e)}",
                 500,
-                []
+                {}
             ), status=200)
 
     def create(self, request, *args, **kwargs):
@@ -2432,12 +2473,20 @@ class InterviewerBandwidthDashboard(APIView):
 
                 # 🔍 Fetch job position from JobRequisition using requisition_id
                 try:
-                    print("Looking up RequisitionID:", obj.requisition_id)
-
                     requisition = JobRequisition.objects.filter(RequisitionID=obj.requisition_id).first()
-                    row["job_position"] = requisition.PositionTitle if requisition else "Not Found"
+                    if requisition:
+                        row["job_position"] = requisition.PositionTitle or "Not Provided"
+                        row["client_name"] = requisition.company_client_name or "N/A"
+                        row["client_id"] = requisition.client_id or "N/A"
+                    else:
+                        row["job_position"] = "Not Found"
+                        row["client_name"] = "Not Found"
+                        row["client_id"] = "Not Found"
                 except Exception:
                     row["job_position"] = "Error"
+                    row["client_name"] = "Error"
+                    row["client_id"] = "Error"
+
 
                 result.append(row)
 
@@ -2866,17 +2915,20 @@ class InterviewDesignScreenView(APIView):
             design_params = request.data.get("params", [])
             interview_design = request.data.copy()
 
-            interview_design["hiring_plan_id"] = interview_design.get("plan_id")
-            interview_design["requisition_id"] = interview_design.get("req_id")
-
-            # 🔍 Auto-fill position_role from JobRequisition
+            # 🔁 Extract and assign req_id + plan_id explicitly
             req_id = interview_design.get("req_id")
+            plan_id = interview_design.get("plan_id")
+
+            interview_design["hiring_plan_id"] = plan_id
+            interview_design["req_id"] = req_id  # ✅ Correct field name for model
+
+            # 🧠 Auto-fill position_role from JobRequisition
             requisition = JobRequisition.objects.filter(RequisitionID=req_id).first()
             if requisition:
                 interview_design["position_role"] = requisition.PositionTitle
 
+            # 🧹 Clean payload before serializer
             interview_design.pop("plan_id", None)
-            interview_design.pop("req_id", None)
             interview_design.pop("params", None)
 
             serializer = InterviewDesignScreenSerializer(data=interview_design)
@@ -2884,20 +2936,27 @@ class InterviewDesignScreenView(APIView):
                 instance = serializer.save()
                 interview_design_id = instance.interview_design_id
 
+                # 🧩 Enrich nested parameters
                 for obj in design_params:
                     obj["score_card"] = obj.get("score_card_name", "")
                     obj["interview_design_id"] = interview_design_id
-                    obj["hiring_plan_id"] = interview_design.get("hiring_plan_id", "")
+                    obj["hiring_plan_id"] = instance.hiring_plan_id
 
                 serializer_params = InterviewDesignParametersSerializer(data=design_params, many=True)
                 if serializer_params.is_valid():
                     serializer_params.save()
+
+                    # 🎯 Inject req_id into response
+                    response_data = serializer.data.copy()
+                    response_data["req_id"] = req_id
+
                     return Response(api_json_response_format(
                         True,
                         "Interview Design Screen Details Updated Successfully!",
                         0,
-                        serializer.data
+                        response_data
                     ))
+
                 else:
                     return Response(api_json_response_format(
                         False,
@@ -2905,6 +2964,7 @@ class InterviewDesignScreenView(APIView):
                         status.HTTP_400_BAD_REQUEST,
                         {}
                     ))
+
             else:
                 return Response(api_json_response_format(
                     False,
@@ -2912,6 +2972,7 @@ class InterviewDesignScreenView(APIView):
                     status.HTTP_400_BAD_REQUEST,
                     {}
                 ))
+
         except Exception as e:
             return Response(api_json_response_format(
                 False,
@@ -2919,6 +2980,16 @@ class InterviewDesignScreenView(APIView):
                 500,
                 {}
             ))
+
+
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Could not save Interview Design: {str(e)}",
+                500,
+                {}
+            ))
+
 
 
     def delete(self, request):
@@ -3044,13 +3115,19 @@ class InterviewScreenDashboardView(APIView):
                 )
                 score_cards = [param.score_card for param in score_card_qs]
 
+                # 🔍 Get requisition info
+                requisition = JobRequisition.objects.filter(RequisitionID=design.req_id).first()
+
                 design_screen_data = {
                     "plan_id": design.hiring_plan_id,
                     "position_role": design.position_role,
                     "tech_stacks": design.tech_stacks,
                     "screening_type": design.screening_type,
                     "interview_rounds": score_cards,
-                    "status": design.status
+                    "status": design.status,
+                    "requisition_id": design.req_id,
+                    "client_name": requisition.company_client_name if requisition else "Not Found",
+                    "client_id": requisition.client_id if requisition else "Not Found"
                 }
 
                 design_screen_dashboard_data.append(design_screen_data)
@@ -3065,6 +3142,7 @@ class InterviewScreenDashboardView(APIView):
                 api_json_response_format(False, f"Error in InterviewScreenDashboardView get method: {str(e)}", 500, {}),
                 status=200
             )
+
 @api_view(["POST"])
 def filter_candidates_dashboard(request):
     try:
