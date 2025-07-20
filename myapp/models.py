@@ -58,6 +58,7 @@ class HiringPlan(models.Model):
 class InterviewRounds(models.Model):
     id = models.AutoField(primary_key=True)
     plan_id = models.CharField(max_length=50,blank=True)
+    requisition_id = models.CharField(max_length=50, blank=True)
     round_name = models.CharField(max_length=255,blank=True)
     updt = models.DateTimeField(auto_now_add=True)
 
@@ -576,6 +577,14 @@ class InterviewSchedule(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
     meet_link = models.URLField(null=True, blank=True)
+    location = models.CharField(max_length=255, null=True, blank=True)
+    time_zone = models.CharField(max_length=50, null=True, blank=True)
+    purpose = models.CharField(max_length=255, null=True, blank=True)
+    mode = models.CharField(max_length=100, null=True, blank=True)
+    guests = models.JSONField(null=True, blank=True)
+    durations = models.CharField(max_length=50, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

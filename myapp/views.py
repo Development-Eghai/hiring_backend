@@ -33,13 +33,13 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 
 from myapp.zoom_utils import schedule_zoom_meet
-from datetime import timezone as dt_timezone
+from datetime import timedelta, timezone as dt_timezone
 
 
 
 from .models import ApprovalStatus, Approver, CandidateApproval, CandidateInterviewStages, CandidateReview, CandidateSubmission, \
     ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, \
-    InterviewReview, InterviewSchedule, Interviewer, OfferNegotiation, RequisitionDetails, StageAlertResponsibility, \
+    InterviewReview, InterviewSchedule, InterviewSlot, Interviewer, OfferNegotiation, RequisitionDetails, StageAlertResponsibility, \
     UserDetails, UserroleDetails
 from .models import Candidate
 from .models import InterviewRounds, HiringPlan
@@ -687,9 +687,11 @@ class ScheduleContextAPIView(APIView):
                 api_json_response_format(False, "Missing requisition_id", 400, {}),
                 status=200
             )
+
         try:
             instance = JobRequisition.objects.prefetch_related(
-                'candidates', 'interviewer__slots'
+                "candidates",
+                "interviewer__slots", "interviewer"
             ).get(RequisitionID=req_id)
         except JobRequisition.DoesNotExist:
             return Response(
@@ -698,14 +700,53 @@ class ScheduleContextAPIView(APIView):
             )
 
         serializer = JobRequisitionDetailSerializer(instance)
-        rounds = InterviewRounds.objects.filter(requisition_id=req_id).order_by('id')
-        round_names = [r.round_name for r in rounds]
 
-        response_data = serializer.data
-        response_data["round_names"] = round_names 
+        # 🔍 Fetch design metadata
+        design_screen = InterviewDesignScreen.objects.filter(req_id=req_id).first()
+        interview_design_id = design_screen.interview_design_id if design_screen else None
+
+        round_names = []
+        if interview_design_id:
+            design_params = InterviewDesignParameters.objects.filter(
+                interview_design_id=interview_design_id
+            ).order_by("interview_desing_params_id")
+            round_names = [param.score_card for param in design_params]
+
+        # 🧠 Compose candidate & interviewer names
+        candidate = instance.candidates.first()
+        candidate_name = f"{candidate.candidate_first_name} {candidate.candidate_last_name}" if candidate else "Not Available"
+
+        interviewer = instance.interviewer.first()
+        interviewer_name = f"{interviewer.first_name} {interviewer.last_name}" if interviewer else "Not Assigned"
+
+        # 🔁 Fetch slots from InterviewSlot for the selected interviewer
+        slots = []
+        if interviewer:
+            slot_qs = InterviewSlot.objects.filter(interviewer=interviewer).order_by("date", "start_time")[:5]
+            slots = [
+                {
+                    "date": slot.date.strftime("%Y-%m-%d"),
+                    "time": slot.start_time.strftime("%I:%M %p")
+                } for slot in slot_qs
+            ]
+
+        # 🎯 Compose payload-style response
+        response_payload = {
+            "req_id": instance.RequisitionID,
+            "planning_id": instance.Planning_id.hiring_plan_id if instance.Planning_id else "N/A",
+            "candidate_name": candidate_name,
+            "interviewer_name": interviewer_name,
+            "location": "Zoom",
+            "time_zone": "IST",
+            "durations": "30 mins",
+            "purpose": "Technical Screening",
+            "mode": interviewer.interview_mode if interviewer and interviewer.interview_mode else "Not Specified",
+            "round_name": round_names[0] if round_names else "Not Defined",
+            "schedule_slots": slots
+        }
 
         return Response(
-            api_json_response_format(True, "Fetched scheduling context successfully", 200, {"data" :response_data}),
+            api_json_response_format(True, "Fetched scheduling context successfully", 200, {"data": response_payload}),
             status=200
         )
 
@@ -714,107 +755,154 @@ class InterviewerListCreateAPIView(generics.ListCreateAPIView):
     queryset = Interviewer.objects.prefetch_related('slots').all()
     serializer_class = InterviewerSerializer
 
+    def list(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(self.get_queryset(), many=True)
+            return Response(api_json_response_format(True, "Interviewer list retrieved successfully", 200, serializer.data), status=200)
+        except Exception as e:
+            return Response(api_json_response_format(False, str(e), 500, []), status=200)
+
     def create(self, request, *args, **kwargs):
         try:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(
-                api_json_response_format(True, "Created successfully", 200, {}),
-                status=200
-            )
+            return Response(api_json_response_format(True, "Created successfully", 200, {}), status=200)
         except Exception as e:
-            return Response(
-                api_json_response_format(False, str(e), 400, {}),
-                status=200
-            )
+            return Response(api_json_response_format(False, str(e), 400, {}), status=200)
+
+    def put(self, request, *args, **kwargs):
+        try:
+            interviewer_id = request.data.get("interviewer_id")
+            if not interviewer_id:
+                return Response(api_json_response_format(False, "Missing 'id' in request body", 400, {}), status=200)
+
+            interviewer = Interviewer.objects.get(pk=interviewer_id)
+            serializer = self.get_serializer(interviewer, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(api_json_response_format(True, "Updated successfully", 200, serializer.data), status=200)
+        except Interviewer.DoesNotExist:
+            return Response(api_json_response_format(False, "Interviewer not found", 404, {}), status=200)
+        except Exception as e:
+            return Response(api_json_response_format(False, str(e), 500, {}), status=200)
+
+    def delete(self, request, *args, **kwargs):
+        try:
+            interviewer_id = request.data.get("interviewer_id")
+            if not interviewer_id:
+                return Response(api_json_response_format(False, "Missing 'id' in request body", 400, {}), status=200)
+
+            interviewer = Interviewer.objects.get(pk=interviewer_id)
+            interviewer.delete()
+            return Response(api_json_response_format(True, "Deleted successfully", 200, {}), status=200)
+        except Interviewer.DoesNotExist:
+            return Response(api_json_response_format(False, "Interviewer not found", 404, {}), status=200)
+        except Exception as e:
+            return Response(api_json_response_format(False, str(e), 500, {}), status=200)
 
 
 class ScheduleMeetView(APIView):
+    def get(self, request):
+        try:
+            schedules = InterviewSchedule.objects.select_related("candidate", "interviewer").all().order_by("-date", "-start_time")
+            result = []
+
+            for schedule in schedules:
+                result.append({
+                    "req_id": schedule.interviewer.req_id.RequisitionID if schedule.interviewer.req_id else "Not Linked",
+                    "planning_id": (
+                        schedule.candidate.Req_id_fk.Planning_id.hiring_plan_id
+                        if schedule.candidate.Req_id_fk and schedule.candidate.Req_id_fk.Planning_id else "N/A"
+                    ),
+                    "position_name": schedule.candidate.Req_id_fk.PositionTitle if schedule.candidate.Req_id_fk else "Unknown",
+                    "candidate_name": f"{schedule.candidate.candidate_first_name} {schedule.candidate.candidate_last_name}",
+                    "interviewer_name": f"{schedule.interviewer.first_name} {schedule.interviewer.last_name}",
+                    "guests": schedule.guests or [],
+                    "location": schedule.location,
+                    "time_zone": schedule.time_zone,
+                    "durations": schedule.durations,
+                    "purpose": schedule.purpose,
+                    "mode": schedule.mode,
+                    "rounds": schedule.round_name,
+                    "schedule_slots": [
+                        {
+                            "date": str(schedule.date),
+                            "time": schedule.start_time.strftime("%I:%M %p"),
+                            "guests": [guest.get("email") for guest in schedule.guests] if schedule.guests else []
+                        }
+                    ]
+                })
+
+            return Response(api_json_response_format(True, "All schedules retrieved", 200, result), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error retrieving schedule list: {str(e)}", 500, {}), status=200)
+
     def post(self, request):
         try:
-            candidate_id   = request.data.get("candidate_id")
-            interviewer_id = request.data.get("interviewer_id")
-            start_str      = request.data.get("start_datetime")
-            end_str        = request.data.get("end_datetime")
-            round_name     = request.data.get("round_name")
-            summary        = request.data.get("summary", f"{round_name} Interview")
+            payload = request.data
+            candidate_id   = payload.get("candidate_id")
+            interviewer_id = payload.get("interviewer_id")
+            round_name     = payload.get("round_name")
+            summary        = payload.get("summary", f"{round_name} Interview")
 
-            # Validate required fields
-            if None in (candidate_id, interviewer_id) or not (start_str and end_str and round_name):
-                return Response(
-                    api_json_response_format(False, "Missing required fields", 400, {}),
-                    status=200
-                )
+            slot = payload.get("schedule_slots", [{}])[0]
+            date = slot.get("date")
+            time = slot.get("time")
+            duration_raw = payload.get("durations", "30 mins")
+            duration_mins = int(duration_raw.split()[0]) if duration_raw else 30
 
-            # Parse and localize datetimes
+            if None in (candidate_id, interviewer_id) or not date or not time or not round_name:
+                return Response(api_json_response_format(False, "Missing required fields", 400, {}), status=200)
+
             tz    = pytz.timezone("Asia/Kolkata")
-            start = tz.localize(datetime.fromisoformat(start_str))
-            end   = tz.localize(datetime.fromisoformat(end_str))
+            start = tz.localize(datetime.strptime(f"{date} {time}", "%Y-%m-%d %I:%M %p"))
+            end   = start + timedelta(minutes=duration_mins)
 
-            # Compute duration in minutes
-            delta         = end - start
-            duration_mins = int(delta.total_seconds() // 60)
-
-            # Fetch your models
             candidate   = Candidate.objects.get(CandidateID=candidate_id)
             interviewer = Interviewer.objects.get(interviewer_id=interviewer_id)
+            guest_emails = [g["email"] for g in payload.get("guests", []) if "email" in g]
 
-            # Create a Zoom meeting and get join_url
-            topic     = summary
-            iso_start = start.isoformat()
-            join_url  = schedule_zoom_meet(
-                topic=topic,
-                start_time_iso=iso_start,
+            join_url = schedule_zoom_meet(
+                topic=summary,
+                start_time_iso=start.isoformat(),
                 duration_minutes=duration_mins,
                 timezone="Asia/Kolkata"
+                # guests=guest_emails
             )
 
-            # Persist the interview schedule
             InterviewSchedule.objects.create(
                 candidate=candidate,
                 interviewer=interviewer,
+                round_name=round_name,
                 date=start.date(),
                 start_time=start.time(),
                 end_time=end.time(),
-                round_name=round_name,
-                meet_link=join_url
+                meet_link=join_url,
+                location=payload.get("location"),
+                time_zone=payload.get("time_zone"),
+                purpose=payload.get("purpose"),
+                mode=payload.get("mode"),
+                guests=payload.get("guests"),
+                durations=payload.get("durations")
             )
 
-            return Response(
-                api_json_response_format(
-                    True,
-                    "Interview scheduled successfully",
-                    200,
-                    {"meet_link": join_url}
-                ),
-                status=200
-            )
+            return Response(api_json_response_format(
+                True,
+                "Interview scheduled successfully",
+                200,
+                {"meet_link": join_url}
+            ), status=200)
 
         except Candidate.DoesNotExist:
-            return Response(
-                api_json_response_format(False, "Invalid candidate_id", 400, {}),
-                status=200
-            )
+            return Response(api_json_response_format(False, "Invalid candidate_id", 400, {}), status=200)
         except Interviewer.DoesNotExist:
-            return Response(
-                api_json_response_format(False, "Invalid interviewer_id", 400, {}),
-                status=200
-            )
+            return Response(api_json_response_format(False, "Invalid interviewer_id", 400, {}), status=200)
         except ValueError as e:
-            # in case of datetime parsing errors
-            return Response(
-                api_json_response_format(False, f"Invalid datetime format: {e}", 400, {}),
-                status=200
-            )
+            return Response(api_json_response_format(False, f"Invalid datetime format: {e}", 400, {}), status=200)
         except Exception as e:
-            # includes HTTPError from Zoom or any other unexpected issue
-            return Response(
-                api_json_response_format(False, f"Failed to schedule: {e}", 500, {}),
-                status=200
-            )
-
-
+            return Response(api_json_response_format(False, f"Failed to schedule: {e}", 500, {}), status=200)
 
 
 RESUME_STORAGE_FOLDER = "media/resumes"
@@ -2387,36 +2475,80 @@ class InterviewPlannerCalculation(APIView):
 
     def put(self, request):
         try:
-            plan_id = request.data.get('plan_id')
-            req_id = request.data.get('req_id')            
-            
-            try:
-                if not plan_id:
-                        return Response(api_json_response_format(False,"plan_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200)
-                if not req_id:
-                    return Response(api_json_response_format(False,"req_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200) 
-                filters = {}
-                if plan_id:
-                    filters['hiring_plan_id'] = plan_id
-                if req_id:
-                    filters['requisition_id'] = req_id
+            interview_plan_id = request.data.get('interview_plan_id')
+            if not interview_plan_id:
+                return Response(api_json_response_format(False, "interview_plan_id is required.", status.HTTP_400_BAD_REQUEST, {}), status=200)
 
-                queryset = InterviewPlanner.objects.filter(**filters)
-                
-            except InterviewPlanner.DoesNotExist:
-                return Response(api_json_response_format(False,"No matching for plan_id,req_id.",404,{}), status=200)            
-            for obj in queryset:
-                serializer = InterviewPlannerSerializer(obj, data=request.data, partial=True)
-                if serializer.is_valid():            
-                    serializer.save()  
-                    result_data = serializer.data
-                else:
-                    return Response(api_json_response_format(False,"error "+str(serializer.errors),400,{}), status=200)
+            obj = InterviewPlanner.objects.get(interview_plan_id=interview_plan_id)
+            if not obj:
+                return Response(api_json_response_format(False, "Interview plan not found.", 404, {}), status=200)
 
-                return Response(api_json_response_format(True,"interview planning calculation updated successfully.",200,result_data), status=200)
-            return Response(api_json_response_format(False,"could not update interview planning calculation.",400,{"errors": serializer.errors}), status=200)
+            # 🧮 Perform calculations
+            dead_line_days = int(request.data.get('dead_line_days'))
+            offer_decline = int(request.data.get('offer_decline'))
+            working_hours_per_day = int(request.data.get('working_hours_per_day'))
+            no_of_roles_to_hire = int(request.data.get('no_of_roles_to_hire'))
+            conversion_ratio = int(request.data.get('conversion_ratio'))
+            avg_interviewer_time_per_week_hrs = int(request.data.get('avg_interviewer_time_per_week_hrs'))
+            interview_round = int(request.data.get('interview_round'))
+            interview_time_per_round = int(request.data.get('interview_time_per_round'))
+            interviewer_leave_days = int(request.data.get('interviewer_leave_days'))
+            working_hrs_per_week = int(request.data.get('working_hrs_per_week'))
+
+            required_candidate = int(no_of_roles_to_hire * conversion_ratio)
+            decline_adjust_count = (required_candidate * offer_decline) / 100
+            total_candidate_pipline = required_candidate + decline_adjust_count
+            total_interviews_needed = total_candidate_pipline * interview_round
+            total_interview_hrs = total_interviews_needed * interview_time_per_round
+            total_interview_weeks = total_interview_hrs / working_hrs_per_week
+            no_of_interviewer_need = total_interview_hrs / dead_line_days
+            leave_adjustment = round(
+                no_of_interviewer_need + (
+                    ((interviewer_leave_days * avg_interviewer_time_per_week_hrs) /
+                    (dead_line_days * working_hours_per_day)) * no_of_interviewer_need
+                )
+            )
+
+            update_data = request.data.copy()
+            update_data["required_candidate"] = required_candidate
+            update_data["decline_adjust_count"] = decline_adjust_count
+            update_data["total_candidate_pipline"] = total_candidate_pipline
+            update_data["total_interviews_needed"] = total_interviews_needed
+            update_data["total_interview_hrs"] = total_interview_hrs
+            update_data["total_interview_weeks"] = total_interview_weeks
+            update_data["no_of_interviewer_need"] = no_of_interviewer_need
+            update_data["leave_adjustment"] = leave_adjustment
+
+            serializer = InterviewPlannerSerializer(obj, data=update_data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(api_json_response_format(
+                    True,
+                    "Interview planning calculation updated successfully.",
+                    200,
+                    {
+                        "interview_plan_id": interview_plan_id,
+                        "required_candidate": required_candidate,
+                        "decline_adjust_count": decline_adjust_count,
+                        "total_candidate_pipline": total_candidate_pipline,
+                        "total_interviews_needed": total_interviews_needed,
+                        "total_interview_hrs": total_interview_hrs,
+                        "working_hrs_per_week": working_hrs_per_week,
+                        "total_interview_weeks": total_interview_weeks,
+                        "no_of_interviewer_need": no_of_interviewer_need,
+                        "leave_adjustment": leave_adjustment
+                    }
+                ), status=200)
+
+            return Response(api_json_response_format(False, f"Validation error: {serializer.errors}", 400, {}), status=200)
+
         except Exception as error:
-            return Response(api_json_response_format(False,"could not update interview planning calculation."+str(error),500,{}), status=200)
+            return Response(api_json_response_format(
+                False,
+                f"Error updating interview planning calculation: {str(error)}",
+                500,
+                {}
+            ), status=200)
 
     def delete(self, request):
         try:
@@ -2444,7 +2576,7 @@ class InterviewPlannerCalculation(APIView):
 class InterviewerBandwidthDashboard(APIView):
     def post(self, request):
         try:
-            fields = request.data.get('field_names', [
+            requested_fields = request.data.get('field_names', [
                 "hiring_plan_id",
                 "requisition_id",
                 "leave_adjustment",
@@ -2453,25 +2585,31 @@ class InterviewerBandwidthDashboard(APIView):
                 "no_of_roles_to_hire",
                 "interview_round",
                 "no_of_interviewer_need",
-                "required_candidate",
-                "job_position"
+                "required_candidate"
             ])
 
-            if not isinstance(fields, list):
-                return Response({"error": "field_names must be a list"}, status=400)
+            if not isinstance(requested_fields, list):
+                return Response(api_json_response_format(False, "field_names must be a list", 400, {}), status=200)
 
             model_fields = [f.name for f in InterviewPlanner._meta.fields]
-            for field in fields:
-                if field not in model_fields:
-                    return Response({"error": f"Invalid field: {field}"}, status=400)
+            allowed_virtual_fields = ["job_position", "client_name", "client_id"]
+
+            for field in requested_fields:
+                if field not in model_fields and field not in allowed_virtual_fields:
+                    return Response(api_json_response_format(False, f"Invalid field: {field}", 400, {}), status=200)
+
+            # 🔁 Append computed fields if needed
+            for virtual_field in allowed_virtual_fields:
+                if virtual_field not in requested_fields:
+                    requested_fields.append(virtual_field)
 
             queryset = InterviewPlanner.objects.all()
             result = []
 
             for obj in queryset:
-                row = {field: getattr(obj, field, None) for field in fields}
+                row = {field: getattr(obj, field, None) for field in requested_fields if field in model_fields}
 
-                # 🔍 Fetch job position from JobRequisition using requisition_id
+                # 🔍 Enrich with requisition info
                 try:
                     requisition = JobRequisition.objects.filter(RequisitionID=obj.requisition_id).first()
                     if requisition:
@@ -2487,19 +2625,12 @@ class InterviewerBandwidthDashboard(APIView):
                     row["client_name"] = "Error"
                     row["client_id"] = "Error"
 
-
                 result.append(row)
 
-            return Response(
-                api_json_response_format(True, "Interviewer Bandwidth Dashboard", 200, result),
-                status=200
-            )
+            return Response(api_json_response_format(True, "Interviewer Bandwidth Dashboard", 200, result), status=200)
 
         except Exception as e:
-            return Response(
-                api_json_response_format(False, f"Error in Interviewer Bandwidth Dashboard post method: {str(e)}", 500, {}),
-                status=status.HTTP_200_OK
-            )
+            return Response(api_json_response_format(False, f"Error in Interviewer Bandwidth Dashboard post method: {str(e)}", 500, {}), status=200)
 
 
 class ManageRequisitionView(APIView):
@@ -2990,6 +3121,86 @@ class InterviewDesignScreenView(APIView):
                 {}
             ))
 
+    def put(self, request, *args, **kwargs):
+        try:
+            interview_design_id = request.data.get("interview_design_id")
+            design_params = request.data.get("params", [])
+            interview_design = request.data.copy()
+
+            if not interview_design_id:
+                return Response(api_json_response_format(
+                    False, "interview_design_id is required.", status.HTTP_400_BAD_REQUEST, {}
+                ), status=200)
+
+            instance = InterviewDesignScreen.objects.filter(interview_design_id=interview_design_id).first()
+            if not instance:
+                return Response(api_json_response_format(
+                    False, "No matching InterviewDesignScreen found.", 404, {}
+                ), status=200)
+
+            # 🔁 Extract and assign req_id + plan_id explicitly
+            req_id = interview_design.get("req_id")
+            plan_id = interview_design.get("plan_id")
+
+            interview_design["hiring_plan_id"] = plan_id
+            interview_design["req_id"] = req_id
+
+            # 🧠 Auto-fill position_role from JobRequisition
+            requisition = JobRequisition.objects.filter(RequisitionID=req_id).first()
+            if requisition:
+                interview_design["position_role"] = requisition.PositionTitle
+
+            # 🧹 Clean payload before serializer
+            interview_design.pop("plan_id", None)
+            interview_design.pop("params", None)
+
+            serializer = InterviewDesignScreenSerializer(instance, data=interview_design, partial=True)
+            if serializer.is_valid():
+                updated_instance = serializer.save()
+
+                # 🔄 Refresh DesignParameters: delete & recreate
+                InterviewDesignParameters.objects.filter(interview_design_id=interview_design_id).delete()
+
+                for obj in design_params:
+                    obj["score_card"] = obj.get("score_card_name", "")
+                    obj["interview_design_id"] = interview_design_id
+                    obj["hiring_plan_id"] = updated_instance.hiring_plan_id
+
+                serializer_params = InterviewDesignParametersSerializer(data=design_params, many=True)
+                if serializer_params.is_valid():
+                    serializer_params.save()
+
+                    response_data = serializer.data.copy()
+                    response_data["req_id"] = req_id
+
+                    return Response(api_json_response_format(
+                        True,
+                        "Interview Design Screen Updated Successfully!",
+                        200,
+                        response_data
+                    ))
+
+                return Response(api_json_response_format(
+                    False,
+                    f"Failed to update parameters: {serializer_params.errors}",
+                    status.HTTP_400_BAD_REQUEST,
+                    {}
+                ))
+
+            return Response(api_json_response_format(
+                False,
+                f"Failed to update Interview Design: {serializer.errors}",
+                status.HTTP_400_BAD_REQUEST,
+                {}
+            ))
+
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Error updating Interview Design: {str(e)}",
+                500,
+                {}
+            ), status=200)
 
 
     def delete(self, request):
@@ -3001,6 +3212,41 @@ class InterviewDesignScreenView(APIView):
         obj.delete()
         InterviewDesignParameters.objects.filter(interview_design_id=interview_design_id).delete()
         return Response(api_json_response_format(True,"Interview Desing screen Details are deleted successfully.",200,{}), status=202)  
+
+
+@api_view(['POST'])
+def interview_design_by_id(request):
+    try:
+        interview_design_id = request.data.get("interview_design_id")
+        if not interview_design_id:
+            return Response(api_json_response_format(False, "interview_design_id is required in request body.", 400, {}), status=200)
+
+        instance = InterviewDesignScreen.objects.filter(interview_design_id=interview_design_id).first()
+        if not instance:
+            return Response(api_json_response_format(False, "Design not found.", 404, {}), status=200)
+
+        serializer = InterviewDesignScreenSerializer(instance)
+        return Response(api_json_response_format(True, "Interview design retrieved successfully.", 200, serializer.data), status=200)
+
+    except Exception as e:
+        return Response(api_json_response_format(False, f"Error retrieving interview design: {str(e)}", 500, {}), status=200)
+
+@api_view(['POST'])
+def interview_planner_by_id(request):
+    try:
+        planner_id = request.data.get("interview_plan_id")
+        if not planner_id:
+            return Response(api_json_response_format(False, "interview_plan_id is required in request body.", 400, {}), status=200)
+
+        instance = InterviewPlanner.objects.filter(interview_plan_id=planner_id).first()
+        if not instance:
+            return Response(api_json_response_format(False, "Interview Planner not found.", 404, {}), status=200)
+
+        serializer = InterviewPlannerSerializer(instance)
+        return Response(api_json_response_format(True, "Interview Planner retrieved successfully.", 200, serializer.data), status=200)
+
+    except Exception as e:
+        return Response(api_json_response_format(False, f"Error retrieving Interview Planner: {str(e)}", 500, {}), status=200)
 
       
 class StateAlertResposibilityView(APIView):
@@ -3455,6 +3701,53 @@ def client_lookup_from_plan(request):
             False, f"Error retrieving client info. {str(e)}", 500, {}
         ), status=200)
 
+@api_view(['POST'])
+def job_metadata_lookup(request):
+    try:
+        req_id = request.data.get("req_id")
+        plan_id = request.data.get("plan_id")
 
+        if not req_id:
+            return Response(api_json_response_format(
+                False, "'req_id' is required.", 400, {}
+            ), status=200)
+
+        # 🔍 Find the requisition
+        filter_kwargs = {"RequisitionID": req_id}
+        if plan_id:
+            filter_kwargs["Planning_id__hiring_plan_id"] = plan_id
+
+        requisition = JobRequisition.objects.filter(**filter_kwargs).first()
+
+        if not requisition:
+            return Response(api_json_response_format(
+                False, "No matching requisition found.", 404, {}
+            ), status=200)
+
+        # ✅ Extract hiring_plan_id from requisition (via Planning_id)
+        hiring_plan_id = requisition.Planning_id.hiring_plan_id if requisition.Planning_id else None
+
+        # 🔍 Query InterviewDesignParameters for metadata
+        design_params = InterviewDesignParameters.objects.filter(hiring_plan_id=hiring_plan_id).order_by("interview_desing_params_id")
+
+        # 💡 Map score_card = stage, screen_type = mode
+        stages = [param.score_card for param in design_params]
+        modes = [param.screen_type for param in design_params]
+
+        data = {
+            "job_position": requisition.PositionTitle or "Not Provided",
+            "interview_mode": list(set(modes)) if modes else [],
+            "interviewer_stage": list(set(stages)) if stages else []
+
+        }
+
+        return Response(api_json_response_format(
+            True, "Job metadata retrieved.", 200, data
+        ), status=200)
+
+    except Exception as e:
+        return Response(api_json_response_format(
+            False, f"Error retrieving job metadata: {str(e)}", 500, {}
+        ), status=200)
 
     

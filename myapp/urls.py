@@ -115,6 +115,12 @@ urlpatterns = [
     path("candidates/delete/", CandidateDeleteView.as_view(), name="candidate-delete"),
     path('interviewer_bandwidth_dashboard/', InterviewerBandwidthDashboard.as_view(), name='interviewer_bandwidth_dashboard'),
     path('api/client-lookup/', client_lookup_from_plan, name='client-lookup'),
+    path("api/job/metadata/", job_metadata_lookup, name="job-metadata-lookup"),
+    path("api/design/by-id/", interview_design_by_id, name="interview-design-by-id"),
+    path("api/planner/by-id/", interview_planner_by_id, name="interview-planner-by-id"),
+
+
+
 
 
 

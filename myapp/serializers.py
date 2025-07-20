@@ -534,10 +534,21 @@ class InterviewSlotSerializer(serializers.ModelSerializer):
 
 class InterviewerSerializer(serializers.ModelSerializer):
     slots = InterviewSlotSerializer(many=True)
+    client_id = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Interviewer
         fields = '__all__'
+
+    def get_client_id(self, obj):
+        job_req = JobRequisition.objects.filter(interviewer=obj).first()
+        return job_req.client_id if job_req else None
+
+    def get_client_name(self, obj):
+        job_req = JobRequisition.objects.filter(interviewer=obj).first()
+        return job_req.company_client_name if job_req else None
 
     def create(self, validated_data):
         slot_data = validated_data.pop('slots', [])
@@ -545,6 +556,23 @@ class InterviewerSerializer(serializers.ModelSerializer):
         for slot in slot_data:
             InterviewSlot.objects.create(interviewer=interviewer, **slot)
         return interviewer
+    
+    def update(self, instance, validated_data):
+        slots_data = validated_data.pop("slots", None)
+
+        # Update interviewer fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if slots_data is not None:
+            # Clear existing slots and re-create new ones (optional strategy)
+            instance.slots.all().delete()
+            for slot in slots_data:
+                InterviewSlot.objects.create(interviewer=instance, **slot)
+
+        return instance
+
 
 class CandidateInterviewStagesSerializer(serializers.ModelSerializer):
     class Meta:
@@ -657,8 +685,8 @@ class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
     
 class CandidateSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Candidates
-        fields = ['CandidateID', 'Name', 'Email']
+        model = Candidate
+        fields = '__all__'
 
 class JobRequisitionDetailSerializer(serializers.ModelSerializer):
     candidates = CandidateSerializer(many=True)
