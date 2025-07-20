@@ -6,6 +6,9 @@ import logging
 from .models import CommunicationSkills,InterviewRounds,HiringPlan
 from django.core.exceptions import ObjectDoesNotExist
 from .models import Interviewer, InterviewSlot
+from django.db.models.functions import Substr, Cast
+from django.db.models import Max, IntegerField
+
 
 logger = logging.getLogger(__name__)
   
@@ -101,10 +104,11 @@ class JobRequisitionSerializerget(serializers.ModelSerializer):
     def get_visa_requirements(self, obj): return getattr(obj.Planning_id, "visa_requirements", None)
     def get_notice_period(self, obj): return getattr(obj.Planning_id, "notice_period", None)
     def get_requisition_date(self, obj):
-        return obj.position_information.requisition_date.isoformat() if getattr(obj, "position_information", None) and obj.position_information.requisition_date else None
+        return obj.requisition_date.isoformat() if obj.requisition_date else None
+
     def get_due_requisition_date(self, obj):
-        return obj.position_information.due_requisition_date.isoformat() if getattr(obj, "position_information", None) and obj.position_information.due_requisition_date else None
-    
+        return obj.due_requisition_date.isoformat() if obj.due_requisition_date else None
+
 class BillingDetailsSerializer(serializers.ModelSerializer):
     requisition = serializers.PrimaryKeyRelatedField(
         queryset=JobRequisition.objects.all(), required=False
@@ -271,13 +275,23 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
         allow_null=True
 
     )
+    def to_internal_value(self, data):
+        # Map incoming 'client_name' ➝ model field 'company_client_name'
+        if 'client_name' in data:
+            data['company_client_name'] = data.pop('client_name')
+        return super().to_internal_value(data)
+
+    client_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    requisition_date = serializers.DateField(required=False)
+    due_requisition_date = serializers.DateField(required=False)
+
 
     position_information = RequisitionDetailsSerializer(required=False)
     billing_details = BillingDetailsSerializer(required=False)
     posting_details = PostingDetailsSerializer(required=False)
     asset_details = AssetDetailsSerializer(required=False)
-    requisition_questions = RequisitionQuestionSerializer(many=True, read_only=True)
-    requisition_competencies = RequisitionCompetencySerializer(many=True, read_only=True)
+    # requisition_questions = RequisitionQuestionSerializer(many=True, read_only=True)
+    # requisition_competencies = RequisitionCompetencySerializer(many=True, read_only=True)
 
 
     class Meta:
@@ -286,13 +300,27 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         # Generate new RequisitionID
-        last_requisition = JobRequisition.objects.order_by('-id').first()
-        new_requisition_id = (
-            f"RQ{int(last_requisition.RequisitionID.replace('RQ', '')) + 1:04d}"
-            if last_requisition and last_requisition.RequisitionID.startswith("RQ")
-            else "RQ0001"
-        )
+        max_requisition_number = JobRequisition.objects.annotate(
+            numeric_part=Cast(Substr("RequisitionID", 3), IntegerField())
+        ).aggregate(max_id=Max("numeric_part"))["max_id"]
+
+        next_number = (max_requisition_number or 0) + 1
+        new_requisition_id = f"RQ{next_number:04d}"
         validated_data["RequisitionID"] = new_requisition_id
+        user_role = self.initial_data.get("user_role")
+        if not validated_data.get("Planning_id") and user_role == 1:
+            validated_data["Planning_id"] = HiringPlan.objects.filter(hiring_plan_id="PL0001").first()
+
+        if validated_data.get("company_client_name"):
+            last_client = JobRequisition.objects.exclude(client_id__isnull=True).order_by('-id').first()
+            validated_data["client_id"] = (
+                f"CL{int(str(last_client.client_id).replace('CL', '')) + 1:04d}"
+                if last_client and str(last_client.client_id).startswith("CL") and str(last_client.client_id).replace("CL", "").isdigit()
+                else "CL0001"
+            )
+        else:
+            validated_data["client_id"] = None
+
 
         # Extract nested blocks
         details_data = validated_data.pop("position_information", None)
@@ -304,8 +332,8 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
         posting_block = dict(self.initial_data.get("posting_details", {}))
 
         # Extract question & competency lists
-        questions_data = posting_block.get("questions", [])
-        competencies_data = posting_block.get("competencies") or posting_block.get("Competencies", [])
+        # questions_data = posting_block.get("questions", [])
+        # competencies_data = posting_block.get("competencies") or posting_block.get("Competencies", [])
 
         # Normalize competency fields
         def normalize_competency_keys(raw):
@@ -358,21 +386,6 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
 
         if asset_data:
             AssetDetails.objects.create(requisition=job_requisition, **asset_data)
-
-        # ✅ Insert each question
-        for q in questions_data:
-            question_obj = {
-                "question": q.get("Question") or q.get("question"),
-                "required": q.get("Required") or q.get("required"),
-                "disqualifier": q.get("Disqualifier") or q.get("disqualifier"),
-                "score": q.get("Score") or q.get("score"),
-                "weight": q.get("Weight") or q.get("weight")
-            }
-            RequisitionQuestion.objects.create(requisition=job_requisition, **question_obj)
-
-        # ✅ Insert each competency
-        for c in competencies_data:
-            RequisitionCompetency.objects.create(requisition=job_requisition, **normalize_competency_keys(c))
 
         return job_requisition
 
@@ -428,12 +441,12 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
                 "weight": raw.get("Weight") or raw.get("weight"),
             }
 
-        questions_data = normalize_list(posting_block.get("questions", []))
-        competencies_raw = normalize_list(posting_block.get("competencies", []) or posting_block.get("Competencies", []))
-        competencies_data = [normalize_competency_keys(c) for c in competencies_raw]
+        # questions_data = normalize_list(posting_block.get("questions", []))
+        # competencies_raw = normalize_list(posting_block.get("competencies", []) or posting_block.get("Competencies", []))
+        # competencies_data = [normalize_competency_keys(c) for c in competencies_raw]
 
-        interview_data = posting_block.get("interview_teammate") or posting_block.get("interview_team", [])
-        teams_data = posting_block.get("teams", [])
+        # interview_data = posting_block.get("interview_teammate") or posting_block.get("interview_team", [])
+        # teams_data = posting_block.get("teams", [])
 
         # 🧱 Update main model fields
         for attr, value in validated_data.items():
@@ -442,6 +455,12 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
 
         # 👤 Update one-to-one blocks
         if details_data:
+            if billing_data:
+                details_data["contract_start_date"] = billing_data.get("contract_start_date")
+                details_data["contract_end_date"] = billing_data.get("contract_end_date")
+                details_data["requisition_date"] = billing_data.get("billing_start_date")
+                details_data["due_requisition_date"] = billing_data.get("billing_end_date")
+
             if hasattr(instance, "position_information"):
                 for attr, value in details_data.items():
                     setattr(instance.position_information, attr, value)
@@ -474,21 +493,21 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
                 AssetDetails.objects.create(requisition=instance, **asset_data)
 
         # 🔄 Refresh related tables
-        instance.requisition_questions.all().delete()
-        for q in questions_data:
-            RequisitionQuestion.objects.create(requisition=instance, **q)
+        # instance.requisition_questions.all().delete()
+        # for q in questions_data:
+        #     RequisitionQuestion.objects.create(requisition=instance, **q)
 
-        instance.requisition_competencies.all().delete()
-        for c in competencies_data:
-            RequisitionCompetency.objects.create(requisition=instance, **c)
+        # instance.requisition_competencies.all().delete()
+        # for c in competencies_data:
+        #     RequisitionCompetency.objects.create(requisition=instance, **c)
 
-        instance.interview_team.all().delete()
-        for i in interview_data:
-            InterviewTeam.objects.create(requisition=instance, **i)
+        # instance.interview_team.all().delete()
+        # for i in interview_data:
+        #     InterviewTeam.objects.create(requisition=instance, **i)
 
-        instance.teams.all().delete()
-        for t in teams_data:
-            Teams.objects.create(requisition=instance, **t)
+        # instance.teams.all().delete()
+        # for t in teams_data:
+        #     Teams.objects.create(requisition=instance, **t)
 
         return instance
 
@@ -714,20 +733,27 @@ class OfferNegotiationSerializer(serializers.ModelSerializer):
         return instance
     
 class ApproverSerializer(serializers.ModelSerializer):
+    def to_internal_value(self, data):
+        if 'role' in data:
+            role_map = {v: k for k, v in Approver.ROLE_CHOICES}
+            data['role'] = role_map.get(data['role'], data['role'])
+        return super().to_internal_value(data)
     class Meta:
         model = Approver
         fields = '__all__'
 
 class CandidateApprovalStatusSerializer(serializers.Serializer):
     req_id = serializers.CharField()
-    client_id = serializers.CharField()
+    client_id = serializers.CharField(allow_blank=True)
     client_name = serializers.CharField()
     candidate_id = serializers.CharField()
     candidate_first_name = serializers.CharField()
     candidate_last_name = serializers.CharField()
-    hm_approver_status = serializers.CharField()
-    fpna_approver_status = serializers.CharField()
     overall_status = serializers.CharField()
+    approval_statuses = serializers.DictField(child=serializers.CharField(), required=False)
+    no_of_approvers = serializers.IntegerField()
+    approvers = serializers.ListField(child=serializers.DictField(), required=False)
+
 
 
 class CandidateReferenceSerializer(serializers.ModelSerializer):

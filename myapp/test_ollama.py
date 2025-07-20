@@ -14,7 +14,7 @@ LOCAL_DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "media", "resumes")
 os.makedirs(LOCAL_DOWNLOAD_FOLDER, exist_ok=True)
 
 # 📄 Resume to process
-resume_filename = "NITIN BANSAL - Resume (1).pdf"
+resume_filename = "Anurag Cv.pdf"
 local_resume_path = os.path.join(LOCAL_DOWNLOAD_FOLDER, resume_filename)
 
 # 🌐 SCP download from server

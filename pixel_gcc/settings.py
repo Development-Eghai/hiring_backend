@@ -79,7 +79,7 @@ INSTALLED_APPS = [
     "pixel_gcc",
     'rest_framework_simplejwt',
     'corsheaders',
-    'rest_framework_simplejwt.token_blacklist'
+    # 'rest_framework_simplejwt.token_blacklist'
     # 'django_filters',
 ]
 

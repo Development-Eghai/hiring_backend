@@ -196,13 +196,22 @@ class UserroleDetails(models.Model):
 class JobRequisition(models.Model):
     id = models.AutoField(primary_key=True)
     RequisitionID = models.CharField(max_length=50, unique=True, db_index=True)
+    # Planning_id = models.ForeignKey(
+    # 'myapp.HiringPlan',  # Explicitly reference the app name
+    # on_delete=models.CASCADE,
+    # # to_field='hiring_plan_id',
+    # db_column="Planning_id",
+    # related_name="requisition"
+    # )
     Planning_id = models.ForeignKey(
-    'myapp.HiringPlan',  # Explicitly reference the app name
-    on_delete=models.CASCADE,
-    # to_field='hiring_plan_id',
+    'myapp.HiringPlan',
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
     db_column="Planning_id",
     related_name="requisition"
-    )
+)
+
     PositionTitle = models.CharField(max_length=191, null=True, blank=True, default="Not Provided")
     HiringManager = models.ForeignKey(UserDetails, on_delete=models.SET_NULL, null=True, db_column="HiringManagerID", related_name="requisitions")
     Recruiter = models.CharField(max_length=191, null=True, blank=True, default="Not Assigned")
@@ -210,6 +219,10 @@ class JobRequisition(models.Model):
     # Inside JobRequisition model
     LegalEntityID = models.CharField(max_length=50, null=True, blank=True, default="0")  # for legal_entry
     QualificationID = models.CharField(max_length=100, null=True, blank=True, default="B.Tech")  # for qualification
+    company_client_name = models.CharField(max_length=255, null=True, blank=True, default="")
+    client_id = models.CharField(max_length=50, null=True, blank=True, default="")
+    requisition_date = models.DateField(null=True, blank=True)
+    due_requisition_date = models.DateField(null=True, blank=True)
     Status = models.CharField(
     max_length=50,
     choices=[
@@ -795,12 +808,17 @@ class OfferNegotiationBenefit(models.Model):
 
 class Approver(models.Model):
     ROLE_CHOICES = [
-        ('HM', 'Hiring Manager'),
-        ('FPNA', 'FPNA/Business Ops'),
-        ('HR', 'HR/Recruitment Head'),
-        ('CEO', 'CEO'),
-        ('COO', 'COO'),
-    ]
+    ('HM', 'Hiring Manager'),
+    ('FPNA', 'FPNA/Business Ops'),
+    ('HR', 'HR/Recruitment Head'),
+    ('CEO', 'CEO'),
+    ('COO', 'COO'),
+    ('MANAGER', 'Manager'),
+    ('FINANCE', 'Finance'),
+    ('REVIEWER', 'Reviewer'),
+]
+
+
 
     APPROVER_STATUS_CHOICES = [
         ('Yes', 'Yes'),
@@ -809,6 +827,7 @@ class Approver(models.Model):
     ]
     id = models.AutoField(primary_key=True)  
     hiring_plan = models.ForeignKey(HiringPlan, to_field='hiring_plan_id', on_delete=models.CASCADE)
+    requisition = models.ForeignKey(JobRequisition, to_field='RequisitionID', on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)

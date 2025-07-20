@@ -33,6 +33,9 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 
 from myapp.zoom_utils import schedule_zoom_meet
+from datetime import timezone as dt_timezone
+
+
 
 from .models import ApprovalStatus, Approver, CandidateApproval, CandidateInterviewStages, CandidateReview, CandidateSubmission, \
     ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, \
@@ -95,36 +98,94 @@ class ApproverCreateListView(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         try:
-            serializer = self.get_serializer(data=request.data)
+            payload = request.data
+            approver_list = payload.get("approvers", [])
+
+            if not approver_list or not isinstance(approver_list, list):
+                return Response(api_json_response_format(
+                    False,
+                    "Missing or invalid 'approvers' list in payload.",
+                    400,
+                    {}
+                ), status=200)
+
+            # Shared metadata
+            shared_fields = {
+                "requisition_id": payload.get("req_id"),
+                "hiring_plan": payload.get("planning_id"),  # ✅ Correct key
+                "client_name": payload.get("client_name"),
+                "client_id": payload.get("client_id"),
+                "no_of_approvers": payload.get("no_of_approvers")
+            }
+
+
+            # Enrich each approver with shared metadata
+            
+            enriched_approvers = []
+            for approver in approver_list:
+                enriched = {
+                    **approver,
+                    "requisition": shared_fields["requisition_id"],  # 👈 use correct key name
+                    "hiring_plan": shared_fields["hiring_plan"],
+                    "client_name": shared_fields["client_name"],
+                    "client_id": shared_fields["client_id"],
+                    "no_of_approvers": shared_fields["no_of_approvers"]
+                }
+                enriched_approvers.append(enriched)
+
+            serializer = self.get_serializer(data=enriched_approvers, many=True)
             serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
+            Approver.objects.bulk_create([Approver(**data) for data in serializer.validated_data])
+
             return Response(api_json_response_format(
                 True,
-                "Approver created successfully!",
+                "Approvers created successfully!",
                 200,
                 serializer.data
             ), status=200)
+
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                f"Error creating approver. {str(e)}",
+                f"Error creating approvers. {str(e)}",
                 500,
                 {}
             ), status=200)
 
+
+
     def put(self, request, *args, **kwargs):
         try:
-            approver_id = request.data.get('id')
+            data = request.data.copy()
+
+            # 🔁 Remap payload fields to model fields if present
+            if "planning_id" in data:
+                data["hiring_plan"] = data.pop("planning_id")
+
+            if "req_id" in data:
+                data["requisition_id"] = data.pop("req_id")
+
+            approver_id = data.get("id")
+            if not approver_id:
+                return Response(api_json_response_format(
+                    False,
+                    "Approver ID is required.",
+                    400,
+                    {}
+                ), status=200)
+
             approver = Approver.objects.get(id=approver_id)
-            serializer = self.get_serializer(approver, data=request.data, partial=True)
+            serializer = self.get_serializer(approver, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
+
             return Response(api_json_response_format(
                 True,
                 "Approver updated successfully!",
                 200,
                 serializer.data
             ), status=200)
+
         except Approver.DoesNotExist:
             return Response(api_json_response_format(
                 False,
@@ -132,6 +193,7 @@ class ApproverCreateListView(generics.ListCreateAPIView):
                 404,
                 {}
             ), status=200)
+
         except Exception as e:
             return Response(api_json_response_format(
                 False,
@@ -139,6 +201,7 @@ class ApproverCreateListView(generics.ListCreateAPIView):
                 500,
                 {}
             ), status=200)
+
 
     def delete(self, request, *args, **kwargs):
         try:
@@ -167,40 +230,54 @@ class ApproverCreateListView(generics.ListCreateAPIView):
             ), status=200)
         
 
-def compute_overall_status(approvals):
-    decisions = [a.decision for a in approvals if a]
+def compute_overall_status(approvals, expected_roles):
+    decision_map = {a.role: a.decision for a in approvals}
+    decisions = [decision_map.get(role, "Awaiting") for role in expected_roles]
 
-    if not decisions or all(d == "Awaiting" for d in decisions):
+    if any(d == "Awaiting" for d in decisions):
         return "Awaiting Approval"
-    elif "Rejected" in decisions:
-        return "Rejected"
-    elif all(d == "Approved" for d in decisions):
-        return "Fully Approved"
-    elif any(d == "Approved" for d in decisions):
-        return "Partially Approved"
-    else:
-        return "Pending Review"
+    if all(d == "Approved" for d in decisions):
+        return "Approved"
+    return "Partially Approved"
 
 
 
 class CandidateApprovalStatusView(APIView):
-    
+
     def post(self, request):
         try:
-            req_id = request.data.get('req_id')
-            if not req_id:
-                raise ValueError("Missing req_id in request")
-
-            candidates = Candidate.objects.filter(Req_id_fk=req_id)
+            candidates = Candidate.objects.select_related('Req_id_fk').all()
             results = []
 
             for candidate in candidates:
                 requisition = candidate.Req_id_fk
-                details = getattr(requisition, 'position_information', None)
+                if not requisition:
+                    continue
 
+                details = getattr(requisition, 'position_information', None)
                 approvals = CandidateApproval.objects.filter(candidate=candidate)
-                hm_approval = approvals.filter(role='HM').first()
-                fpna_approval = approvals.filter(role='FPNA').first()
+                approvers = Approver.objects.filter(requisition=requisition, set_as_approver="Yes")
+
+                approver_details = []
+                for approver in approvers:
+                    approval = approvals.filter(approver=approver).first()
+
+                    approver_details.append({
+                        "role": approver.role,
+                        "name": f"{approver.first_name} {approver.last_name}",
+                        "email": approver.email,
+                        "contact_number": approver.contact_number,
+                        "job_title": approver.job_title,
+                        "status": approver.set_as_approver,
+                        "approval": {
+                            "decision": approval.decision if approval else "Awaiting",
+                            "comment": approval.comment if approval and approval.comment else "",
+                            "reviewed_at": approval.reviewed_at if approval else "Not Reviewed",
+                        }
+                    })
+
+                expected_roles = [a.role for a in approvers]
+                overall_status = compute_overall_status(approvals, expected_roles)
 
                 results.append({
                     "req_id": requisition.RequisitionID,
@@ -209,9 +286,9 @@ class CandidateApprovalStatusView(APIView):
                     "candidate_id": candidate.CandidateID,
                     "candidate_first_name": candidate.candidate_first_name,
                     "candidate_last_name": candidate.candidate_last_name,
-                    "hm_approver_status": hm_approval.decision if hm_approval else "Awaiting",
-                    "fpna_approver_status": fpna_approval.decision if fpna_approval else "Awaiting",
-                    "overall_status": compute_overall_status(approvals)
+                    "overall_status": overall_status,
+                    "no_of_approvers": len(approvers),
+                    "approvers": approver_details
                 })
 
             serializer = CandidateApprovalStatusSerializer(results, many=True)
@@ -233,7 +310,7 @@ class CandidateApprovalStatusView(APIView):
     def put(self, request):
         try:
             candidate_id = request.data.get("candidate_id")
-            role_id = request.data.get("role_id")  # 1 for HM, 3 for FPNA
+            role_id = request.data.get("role_id")
             decision = request.data.get("decision")
             comment = request.data.get("comment", "")
 
@@ -265,7 +342,9 @@ class CandidateApprovalStatusView(APIView):
             approval.save()
 
             all_approvals = CandidateApproval.objects.filter(candidate=candidate)
-            overall_status = compute_overall_status(all_approvals)
+            approvers = Approver.objects.filter(requisition=candidate.Req_id_fk, set_as_approver="Yes")
+            expected_roles = [a.role for a in approvers]
+            overall_status = compute_overall_status(all_approvals, expected_roles)
 
             return Response(api_json_response_format(
                 True,
@@ -288,6 +367,7 @@ class CandidateApprovalStatusView(APIView):
                 404,
                 {}
             ), status=200)
+
         except Exception as e:
             return Response(api_json_response_format(
                 False,
@@ -764,7 +844,12 @@ DISPLAY_TO_MODEL_FIELD = {
     "division": "position_information__division",
     "department": "position_information__department",
     "location": "position_information__location",
-    "status": "Status"
+    "status": "Status",
+    "Client_name": "company_client_name",
+    "Client_id": "client_id",
+    "Requisition_date": "requisition_date",
+    "Due_requisition_date": "due_requisition_date"
+
 }
 
 # Initialize Ollama model
@@ -960,7 +1045,12 @@ class CandidateExcelExportView(APIView):
             candidates = Candidate.objects.select_related("Req_id_fk").all()
 
             if not candidates.exists():
-                return Response(api_json_response_format(False, "No candidates to export.", 404, {}), status=200)
+                return Response(api_json_response_format(
+                    False,
+                    "No candidates to export.",
+                    404,
+                    {}
+                ), status=200)
 
             # Create Excel workbook
             wb = openpyxl.Workbook()
@@ -968,17 +1058,17 @@ class CandidateExcelExportView(APIView):
             ws.title = "Candidate Details"
 
             headers = [
-                "Candidate ID", "Candidate Name", "Requisition ID", "Applied Position",
+                "Candidate ID", "Candidate First Name", "Candidate Last Name", "Requisition ID", "Applied Position",
                 "Job Description URL", "Resume URL", "Cover Letter URL", "Current Stage",
                 "Next Stage", "Time in Stage", "Overall Stage", "Final Stage",
                 "Source", "Score", "Phone Number"
             ]
             ws.append(headers)
-            for cell in ws[1]:  # Bold headers
+
+            for cell in ws[1]:
                 cell.font = Font(bold=True)
 
             for candidate in candidates:
-                # URLs
                 jd = candidate.Req_id_fk.posting_details.internal_job_description if getattr(candidate.Req_id_fk, "posting_details", None) else None
                 jd_url = request.build_absolute_uri(f"/api/candidates/{candidate.CandidateID}/jd/") if jd else "N/A"
 
@@ -989,16 +1079,19 @@ class CandidateExcelExportView(APIView):
                 time_in_stage = f"{(datetime.now().date() - stage.interview_date).days} days" if stage and stage.interview_date else "N/A"
                 current_stage = stage.interview_stage if stage else "N/A"
 
+                applied_position = candidate.Req_id_fk.position_information.job_position if candidate.Req_id_fk and hasattr(candidate.Req_id_fk, "position_information") else "N/A"
+
                 ws.append([
                     candidate.CandidateID,
-                    candidate.Name,
+                    candidate.candidate_first_name or "N/A",
+                    candidate.candidate_last_name or "N/A",
                     candidate.Req_id_fk.RequisitionID if candidate.Req_id_fk else "N/A",
-                    candidate.Req_id_fk.position_information.job_position if candidate.Req_id_fk and hasattr(candidate.Req_id_fk, "position_information") else "N/A",
+                    applied_position,
                     jd_url,
                     resume_url,
                     cover_url,
                     current_stage,
-                    "N/A",  # Next Stage placeholder
+                    "N/A",  # Placeholder for Next Stage
                     time_in_stage,
                     candidate.Result or "N/A",
                     candidate.Final_rating if candidate.Final_rating is not None else "N/A",
@@ -1008,13 +1101,20 @@ class CandidateExcelExportView(APIView):
                 ])
 
             # Return as downloadable Excel file
-            response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response = HttpResponse(
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
             response['Content-Disposition'] = 'attachment; filename="candidate_details.xlsx"'
             wb.save(response)
             return response
 
         except Exception as e:
-            return Response(api_json_response_format(False, f"Error exporting Excel. {str(e)}", 500, {}), status=200)
+            return Response(api_json_response_format(
+                False,
+                f"Error exporting Excel. {str(e)}",
+                500,
+                {}
+            ), status=200)
 
 
 class CandidateAllRequisitionsView(APIView):
@@ -1127,6 +1227,7 @@ class BulkUploadResumeView(APIView):
         try:
             req_id = request.data.get("req_id")
             files = request.FILES.getlist("files")
+            Source = request.data.get("Source")
 
             if not req_id:
                 return Response(api_json_response_format(
@@ -1152,15 +1253,18 @@ class BulkUploadResumeView(APIView):
             for i, file in enumerate(files, start=1):
                 unique_id = random.randint(1000, 9999)
                 random_source = random.choice(SOURCE_OPTIONS)
+                first_name = f"CandidateFirst{unique_id}"
+                last_name = f"CandidateLast{unique_id}"
 
                 candidate = Candidate(
-                    Name=f"candidate{unique_id}",
+                    candidate_first_name=first_name,
+                    candidate_last_name=last_name,
                     Email=f"candidate{unique_id}@gmail.com",
                     Req_id_fk=job_req,
                     Resume=file.name,
                     CoverLetter=f"This is a sample cover letter for candidate{unique_id}.",
                     Phone_no = "9999999999",
-                    Source=random_source  # ✅ Injected random source
+                    Source=Source  # ✅ Injected random source
                 )
                 candidates.append(candidate)
 
@@ -1578,41 +1682,54 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
     queryset = JobRequisition.objects.select_related("HiringManager").all()
     serializer_class = JobRequisitionSerializer
 
+    # def create(self, request, *args, **kwargs):
+    #     try:
+    #         user_role = request.data.get("user_role")
+    #         if user_role is None:
+    #             return Response(api_json_response_format(False, "User role is required.", 400, {}), status=200)
+
+    #         if user_role != 1:
+    #             return Response(api_json_response_format(False, "Only Hiring Managers can create requisitions.", 403, {}), status=200)
+
+    #         fixed_payload = request.data.copy()
+    #         posting_block = fixed_payload.get("posting_details", {})
+
+    #         def normalize_to_string(value):
+    #             return ", ".join(value) if isinstance(value, list) else value
+
+    #         posting_block["qualification"] = normalize_to_string(posting_block.get("qualification"))
+    #         posting_block["experience"] = normalize_to_string(posting_block.get("experience"))
+    #         posting_block["designation"] = normalize_to_string(posting_block.get("designation"))
+    #         posting_block["job_region"] = normalize_to_string(posting_block.get("job_region"))
+
+    #         fixed_payload["posting_details"] = posting_block
+
+
+    #         serializer = self.get_serializer(data=request.data)
+    #         serializer.is_valid(raise_exception=True)
+    #         job_requisition = serializer.save()
+
+    #         response_data = request.data.copy()
+    #         response_data["requisition_id"] = job_requisition.RequisitionID
+
+    #         return Response(api_json_response_format(True, "Job requisition created successfully!", 200, response_data), status=200)
+
+    #     except Exception as e:
+    #         return Response(api_json_response_format(False, "Error while creating requisition. " + str(e), 500, {}), status=200)
     def create(self, request, *args, **kwargs):
         try:
-            user_role = request.data.get("user_role")
-            if user_role is None:
-                return Response(api_json_response_format(False, "User role is required.", 400, {}), status=200)
-
-            if user_role != 1:
-                return Response(api_json_response_format(False, "Only Hiring Managers can create requisitions.", 403, {}), status=200)
-
-            fixed_payload = request.data.copy()
-            posting_block = fixed_payload.get("posting_details", {})
-
-            def normalize_to_string(value):
-                return ", ".join(value) if isinstance(value, list) else value
-
-            posting_block["qualification"] = normalize_to_string(posting_block.get("qualification"))
-            posting_block["experience"] = normalize_to_string(posting_block.get("experience"))
-            posting_block["designation"] = normalize_to_string(posting_block.get("designation"))
-            posting_block["job_region"] = normalize_to_string(posting_block.get("job_region"))
-
-            fixed_payload["posting_details"] = posting_block
-
-
-            serializer = self.get_serializer(data=request.data)
+            serializer = JobRequisitionSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             job_requisition = serializer.save()
 
-            response_data = request.data.copy()
-            response_data["requisition_id"] = job_requisition.RequisitionID
-
-            return Response(api_json_response_format(True, "Job requisition created successfully!", 200, response_data), status=200)
+            return Response(api_json_response_format(True, "Initial requisition created.", 200, {
+                "RequisitionID": job_requisition.RequisitionID
+                # "Planning_id": job_requisition.Planning_id.hiring_plan_id
+            }), status=200)
 
         except Exception as e:
-            return Response(api_json_response_format(False, "Error while creating requisition. " + str(e), 500, {}), status=200)
-
+            return Response(api_json_response_format(False, "Failed to create initial requisition. " + str(e), 500, {}), status=200)
+    
     @action(detail=False, methods=['put'], url_path='update-requisition')
     def update_requisition(self, request):
         try:
@@ -1688,7 +1805,8 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             else:  # Hiring Manager
                 queryset = JobRequisition.objects.filter(HiringManager=request.user).order_by("-RequisitionID")
 
-            current_date = datetime.now(timezone.utc).date()
+            current_date = datetime.now(dt_timezone.utc).date()
+
             data = []
             for requisition in queryset:
                 info = getattr(requisition, "position_information", None)
@@ -1704,8 +1822,8 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                 data.append({
                     "PlanningID": planning_id,
                     "RequisitionID": requisition.RequisitionID,
-                    "ClientName": getattr(info, "company_client_name", "Not Provided"),
-                    "ClientID": getattr(info, "client_id", "Not Provided"),
+                    "ClientName": requisition.company_client_name or "Not Provided",
+                    "ClientID": requisition.client_id or "Not Provided",
                     "JobTitle": requisition.PositionTitle,
                     "HiringManager": getattr(requisition.HiringManager, "Name", "Unknown"),
                     "JobPosting": getattr(requisition, "PostingSource", "Not Specified"),
@@ -1779,6 +1897,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                 500,
                 {}
             ), status=200)
+    
     @action(detail=False, methods=["POST"])
     def get_approved_extra_details(self, request):
         try:
@@ -1833,74 +1952,75 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                 return Response(api_json_response_format(False, "Requisition ID is required.", 400, {}), status=200)
 
             instance = get_object_or_404(JobRequisition, RequisitionID=requisition_id)
-            serializer = self.get_serializer(instance)
-            data = serializer.data
 
-            details = data.get("position_information") or {}
+            # Safely access related objects
+            details = getattr(instance, "position_information", None)
+            billing = getattr(instance, "billing_details", None)
+            posting = getattr(instance, "posting_details", None)
+            asset = getattr(instance, "asset_details", None)
+
             response_payload = {
-                "user_role": data.get("user_role"),
-                "Planning_id": data.get("Planning_id"),
-                "HiringManager": data.get("HiringManager"),
-                "PositionTitle": data.get("PositionTitle"),
-                "requisition_id": data.get("RequisitionID"),
+                "user_role": getattr(instance, "user_role", "Not Provided"),
+                "Planning_id": getattr(instance.Planning_id, "hiring_plan_id", "Not Provided") if instance.Planning_id else "Not Provided",
+                "HiringManager": getattr(instance.HiringManager, "Name", "Unknown") if instance.HiringManager else "Unknown",
+                "PositionTitle": getattr(instance, "PositionTitle", "Not Provided"),
+                "requisition_id": getattr(instance, "RequisitionID", "Not Provided"),
 
                 "position_information": {
-                    "internal_title": details.get("internal_title"),
-                    "external_title": details.get("external_title"),
-                    "job_position": details.get("job_position"),
-                    "company_client_name": details.get("company_client_name", ""),
-                    "business_unit": details.get("business_unit"),
-                    "business_line": details.get("business_line"),
-                    "division": details.get("division"),
-                    "department": details.get("department"),
-                    "location": details.get("location"),
-                    "geo_zone": details.get("geo_zone"),
-                    "career_level": details.get("career_level"),
-                    "band": details.get("band"),
-                    "sub_band": details.get("sub_band"),
-                    "working_model": details.get("working_model"),
-                    "client_interview": "Yes" if details.get("client_interview") else "No",
-                    "requisition_type": details.get("requisition_type")
+                    "internal_title": getattr(details, "internal_title", ""),
+                    "external_title": getattr(details, "external_title", ""),
+                    "job_position": getattr(details, "job_position", ""),
+                    "company_client_name": getattr(instance, "company_client_name", ""),
+                    "business_unit": getattr(details, "business_unit", ""),
+                    "business_line": getattr(details, "business_line", ""),
+                    "division": getattr(details, "division", ""),
+                    "department": getattr(details, "department", ""),
+                    "location": getattr(details, "location", ""),
+                    "geo_zone": getattr(details, "geo_zone", ""),
+                    "career_level": getattr(details, "career_level", ""),
+                    "band": getattr(details, "band", ""),
+                    "sub_band": getattr(details, "sub_band", ""),
+                    "working_model": getattr(details, "working_model", ""),
+                    "client_interview": "Yes" if getattr(details, "client_interview", False) else "No",
+                    "requisition_type": getattr(details, "requisition_type", "")
                 },
 
                 "skills_required": {
-                    "primary_skills": [s.strip() for s in details.get("primary_skills", "").split(",")] if details.get("primary_skills") else [],
-                    "secondary_skills": [s.strip() for s in details.get("secondary_skills", "").split(",")] if details.get("secondary_skills") else []
+                    "primary_skills": [s.strip() for s in getattr(details, "primary_skills", "").split(",")] if getattr(details, "primary_skills", "") else [],
+                    "secondary_skills": [s.strip() for s in getattr(details, "secondary_skills", "").split(",")] if getattr(details, "secondary_skills", "") else []
                 },
 
                 "billing_details": {
-                    "billing_type": data.get("billing_details", {}).get("billing_type"),
-                    "billing_start_date": data.get("billing_details", {}).get("billing_start_date"),
-                    "billing_end_date": data.get("billing_details", {}).get("billing_end_date"),
-                    "contract_start_date": data.get("billing_details", {}).get("contract_start_date"),
-                    "contract_end_date": data.get("billing_details", {}).get("contract_end_date")
+                    "billing_type": getattr(billing, "billing_type", ""),
+                    "billing_start_date": getattr(billing, "billing_start_date", ""),
+                    "billing_end_date": getattr(billing, "billing_end_date", ""),
+                    "contract_start_date": getattr(billing, "contract_start_date", ""),
+                    "contract_end_date": getattr(billing, "contract_end_date", "")
                 },
 
                 "posting_details": {
-                    "experience": [e.strip() for e in data.get("posting_details", {}).get("experience", "").split(",")] if data.get("posting_details", {}).get("experience") else [],
-                    "qualification": [q.strip() for q in data.get("posting_details", {}).get("qualification", "").split(",")] if data.get("posting_details", {}).get("qualification") else [],
-                    "designation": [d.strip() for d in data.get("posting_details", {}).get("designation", "").split(",")] if data.get("posting_details", {}).get("designation") else [],
-                    "job_region": [r.strip() for r in data.get("posting_details", {}).get("job_region", "").split(",")] if data.get("posting_details", {}).get("job_region") else [],
-                    "required_score": data.get("posting_details", {}).get("required_score", ""),
-                    "internalDesc": data.get("posting_details", {}).get("internalDesc", ""),
-                    "externalDesc": data.get("posting_details", {}).get("externalDesc", ""),
-                    "questions": data.get("requisition_questions", []),
-                    "Competencies": data.get("requisition_competencies", [])
+                    "experience": [e.strip() for e in getattr(posting, "experience", "").split(",")] if getattr(posting, "experience", "") else [],
+                    "qualification": [q.strip() for q in getattr(posting, "qualification", "").split(",")] if getattr(posting, "qualification", "") else [],
+                    "designation": [d.strip() for d in getattr(posting, "designation", "").split(",")] if getattr(posting, "designation", "") else [],
+                    "job_region": [r.strip() for r in getattr(posting, "job_region", "").split(",")] if getattr(posting, "job_region", "") else [],
+                    "required_score": getattr(posting, "required_score", ""),
+                    "internalDesc": getattr(posting, "internal_job_description", ""),
+                    "externalDesc": getattr(posting, "external_job_description", ""),
+                    "questions": [],  # To be populated from related requisition_questions
+                    "Competencies": []  # To be populated from requisition_competencies
                 },
 
                 "asset_deatils": {
-                    "laptop_type": data.get("asset_details", {}).get("laptop_type"),
-                    "laptop_needed": "Yes" if data.get("asset_details", {}).get("laptop_needed") else "No",
-                    "comments": data.get("asset_details", {}).get("comments")
+                    "laptop_type": getattr(asset, "laptop_type", ""),
+                    "laptop_needed": "Yes" if getattr(asset, "laptop_needed", False) else "No",
+                    "comments": getattr(asset, "comments", "")
                 }
             }
-
 
             return Response(api_json_response_format(True, "Requisition retrieved successfully!", 200, response_payload), status=200)
 
         except Exception as e:
             return Response(api_json_response_format(False, f"Error retrieving requisition. {str(e)}", 500, {}), status=200)
-
 
 
 def get_matching_score(job_description, resume_text, resume_name):
@@ -2019,7 +2139,7 @@ def login_page(request):
 
         response_data = {
             'role': userrole.RoleName,
-            'user_id':user.id,
+            'user_id':user_details.RoleID,
             'username': user.get_username(),
             'access': str(refresh.access_token),
             'refresh': str(refresh)
@@ -2219,7 +2339,7 @@ class InterviewPlannerCalculation(APIView):
                     "no_of_interviewer_need": no_of_interviewer_need,
                     "leave_adjustment": leave_adjustment
                 }
-            ), status=status.HTTP_201_CREATED)
+            ), status=200)
 
         except Exception as e:
             return Response(api_json_response_format(False,"Error in interview planning calculation post method "+str(e),500,{}), status=status.HTTP_200_OK)
@@ -2282,25 +2402,55 @@ class InterviewPlannerCalculation(APIView):
 
 class InterviewerBandwidthDashboard(APIView):
     def post(self, request):
-        try:           
-            fields = request.data.get('filed_names', ["hiring_plan_id","requisition_id","leave_adjustment"])
+        try:
+            fields = request.data.get('field_names', [
+                "hiring_plan_id",
+                "requisition_id",
+                "leave_adjustment",
+                "dead_line_days",
+                "offer_decline",
+                "no_of_roles_to_hire",
+                "interview_round",
+                "no_of_interviewer_need",
+                "required_candidate",
+                "job_position"
+            ])
+
             if not isinstance(fields, list):
-                return Response({"error": "fields must be a list"}, status=400)
-            
+                return Response({"error": "field_names must be a list"}, status=400)
+
             model_fields = [f.name for f in InterviewPlanner._meta.fields]
             for field in fields:
                 if field not in model_fields:
-                    return Response({"error": f"Invalid field: {field}"}, status=400)            
-            queryset = InterviewPlanner.objects.all()            
+                    return Response({"error": f"Invalid field: {field}"}, status=400)
+
+            queryset = InterviewPlanner.objects.all()
             result = []
+
             for obj in queryset:
-                row = {field: getattr(obj, field) for field in fields}
+                row = {field: getattr(obj, field, None) for field in fields}
+
+                # 🔍 Fetch job position from JobRequisition using requisition_id
+                try:
+                    print("Looking up RequisitionID:", obj.requisition_id)
+
+                    requisition = JobRequisition.objects.filter(RequisitionID=obj.requisition_id).first()
+                    row["job_position"] = requisition.PositionTitle if requisition else "Not Found"
+                except Exception:
+                    row["job_position"] = "Error"
+
                 result.append(row)
-            return Response(api_json_response_format(True,"Interviewer Bandwidth Dashboard ",200,result), status=200)            
+
+            return Response(
+                api_json_response_format(True, "Interviewer Bandwidth Dashboard", 200, result),
+                status=200
+            )
 
         except Exception as e:
-            return Response(api_json_response_format(False,"Error in Interviewer Bandwidth Dashboard post method "+str(e),500,{}), status=status.HTTP_200_OK)
-
+            return Response(
+                api_json_response_format(False, f"Error in Interviewer Bandwidth Dashboard post method: {str(e)}", 500, {}),
+                status=status.HTTP_200_OK
+            )
 
 
 class ManageRequisitionView(APIView):
@@ -2714,9 +2864,19 @@ class InterviewDesignScreenView(APIView):
     def post(self, request, *args, **kwargs):
         try:
             design_params = request.data.get("params", [])
-            interview_design = request.data.copy()  
-            interview_design["status"] = ""
-            interview_design["hiring_plan_id"] = interview_design["req_id"]
+            interview_design = request.data.copy()
+
+            interview_design["hiring_plan_id"] = interview_design.get("plan_id")
+            interview_design["requisition_id"] = interview_design.get("req_id")
+
+            # 🔍 Auto-fill position_role from JobRequisition
+            req_id = interview_design.get("req_id")
+            requisition = JobRequisition.objects.filter(RequisitionID=req_id).first()
+            if requisition:
+                interview_design["position_role"] = requisition.PositionTitle
+
+            interview_design.pop("plan_id", None)
+            interview_design.pop("req_id", None)
             interview_design.pop("params", None)
 
             serializer = InterviewDesignScreenSerializer(data=interview_design)
@@ -2725,9 +2885,9 @@ class InterviewDesignScreenView(APIView):
                 interview_design_id = instance.interview_design_id
 
                 for obj in design_params:
-                    obj["score_card"] = obj["score_card_name"]
+                    obj["score_card"] = obj.get("score_card_name", "")
                     obj["interview_design_id"] = interview_design_id
-                    obj["hiring_plan_id"] = interview_design.get("hiring_plan_id", 0)
+                    obj["hiring_plan_id"] = interview_design.get("hiring_plan_id", "")
 
                 serializer_params = InterviewDesignParametersSerializer(data=design_params, many=True)
                 if serializer_params.is_valid():
@@ -2741,25 +2901,26 @@ class InterviewDesignScreenView(APIView):
                 else:
                     return Response(api_json_response_format(
                         False,
-                        "Could not save Interview Design parameters: " + str(serializer_params.errors),
+                        f"Could not save Interview Design parameters: {serializer_params.errors}",
                         status.HTTP_400_BAD_REQUEST,
                         {}
                     ))
             else:
                 return Response(api_json_response_format(
                     False,
-                    "Could not save Interview Design: " + str(serializer.errors),  # ✅ Correct reference
+                    f"Could not save Interview Design: {serializer.errors}",
                     status.HTTP_400_BAD_REQUEST,
                     {}
                 ))
         except Exception as e:
             return Response(api_json_response_format(
                 False,
-                "Could not save Interview Design: " + str(e),
+                f"Could not save Interview Design: {str(e)}",
                 500,
                 {}
             ))
-        
+
+
     def delete(self, request):
         interview_design_id = request.data.get('interview_design_id')
         if not interview_design_id:
@@ -2876,26 +3037,34 @@ class InterviewScreenDashboardView(APIView):
         try:
             model_data = InterviewDesignScreen.objects.all()
             design_screen_dashboard_data = []
-            # print(model_data.interview_design_id)
-            for data in model_data:
-                print(data.interview_design_id)
-                score_card_qs = InterviewDesignParameters.objects.filter(interview_design_id=data.interview_design_id)
-                score_card = [score_card_data.score_card for score_card_data in score_card_qs]
-                print(score_card)
+
+            for design in model_data:
+                score_card_qs = InterviewDesignParameters.objects.filter(
+                    interview_design_id=design.interview_design_id
+                )
+                score_cards = [param.score_card for param in score_card_qs]
+
                 design_screen_data = {
-                    "plan_id" : data.hiring_plan_id,
-                    "position_role" : data.position_role,
-                    "tech_stacks" : data.tech_stacks,
-                    "screening_type" : data.screening_type,
-                    "interview_rounds" : score_card,
-                    "status" : data.status
+                    "plan_id": design.hiring_plan_id,
+                    "position_role": design.position_role,
+                    "tech_stacks": design.tech_stacks,
+                    "screening_type": design.screening_type,
+                    "interview_rounds": score_cards,
+                    "status": design.status
                 }
-                design_screen_dashboard_data.append(design_screen_data)               
-                   
-            return Response(api_json_response_format(True,"Interview Design Screen Dashboard Details",200,design_screen_dashboard_data), status=200)
+
+                design_screen_dashboard_data.append(design_screen_data)
+
+            return Response(
+                api_json_response_format(True, "Interview Design Screen Dashboard Details", 200, design_screen_dashboard_data),
+                status=200
+            )
+
         except Exception as e:
-            return Response(api_json_response_format(False,"Error in InterviewScreenDashboardView get method."+str(e),500,{}), status=200)
-            
+            return Response(
+                api_json_response_format(False, f"Error in InterviewScreenDashboardView get method: {str(e)}", 500, {}),
+                status=200
+            )
 @api_view(["POST"])
 def filter_candidates_dashboard(request):
     try:
@@ -3163,11 +3332,51 @@ def design_screen_list_data(request):
         position_role_list = list(ConfigPositionRole.objects.values_list('position_role', flat=True))
         hiring_plan_id_list = list(HiringPlan.objects.values_list('hiring_plan_id', flat=True))
         screening_type_name_list = list(ConfigScreeningType.objects.values_list('screening_type_name', flat=True))
-        result_data = {"position_role":position_role_list,"plan_id":hiring_plan_id_list,"screening_type":screening_type_name_list}
+        requisition_id_list = list(JobRequisition.objects.values_list('RequisitionID', flat=True))
+
+        result_data = {"position_role":position_role_list,"plan_id":hiring_plan_id_list,"screening_type":screening_type_name_list,"requisition_id": requisition_id_list}
         return Response(api_json_response_format(True,"Design Screen Dropdown details",200,result_data), status=200)        
 
     except Exception as e:
         return Response(api_json_response_format(False,"Error in design_screen_list_data get method "+str(2),500,{}), status=200)
+
+
+@api_view(['POST'])
+def client_lookup_from_plan(request):
+    try:
+        req_id = request.data.get("req_id")
+        plan_id = request.data.get("plan_id")
+
+        if not req_id:
+            return Response(api_json_response_format(
+                False, "'req_id' is required.", 400, {}
+            ), status=200)
+
+        filter_kwargs = {"RequisitionID": req_id}
+        if plan_id:
+            filter_kwargs["Planning_id__hiring_plan_id"] = plan_id
+
+        requisition = JobRequisition.objects.filter(**filter_kwargs).first()
+
+        if not requisition:
+            return Response(api_json_response_format(
+                False, "No matching requisition found.", 404, {}
+            ), status=200)
+
+        data = {
+            "client_name": requisition.company_client_name or "Not Provided",
+            "client_id": requisition.client_id or "Not Provided"
+        }
+
+        return Response(api_json_response_format(
+            True, "Client info retrieved.", 200, data
+        ), status=200)
+
+    except Exception as e:
+        return Response(api_json_response_format(
+            False, f"Error retrieving client info. {str(e)}", 500, {}
+        ), status=200)
+
 
 
     

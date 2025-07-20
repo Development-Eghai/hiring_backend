@@ -114,6 +114,7 @@ urlpatterns = [
     path("api/candidates/export-excel/", CandidateExcelExportView.as_view(), name="candidate-export-excel"),
     path("candidates/delete/", CandidateDeleteView.as_view(), name="candidate-delete"),
     path('interviewer_bandwidth_dashboard/', InterviewerBandwidthDashboard.as_view(), name='interviewer_bandwidth_dashboard'),
+    path('api/client-lookup/', client_lookup_from_plan, name='client-lookup'),
 
 
 
