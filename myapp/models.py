@@ -230,9 +230,10 @@ class JobRequisition(models.Model):
         ('Pending Approval', 'Pending Approval'),
         ('Need More Details', 'Need More Details'),
         ('Approved', 'Approved'),
-        ('Rejected', 'Rejected')
+        ('Rejected', 'Rejected'),
+        ('Incomplete form', 'Incomplete form')
     ],
-    default='Pending Approval'
+    default='Incomplete form'
     )
     CommentFromBusinessOps = models.TextField(
     null=True,

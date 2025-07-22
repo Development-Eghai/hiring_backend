@@ -44,7 +44,7 @@ from .models import ApprovalStatus, Approver, CandidateApproval, CandidateInterv
 from .models import Candidate
 from .models import InterviewRounds, HiringPlan
 from .models import JobRequisition
-from .serializers import ApproverSerializer, CandidateApprovalStatusSerializer, CandidateDetailWithInterviewSerializer, CandidateInterviewStagesSerializer, \
+from .serializers import ApproverDetailSerializer, ApproverSerializer, CandidateApprovalStatusSerializer, CandidateDetailWithInterviewSerializer, CandidateInterviewStagesSerializer, \
     CandidateSubmissionSerializer, ConfigPositionRoleSerializer, ConfigScoreCardSerializer, \
     ConfigScreeningTypeSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, InterviewPlannerSerializer, \
     InterviewerSerializer, JobRequisitionSerializer, JobTemplateSerializer, OfferNegotiationSerializer, \
@@ -303,39 +303,50 @@ class CandidateApprovalStatusView(APIView):
                 for approver in approvers:
                     approval = approvals.filter(approver=approver).first()
 
-                    approver_details.append({
+                    approver_detail = {
                         "role": approver.role,
                         "name": f"{approver.first_name} {approver.last_name}",
                         "email": approver.email,
                         "contact_number": approver.contact_number,
                         "job_title": approver.job_title,
                         "status": approver.set_as_approver,
-                        "approval": {
-                            "decision": approval.decision if approval else "Awaiting",
-                            "comment": approval.comment if approval and approval.comment else "",
-                            "reviewed_at": approval.reviewed_at if approval else "Not Reviewed",
-                        }
-                    })
+                        "decision": approval.decision if approval else "Awaiting",
+                        "comment": approval.comment if approval and approval.comment else "",
+                        # "reviewed_at": approval.reviewed_at if approval else "Not Reviewed",
+                        "req_id": requisition.RequisitionID,
+                        "client_name": details.company_client_name if details else "",
+                        "client_id": details.client_id if details else ""
+                    }
+
+                    results.append(approver_detail)  # Append each approver individually
+
+
 
                 expected_roles = [a.role for a in approvers]
                 overall_status = compute_overall_status(approvals, expected_roles)
 
-                results.append({
-                    "req_id": requisition.RequisitionID,
-                    "client_name": details.company_client_name if details else "",
-                    "client_id": details.client_id if details else "",
-                    "candidate_id": candidate.CandidateID,
-                    "candidate_first_name": candidate.candidate_first_name,
-                    "candidate_last_name": candidate.candidate_last_name,
-                    "overall_status": overall_status,
-                    "no_of_approvers": len(approvers),
-                    "approvers": approver_details
-                })
+                # results.append({
+                #     "req_id": requisition.RequisitionID,
+                #     "client_name": details.company_client_name if details else "",
+                #     "client_id": details.client_id if details else "",
+                #     "candidate_id": candidate.CandidateID,
+                #     "candidate_first_name": candidate.candidate_first_name,
+                #     "candidate_last_name": candidate.candidate_last_name,
+                #     "overall_status": overall_status,
+                #     "no_of_approvers": len(approvers),
+                #     "approvers": approver_details
+                # })
+            # results.append({
+            #     "req_id": requisition.RequisitionID,
+            #     "client_name": details.company_client_name if details else "",
+            #     "client_id": details.client_id if details else "",
+            #     "approvers": approver_details
+            # })
 
-            serializer = CandidateApprovalStatusSerializer(results, many=True)
+            serializer = ApproverDetailSerializer(results, many=True)
             return Response(api_json_response_format(
                 True,
-                "Candidate approval status retrieved!",
+                "approval status retrieved!",
                 200,
                 serializer.data
             ), status=200)
@@ -1742,6 +1753,8 @@ class JobRequisitionFlatViewSet(viewsets.ViewSet):
     def create(self, request):
         try:
             selected_fields = request.data.get("fields", [])
+            user_role = request.data.get("user_role")  # 👈 get the role from request
+
             if not isinstance(selected_fields, list) or not selected_fields:
                 return Response(
                     api_json_response_format(False, "Missing or invalid 'fields' parameter.", 400, {}),
@@ -1749,6 +1762,11 @@ class JobRequisitionFlatViewSet(viewsets.ViewSet):
                 )
 
             queryset = JobRequisition.objects.select_related("position_information", "Planning_id").order_by("-RequisitionID")
+
+            # 🔍 Filter 'Incomplete form' based on user_role
+            if str(user_role) != "1":
+                queryset = queryset.exclude(Status="Incomplete form")
+
             result_data = extract_requested_fields(queryset, selected_fields, DISPLAY_TO_MODEL_FIELD)
 
             return Response(
@@ -1761,9 +1779,10 @@ class JobRequisitionFlatViewSet(viewsets.ViewSet):
 
         except Exception as e:
             return Response(
-                api_json_response_format(False, "Failed to retrieve dynamic field data"+str(e), 500, {}),
+                api_json_response_format(False, "Failed to retrieve dynamic field data: " + str(e), 500, {}),
                 status=200
             )
+
 
 class JobRequisitionPublicViewSet(viewsets.ViewSet):
     def list(self, request):
@@ -2089,17 +2108,17 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             asset = getattr(instance, "asset_details", None)
 
             response_payload = {
-                "user_role": getattr(instance, "user_role", "Not Provided"),
+                # "user_role": request.data.get("user_role", "Not Provided"),  # ⬅️ added fallback
                 "Planning_id": getattr(instance.Planning_id, "hiring_plan_id", "Not Provided") if instance.Planning_id else "Not Provided",
                 "HiringManager": getattr(instance.HiringManager, "Name", "Unknown") if instance.HiringManager else "Unknown",
-                "PositionTitle": getattr(instance, "PositionTitle", "Not Provided"),
-                "requisition_id": getattr(instance, "RequisitionID", "Not Provided"),
+                "PositionTitle": instance.PositionTitle or "Not Provided",
+                "requisition_id": instance.RequisitionID or "Not Provided",
 
                 "position_information": {
                     "internal_title": getattr(details, "internal_title", ""),
                     "external_title": getattr(details, "external_title", ""),
                     "job_position": getattr(details, "job_position", ""),
-                    "company_client_name": getattr(instance, "company_client_name", ""),
+                    "company_client_name": instance.company_client_name or "",
                     "business_unit": getattr(details, "business_unit", ""),
                     "business_line": getattr(details, "business_line", ""),
                     "division": getattr(details, "division", ""),
@@ -2110,8 +2129,10 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                     "band": getattr(details, "band", ""),
                     "sub_band": getattr(details, "sub_band", ""),
                     "working_model": getattr(details, "working_model", ""),
-                    "client_interview": "Yes" if getattr(details, "client_interview", False) else "No",
-                    "requisition_type": getattr(details, "requisition_type", "")
+                    "client_interview": "Yes" if getattr(details, "client_interview", "") == "Yes" else "No",
+                    "requisition_type": getattr(details, "requisition_type", ""),
+                    "date_of_requisition": instance.requisition_date,
+                    "due_date_of_requisition": instance.due_requisition_date
                 },
 
                 "skills_required": {
@@ -2135,16 +2156,17 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                     "required_score": getattr(posting, "required_score", ""),
                     "internalDesc": getattr(posting, "internal_job_description", ""),
                     "externalDesc": getattr(posting, "external_job_description", ""),
-                    "questions": [],  # To be populated from related requisition_questions
-                    "Competencies": []  # To be populated from requisition_competencies
+                    "questions": [],  # Stub for future use
+                    "Competencies": []  # Stub for future use
                 },
 
-                "asset_deatils": {
+                "asset_deatils": {  # matches incoming payload key
                     "laptop_type": getattr(asset, "laptop_type", ""),
-                    "laptop_needed": "Yes" if getattr(asset, "laptop_needed", False) else "No",
+                    "laptop_needed": "Yes" if getattr(asset, "laptop_needed", "") == "Yes" else "No",
                     "comments": getattr(asset, "comments", "")
                 }
             }
+
 
             return Response(api_json_response_format(True, "Requisition retrieved successfully!", 200, response_payload), status=200)
 
@@ -2269,6 +2291,7 @@ def login_page(request):
         response_data = {
             'role': userrole.RoleName,
             'user_id':user_details.RoleID,
+            'Name' :user_details.Name,
             'username': user.get_username(),
             'access': str(refresh.access_token),
             'refresh': str(refresh)
@@ -2878,6 +2901,28 @@ def get_hiring_plan_details(request):
             "Error retrieving hiring plan. "+ str(e),500,
             {}
         ), status=200)
+
+
+class HiringPlanDetailView(APIView):
+    def post(self, request):
+        try:
+            hiring_plan_id = request.data.get("Planning_id")
+            if not hiring_plan_id:
+                return Response(api_json_response_format(
+                    False, "Missing hiring_plan_id", 400, {}), status=200)
+
+            try:
+                obj = HiringPlan.objects.get(hiring_plan_id=hiring_plan_id)
+                serializer = HiringPlanSerializer(obj)
+                return Response(api_json_response_format(
+                    True, "Hiring plan fetched successfully", 200, serializer.data), status=200)
+            except HiringPlan.DoesNotExist:
+                return Response(api_json_response_format(
+                    False, "Hiring plan not found", 404, {}), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(
+                False, "Error fetching hiring plan: " + str(e), 500, {}), status=200)
 
 
 class HiringInterviewRounds(APIView):

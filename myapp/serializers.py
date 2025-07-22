@@ -148,6 +148,9 @@ class RequisitionDetailsSerializer(serializers.ModelSerializer):
     requisition = serializers.PrimaryKeyRelatedField(
         queryset=JobRequisition.objects.all(), required=False
     )
+    requisition_type = serializers.CharField(required=False, allow_blank=True)
+    date_of_requisition = serializers.DateField(required=False, allow_null=True)
+    due_date_of_requisition = serializers.DateField(required=False, allow_null=True)
 
     class Meta:
         model = RequisitionDetails
@@ -273,243 +276,130 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
         queryset=HiringPlan.objects.all(),
         required=False,
         allow_null=True
-
     )
-    def to_internal_value(self, data):
-        # Map incoming 'client_name' ➝ model field 'company_client_name'
-        if 'client_name' in data:
-            data['company_client_name'] = data.pop('client_name')
-        return super().to_internal_value(data)
 
     client_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     requisition_date = serializers.DateField(required=False)
     due_requisition_date = serializers.DateField(required=False)
 
-
     position_information = RequisitionDetailsSerializer(required=False)
     billing_details = BillingDetailsSerializer(required=False)
-    posting_details = PostingDetailsSerializer(required=False)
+    # posting_details = PostingDetailsSerializer(required=False)
     asset_details = AssetDetailsSerializer(required=False)
-    # requisition_questions = RequisitionQuestionSerializer(many=True, read_only=True)
-    # requisition_competencies = RequisitionCompetencySerializer(many=True, read_only=True)
-
 
     class Meta:
         model = JobRequisition
         fields = '__all__'
 
     def create(self, validated_data):
-        # Generate new RequisitionID
-        max_requisition_number = JobRequisition.objects.annotate(
-            numeric_part=Cast(Substr("RequisitionID", 3), IntegerField())
-        ).aggregate(max_id=Max("numeric_part"))["max_id"]
+        # 🔢 Generate RequisitionID
+        max_id = JobRequisition.objects.annotate(
+            num=Cast(Substr("RequisitionID", 3), IntegerField())
+        ).aggregate(max_id=Max("num"))["max_id"]
+        validated_data["RequisitionID"] = f"RQ{(max_id or 0) + 1:04d}"
 
-        next_number = (max_requisition_number or 0) + 1
-        new_requisition_id = f"RQ{next_number:04d}"
-        validated_data["RequisitionID"] = new_requisition_id
+        # 🔐 Assign Planning_id if missing
         user_role = self.initial_data.get("user_role")
-        if not validated_data.get("Planning_id") and user_role == 1:
+        if not validated_data.get("Planning_id") and str(user_role) == "1":
             validated_data["Planning_id"] = HiringPlan.objects.filter(hiring_plan_id="PL0001").first()
 
-        if validated_data.get("company_client_name"):
-            last_client = JobRequisition.objects.exclude(client_id__isnull=True).order_by('-id').first()
-            validated_data["client_id"] = (
-                f"CL{int(str(last_client.client_id).replace('CL', '')) + 1:04d}"
-                if last_client and str(last_client.client_id).startswith("CL") and str(last_client.client_id).replace("CL", "").isdigit()
-                else "CL0001"
-            )
+        # ✅ Optional: Handle start/end dates & template if your model has those fields
+        validated_data["company_client_name"] = self.initial_data.get("client_name", "")
+        validated_data["requisition_date"] = self.initial_data.get("requisition_date")
+        validated_data["due_requisition_date"] = self.initial_data.get("due_requisition_date")
+        validated_data["template"] = self.initial_data.get("template", "")
+        validated_data["No_of_positions"] = self.initial_data.get("no_of_openings", 1)
+
+        # 🔧 Optional: If company_client_name is present and you want to generate a client_id
+        company_client_name = validated_data.get("company_client_name")
+        if company_client_name:
+            last = JobRequisition.objects.exclude(client_id__isnull=True).order_by("-id").first()
+            if last and str(last.client_id).startswith("CL") and str(last.client_id).replace("CL", "").isdigit():
+                next_client_id = f"CL{int(str(last.client_id).replace('CL', '')) + 1:04d}"
+            else:
+                next_client_id = "CL0001"
+            validated_data["client_id"] = next_client_id
         else:
             validated_data["client_id"] = None
+        
+        validated_data.pop("template", None)
 
-
-        # Extract nested blocks
-        details_data = validated_data.pop("position_information", None)
-        billing_data = validated_data.pop("billing_details", None)
-        asset_data = self.initial_data.get("asset_details") or self.initial_data.get("asset_deatils", {})
-        validated_data.pop("posting_details", None)
-
-        # ✅ Get posting_details block
-        posting_block = dict(self.initial_data.get("posting_details", {}))
-
-        # Extract question & competency lists
-        # questions_data = posting_block.get("questions", [])
-        # competencies_data = posting_block.get("competencies") or posting_block.get("Competencies", [])
-
-        # Normalize competency fields
-        def normalize_competency_keys(raw):
-            return {
-                "competency": raw.get("Competency") or raw.get("competency"),
-                "library": raw.get("Library") or raw.get("library"),
-                "category": raw.get("Category") or raw.get("category"),
-                "expected_rating": raw.get("ExpectedRating") or raw.get("expected_rating"),
-                "weight": raw.get("Weight") or raw.get("weight")
-            }
-
-        job_requisition = JobRequisition.objects.create(**validated_data)
-
-        if details_data:
-            skills_block = self.initial_data.get("skills_required", {})
-            primary = skills_block.get("primary_skills", [])
-            secondary = skills_block.get("secondary_skills", [])
-
-            details_data["primary_skills"] = ", ".join(primary) if isinstance(primary, list) else str(primary)
-            details_data["secondary_skills"] = ", ".join(secondary) if isinstance(secondary, list) else str(secondary)
-            last_client = RequisitionDetails.objects.order_by('-id').first()
-            if details_data.get("company_client_name"):
-                last_client = RequisitionDetails.objects.exclude(client_id__isnull=True).order_by('-id').first()
-                new_client_id = (
-                    f"CL{int(str(last_client.client_id).replace('CL', '')) + 1:04d}"
-                    if last_client and str(last_client.client_id).startswith("CL") and str(last_client.client_id).replace("CL", "").isdigit()
-                    else "CL0001"
-                )
-                details_data["client_id"] = new_client_id
-            else:
-                details_data["client_id"] = None 
-
-
-            RequisitionDetails.objects.create(requisition=job_requisition, **details_data)
-        if billing_data:
-            BillingDetails.objects.create(requisition=job_requisition, **billing_data)
-        if posting_block:
-
-            PostingDetails.objects.create(
-                requisition=job_requisition,
-                experience=posting_block.get("experience"),
-                designation=posting_block.get("designation"),
-                job_category=posting_block.get("job_category"),
-                job_region=posting_block.get("job_region"),
-                qualification=posting_block.get("qualification"),
-                internal_job_description=posting_block.get("internalDesc", ""),
-                external_job_description=posting_block.get("externalDesc", "")
-            )
-
-
-        if asset_data:
-            AssetDetails.objects.create(requisition=job_requisition, **asset_data)
-
-        return job_requisition
-
+        # ✅ Create JobRequisition with cleaned data
+        job_req = JobRequisition.objects.create(**validated_data)
+        return job_req
 
 
     def update(self, instance, validated_data):
-        # 🔧 Extract nested blocks
-        details_data = validated_data.pop("position_information", None)
-        billing_data = validated_data.pop("billing_details", None)
-        asset_data = validated_data.pop("asset_details", None)
-        validated_data.pop("posting_details", None)
+        details_data = validated_data.pop("position_information", {})
+        billing_data = validated_data.pop("billing_details", {})
+        asset_data = validated_data.pop("asset_details", {})
+        posting_data = self.initial_data.get("posting_details", {})
+        skills_data = self.initial_data.get("skills_required", {})
 
-        posting_block = dict(self.initial_data.get("posting_details", {}))
+        # 🌐 Update top-level fields safely
+        instance.company_client_name = details_data.get("company_client_name") or instance.company_client_name
+        instance.PositionTitle = validated_data.get("PositionTitle", instance.PositionTitle)
+        instance.requisition_date = details_data.get("date_of_requisition") 
+        instance.due_requisition_date = details_data.get("due_date_of_requisition")
+        if instance.Status == "Incomplete form":
+            instance.Status = "Pending Approval"
 
-        # 🧠 Normalize lists → strings
-        def to_string(value):
-            return ", ".join(value) if isinstance(value, list) else value
-
-        posting_fields = {
-            "experience": to_string(posting_block.get("experience")),
-            "designation": to_string(posting_block.get("designation")),
-            "job_category": posting_block.get("job_category"),
-            "job_region": to_string(posting_block.get("job_region")),
-            "qualification": to_string(posting_block.get("qualification")),
-            "internal_job_description": posting_block.get("internalDesc", ""),
-            "external_job_description": posting_block.get("externalDesc", "")
-        }
-
-        # 🧩 Normalize skills
-        skills_block = self.initial_data.get("skills_required", {})
-        if details_data:
-            details_data["primary_skills"] = to_string(skills_block.get("primary_skills"))
-            details_data["secondary_skills"] = to_string(skills_block.get("secondary_skills"))
-
-        # 🧩 Normalize questions & competencies
-        def normalize_list(raw, lowercase_keys=True):
-            if isinstance(raw, dict): raw = [raw]
-            items = []
-            for entry in raw or []:
-                entry = {k.lower(): v for k, v in entry.items()} if lowercase_keys else entry
-                entry.pop("actions", None)
-                entry.pop("isnew", None)
-                entry.pop("id", None)
-                items.append(entry)
-            return items
-
-        def normalize_competency_keys(raw):
-            return {
-                "competency": raw.get("Competency") or raw.get("competency"),
-                "library": raw.get("Library") or raw.get("library"),
-                "category": raw.get("Category") or raw.get("category"),
-                "expected_rating": raw.get("ExpectedRating") or raw.get("expected_rating") or "Not Rated",
-                "weight": raw.get("Weight") or raw.get("weight"),
-            }
-
-        # questions_data = normalize_list(posting_block.get("questions", []))
-        # competencies_raw = normalize_list(posting_block.get("competencies", []) or posting_block.get("Competencies", []))
-        # competencies_data = [normalize_competency_keys(c) for c in competencies_raw]
-
-        # interview_data = posting_block.get("interview_teammate") or posting_block.get("interview_team", [])
-        # teams_data = posting_block.get("teams", [])
-
-        # 🧱 Update main model fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+        for attr, val in validated_data.items():
+            setattr(instance, attr, val)
         instance.save()
 
-        # 👤 Update one-to-one blocks
+        # 💾 RequisitionDetails
         if details_data:
-            if billing_data:
-                details_data["contract_start_date"] = billing_data.get("contract_start_date")
-                details_data["contract_end_date"] = billing_data.get("contract_end_date")
-                details_data["requisition_date"] = billing_data.get("billing_start_date")
-                details_data["due_requisition_date"] = billing_data.get("billing_end_date")
-
-            if hasattr(instance, "position_information"):
-                for attr, value in details_data.items():
-                    setattr(instance.position_information, attr, value)
+            details_data["primary_skills"] = ", ".join(skills_data.get("primary_skills", []))
+            details_data["secondary_skills"] = ", ".join(skills_data.get("secondary_skills", []))
+            if getattr(instance, "position_information", None):
+                for attr, val in details_data.items():
+                    setattr(instance.position_information, attr, val)
                 instance.position_information.save()
             else:
                 RequisitionDetails.objects.create(requisition=instance, **details_data)
 
+        # 💾 BillingDetails
         if billing_data:
-            if hasattr(instance, "billing_details"):
-                for attr, value in billing_data.items():
-                    setattr(instance.billing_details, attr, value)
+            if getattr(instance, "billing_details", None):
+                for attr, val in billing_data.items():
+                    setattr(instance.billing_details, attr, val)
                 instance.billing_details.save()
             else:
                 BillingDetails.objects.create(requisition=instance, **billing_data)
 
-        if posting_fields:
-            if hasattr(instance, "posting_details"):
-                for attr, value in posting_fields.items():
-                    setattr(instance.posting_details, attr, value)
+        # 💾 PostingDetails
+        def to_string(val): return ", ".join(val) if isinstance(val, list) else val or ""
+        posting_payload = {
+            "experience": to_string(posting_data.get("experience")),
+            "designation": to_string(posting_data.get("designation")),
+            "job_category": posting_data.get("job_category", ""),
+            "job_region": to_string(posting_data.get("job_region")),
+            "qualification": to_string(posting_data.get("qualification")),
+            "internal_job_description": posting_data.get("internalDesc", ""),
+            "external_job_description": posting_data.get("externalDesc", "")
+        }
+        if posting_payload:
+            if getattr(instance, "posting_details", None):
+                for attr, val in posting_payload.items():
+                    setattr(instance.posting_details, attr, val)
                 instance.posting_details.save()
             else:
-                PostingDetails.objects.create(requisition=instance, **posting_fields)
+                PostingDetails.objects.create(requisition=instance, **posting_payload)
 
+
+
+        # 💾 AssetDetails
         if asset_data:
-            if hasattr(instance, "asset_details"):
-                for attr, value in asset_data.items():
-                    setattr(instance.asset_details, attr, value)
+            if getattr(instance, "asset_details", None):
+                for attr, val in asset_data.items():
+                    setattr(instance.asset_details, attr, val)
                 instance.asset_details.save()
             else:
                 AssetDetails.objects.create(requisition=instance, **asset_data)
 
-        # 🔄 Refresh related tables
-        # instance.requisition_questions.all().delete()
-        # for q in questions_data:
-        #     RequisitionQuestion.objects.create(requisition=instance, **q)
-
-        # instance.requisition_competencies.all().delete()
-        # for c in competencies_data:
-        #     RequisitionCompetency.objects.create(requisition=instance, **c)
-
-        # instance.interview_team.all().delete()
-        # for i in interview_data:
-        #     InterviewTeam.objects.create(requisition=instance, **i)
-
-        # instance.teams.all().delete()
-        # for t in teams_data:
-        #     Teams.objects.create(requisition=instance, **t)
-
         return instance
+
 
     # def to_representation(self, instance):
     #     representation = super().to_representation(instance)
@@ -770,17 +660,37 @@ class ApproverSerializer(serializers.ModelSerializer):
         model = Approver
         fields = '__all__'
 
-class CandidateApprovalStatusSerializer(serializers.Serializer):
+
+class ApproverDetailSerializer(serializers.Serializer):
     req_id = serializers.CharField()
     client_id = serializers.CharField(allow_blank=True)
     client_name = serializers.CharField()
-    candidate_id = serializers.CharField()
-    candidate_first_name = serializers.CharField()
-    candidate_last_name = serializers.CharField()
-    overall_status = serializers.CharField()
-    approval_statuses = serializers.DictField(child=serializers.CharField(), required=False)
-    no_of_approvers = serializers.IntegerField()
-    approvers = serializers.ListField(child=serializers.DictField(), required=False)
+    role = serializers.CharField()
+    name = serializers.CharField()
+    email = serializers.EmailField()
+    contact_number = serializers.CharField()
+    job_title = serializers.CharField()
+    status = serializers.CharField()
+    decision = serializers.CharField()
+    comment = serializers.CharField()
+    # reviewed_at = serializers.CharField()
+
+
+class CandidateApprovalStatusSerializer(serializers.Serializer):
+    req_id = serializers.CharField()
+    client_id = serializers.CharField()
+    client_name = serializers.CharField()
+    approvers = ApproverDetailSerializer(many=True)
+    # req_id = serializers.CharField()
+    # client_id = serializers.CharField(allow_blank=True)
+    # client_name = serializers.CharField()
+    # candidate_id = serializers.CharField()
+    # candidate_first_name = serializers.CharField()
+    # candidate_last_name = serializers.CharField()
+    # overall_status = serializers.CharField()
+    # approval_statuses = serializers.DictField(child=serializers.CharField(), required=False)
+    # no_of_approvers = serializers.IntegerField()
+    # approvers = serializers.ListField(child=serializers.DictField(), required=False)
 
 
 

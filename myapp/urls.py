@@ -118,13 +118,11 @@ urlpatterns = [
     path("api/job/metadata/", job_metadata_lookup, name="job-metadata-lookup"),
     path("api/design/by-id/", interview_design_by_id, name="interview-design-by-id"),
     path("api/planner/by-id/", interview_planner_by_id, name="interview-planner-by-id"),
-
-
-
-
-
-
+    path('api/hiringplan/detail/', HiringPlanDetailView.as_view(), name='hiringplan-detail'),
 ]
+
+
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
