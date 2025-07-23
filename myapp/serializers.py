@@ -1,6 +1,6 @@
 from datetime import datetime
 from rest_framework import serializers
-from .models import Approver, AssetDetails, Benefit, Candidate, CandidateInterviewStages, CandidateReference, CandidateReview, CandidateSubmission, Candidates, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
+from .models import Approver, AssetDetails, Benefit, Candidate, CandidateInterviewStages, CandidateReference, CandidateReview, CandidateSubmission, Candidates, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
 from .models import CommunicationSkills,InterviewRounds,HiringPlan
@@ -586,15 +586,44 @@ class JobRequisitionDetailSerializer(serializers.ModelSerializer):
         model = JobRequisition
         fields = ['RequisitionID', 'PositionTitle', 'candidates', 'interviewer']
 
-class InterviewDesignScreenSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = InterviewDesignScreen
-        fields = '__all__'
+# class InterviewDesignScreenSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = InterviewDesignScreen
+#         fields = '__all__'
+
+# class InterviewDesignParametersSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = InterviewDesignParameters
+#         fields = '__all__'
 
 class InterviewDesignParametersSerializer(serializers.ModelSerializer):
+    score_card_name = serializers.CharField(source='score_card')
+    
     class Meta:
         model = InterviewDesignParameters
-        fields = '__all__'
+        fields = [
+            'score_card_name','interview_design_id', 'options', 'guideline', 'min_questions',
+            'screen_type', 'duration', 'Weightage', 'mode',
+            'feedback'
+        ]
+
+class InterviewDesignScreenSerializer(serializers.ModelSerializer):
+    plan_id = serializers.CharField(source='hiring_plan_id', allow_blank=True, required=False)
+    params = serializers.SerializerMethodField()
+
+
+    class Meta:
+        model = InterviewDesignScreen
+        fields = [
+            'plan_id', 'req_id','interview_design_id', 'tech_stacks', 'screening_type',
+            'no_of_interview_round', 'final_rating', 'status',
+            'feedback', 'params'
+        ]
+
+    def get_params(self, obj):
+        param_qs = InterviewDesignParameters.objects.filter(interview_design_id=obj.interview_design_id)
+        return InterviewDesignParametersSerializer(param_qs, many=True).data
+
 
 class StageAlertResponsibilitySerializer(serializers.ModelSerializer):
     class Meta:
@@ -728,6 +757,11 @@ class ConfigScreeningTypeSerializer(serializers.ModelSerializer):
 class ConfigScoreCardSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConfigScoreCard
+        fields = '__all__'
+
+class ConfigHiringDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConfigHiringData
         fields = '__all__'
 
 

@@ -9,7 +9,7 @@ from django.conf.urls.static import static
 from .views import JobRequisitionViewSet,JobRequisitionPublicViewSet
 from rest_framework.routers import DefaultRouter
 from .views import HiringPlanOverviewDetails,HiringInterviewRounds,HiringInterviewSkills
-from .views import InterviewPlannerCalculation
+from .views import InterviewPlannerCalculation,AdminConfigurationView
 from myapp import views
 # from rest_framework_simplejwt.views import (
 #     TokenObtainPairView,
@@ -67,6 +67,9 @@ urlpatterns = [
 
     path('api/', include(router1.urls)),#TODO home screen to develop and integrated
     path('api/', include(router2.urls)),#TODO get template to develop and integrated
+    
+    path("candidates/by-requisition/", CandidateListByRequisitionView.as_view(), name="candidates-by-req"),
+    path("candidates/detail/", CandidateDetailView.as_view(), name="candidate-detail"),
     path("candidates/screening/", CandidateScreeningView.as_view(), name="candidate-screening"),#TODO screen to develop and integrated
     path("candidates/schedule-meet/", ScheduleMeetView.as_view(), name="schedule-meet"),# TODO testing in process
     
@@ -98,15 +101,13 @@ urlpatterns = [
 
 
     path('configuration/', admin_configuration, name='configuration'),
+    path('admin_configuration/', AdminConfigurationView.as_view(), name='admin_configuration'),
     path('config_position_role/', ConfigPositionRoleView.as_view(), name='config_position_role'),
     path('position-role/search/', ConfigPositionRoleSearchView.as_view(), name='position_role_search'),
     path('screening-type/search/', ConfigScreeningTypeSearchView.as_view(), name='screening_type_search'),
-    path('scorecard/search/', ConfigScoreCardSearchView.as_view(), name='score_card_search'),
-    path('config_screening_type/', ConfigScreeningTypeView.as_view(), name='config_screening_type'),
-    path('config_score_card/', ConfigScoreCardView.as_view(), name='config_score_card'),
+    path('scorecard/search/', ConfigScoreCardSearchView.as_view(), name='score_card_search'),    
     path('design_screen_list_data/', design_screen_list_data, name='design_screen_list_data'),
     path('manage-requisition/', ManageRequisitionView.as_view(), name='manage_requisition'),
-
     path('api/candidates/interview-details/', CandidateInterviewDetailView.as_view(), name='candidate-interview-details'),
     path("api/candidates/all-details/", CandidateAllRequisitionsView.as_view(), name="candidate-all-details"),
     path("api/candidates/update-details/", CandidateUpdateView.as_view(), name="candidate-update-details"),

@@ -25,49 +25,51 @@
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script> -->
 
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css">
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Bootstrap 5 Bundle JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Bootstrap Select JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
+
+
+
+
   <script>
     $(document).ready(function() {
+      $('.selectpicker').selectpicker();
       // get_config_table_data("");
     // $('#example').DataTable({
     //   responsive: true
     // });
   });
 
-  function get_config_table_data(table_name)
+  function get_config_table_data(category_name)
   {
     
-    if(table_name === "")
+    if(category_name === "")
     {
       alert("select Configuration Name");return;
     }
+    $("#field_value").val("");
     $("#config_tbl_data tbody").empty();
-    $.ajax({url: "/"+table_name+"/",type: 'GET',success: function(result)
+    $.ajax({url: "/admin_configuration/",type: 'GET', data: {category_name: category_name},success: function(result)
       {
-            console.log(result.data);
+            console.log(result.data);console.log(category_name);
             for(var i=0;i<result.data.length;i++)
             {
-              var field_value = "";
-              if(table_name === "config_position_role")
-              {
-                field_value = result.data[i].position_role;
-              }
-              else if(table_name === "config_screening_type")
-              {
-                field_value = result.data[i].screening_type_name;
-              }
-              else if(table_name === "config_score_card")
-              {
-                field_value = result.data[i].score_card_name;
-              }
+              
 
               var tbody = "<tr>\n" +
 "          <td>"+(i+1)+"</td>          \n" +
-"          <td>"+field_value+"</td>\n" +
-"          <td>\n" +
-"            <i class=\"bi bi-pencil-fill text-primary\" style=\"font-size:20px;\"></i>\n" +
-"          </td>\n" +
-"          <td onclick=\"delete_record('"+table_name+"','"+result.data[i].id+"')\">\n" +
-"            <i class=\"bi bi-trash-fill text-danger\" style=\"font-size:20px;\"></i>\n" +
+"          <td>"+result.data[i].category_values+"</td>\n" +
+"          <td >\n" +
+"            <i class=\"bi bi-trash-fill text-danger\" onclick=\"delete_record('"+category_name+"','"+result.data[i].id+"')\" style=\"font-size:20px;\"></i>\n" +
+// "            <i class=\"bi bi-pencil-fill text-primary\" style=\"font-size:20px;\"></i>&emsp;&emsp;<i class=\"bi bi-trash-fill text-danger\" onclick=\"delete_record('"+category_name+"','"+result.data[i].id+"')\" style=\"font-size:20px;\"></i>\n" +
+
 "          </td>\n" +
 "        </tr>";
 $("#config_tbl_data tbody").append(tbody);
@@ -78,76 +80,43 @@ $("#config_tbl_data tbody").append(tbody);
 
   function save_config_data()
   {
-    var table_name = $("#select_configuration").val();
-    var table_value = $("#tbl_value").val();
+    var category_name = $("#select_configuration").val();
+    var field_value = $("#field_value").val();
     
-    if(table_name === "")
+    if(category_name === "")
     {
       alert("select Configuration Name");return;
     }
     
-    if(table_value === "")
+    if(field_value === "")
     {
       alert("Enter  Value Name");return;
     }
-    json_data = {table_value: table_value}
-    $.ajax({url: "/"+table_name+"/",type: 'POST',data: json_data,success: function(result)
+    json_data = {category_name:category_name,category_values: field_value};
+    console.log(json_data)
+    $.ajax({url: "/admin_configuration/",type: 'POST',data: json_data,success: function(result)
       {
             if(result.success)
             {
-              get_config_table_data(table_name)
+              get_config_table_data(category_name)
             }
       }});
   }
 
-  function delete_record(table_name,id)
+  function delete_record(category_name,id)
   {  
     
-    json_data = {id: id}
-    $.ajax({url: "/"+table_name+"/",type: 'DELETE',data: json_data,success: function(result)
+    // json_data = {id: id}
+    $.ajax({url: "/admin_configuration/",type: 'DELETE',data: {id: id},success: function(result)
       {
             if(result.success)
             {
-              get_config_table_data(table_name)
+              get_config_table_data(category_name);
             }
       }});
   }
 
-  function calc_interview_planning()
-    {
-      let dead_line_days = $("#dead_line_days").val();
-      let working_hours_per_day = $("#working_hours_per_day").val();
-      let working_hrs_per_week = $("#working_hrs_per_week").val();
-      let offer_decline = $("#offer_decline").val();
-      let no_of_roles_to_hire = $("#no_of_roles_to_hire").val();     
-      let conversion_ratio = $("#conversion_ratio").val();     
-      let elimination = $("#elimination").val();     
-      let avg_interviewer_time_per_week_hrs = $("#avg_interviewer_time_per_week_hrs").val();     
-      let interview_round = $("#interview_round").val();           
-      let interview_time_per_round = $("#interview_time_per_round").val();     
-      let interviewer_leave_days = $("#interviewer_leave_days").val();     
-      let no_of_month_interview_happens = $("#no_of_month_interview_happens").val();    
-
-      json_data = {dead_line_days: dead_line_days,offer_decline:offer_decline,no_of_roles_to_hire:no_of_roles_to_hire,conversion_ratio:conversion_ratio,elimination:elimination,
-        avg_interviewer_time_per_week_hrs:avg_interviewer_time_per_week_hrs,interview_round:interview_round,interview_time_per_round:interview_time_per_round,
-        interviewer_leave_days:interviewer_leave_days,no_of_month_interview_happens:no_of_month_interview_happens,working_hours_per_day:working_hours_per_day,working_hrs_per_week:working_hrs_per_week
-
-      }
-
-      
-      $.ajax({url: "/interview_planner/",type: 'POST',data: json_data, success: function(result)
-      {
-            console.log(result);
-            $("#required_candidate").val(result["data"]["required_candidate"]);
-            $("#decline_adjust_count").val(result["data"]["decline_adjust_count"]);
-            $("#total_candidate_pipline").val(result["data"]["total_candidate_pipline"]);
-            $("#total_interviews_needed").val(result["data"]["total_interviews_needed"]);
-            $("#total_interview_hrs").val(result["data"]["total_interview_hrs"]);
-            $("#total_interview_weeks").val(result["data"]["total_interview_weeks"]);
-            $("#no_of_interviewer_need").val(result["data"]["no_of_interviewer_need"]);
-            $("#leave_adjustment").val(result["data"]["leave_adjustment"]);
-      }});
-    }
+  
   </script>
 </head>
 <body><br/><br/>
@@ -160,12 +129,22 @@ $("#config_tbl_data tbody").append(tbody);
         </div> 
         <div class="col-md-4">
           <label for="working_hours_per_day" class="form-label">Configuraiton  Name</label>
-          <select id="select_configuration" class="form-control" onchange="get_config_table_data(this.value)">
-            <option value="">Select Type</option>
-            <option value="config_position_role">Position Role</option>
-            <option value="config_screening_type">Screening Type</option>
-            <option value="config_score_card">Score Card</option>
-            
+          <select id="select_configuration" class="form-control selectpicker" data-live-search="true"    onchange="get_config_table_data(this.value)">
+            <option value=""></option>
+            <option value="Position Role">Position Role</option>
+            <option value="Screening Type">Screening Type</option>
+            <option value="Score Card">Score Card</option>
+            <option value="Designation">Designation</option>
+            <option value="Tech Stack">Tech Stack</option>
+            <option value="Target Companies">Target Companies</option>
+            <option value="Working Model">Working Model</option>
+            <option value="Role Type">Role Type</option>
+            <option value="Job Type">Job Type</option>
+            <option value="Mode of Working">Mode of Working</option>
+            <option value="Shift Timings">Shift Timings</option>
+            <option value="Education Qualification">Education Qualification</option>
+            <option value="Communication Language">Communication Language</option>
+            <option value="Location">Location</option>
           </select>
         </div>  
         <div class="col-md-4">
@@ -177,8 +156,8 @@ $("#config_tbl_data tbody").append(tbody);
           &nbsp;
         </div> 
         <div class="col-md-4">
-          <label for="working_hours_per_day" class="form-label"> Name</label>
-          <input type="text" class="form-control" id="tbl_value" value="" />
+          <label for="field_value" class="form-label"> Name</label>
+          <input type="text" class="form-control" id="field_value" value="" />
         </div>  
         <div class="col-md-4"><br/>
            <button class="btn btn-primary" onclick="save_config_data();">Save</button>
@@ -192,8 +171,7 @@ $("#config_tbl_data tbody").append(tbody);
         <tr>
           <th>Serial No</th>
           <th>Name</th>
-          <th>&nbsp;</th>
-          <th>&nbsp;</th>
+          <th>&nbsp;</th>        
         </tr>
       </thead>
       <tbody>

@@ -620,7 +620,7 @@ class InterviewDesignScreen(models.Model):
 class InterviewDesignParameters(models.Model):
     interview_desing_params_id = models.AutoField(primary_key=True)
     hiring_plan_id = models.CharField(max_length=50,blank=True)
-    interview_design_id = models.IntegerField(default=0)
+    interview_design_id = models.IntegerField(null=False)
     score_card = models.CharField(max_length=255,blank=True)
     options = models.CharField(max_length=255,blank=True)
     guideline = models.CharField(max_length=255,blank=True)
@@ -628,6 +628,7 @@ class InterviewDesignParameters(models.Model):
     screen_type = models.CharField(max_length=255,blank=True)
     duration = models.IntegerField(default=0)
     mode = models.CharField(max_length=255,blank=True)
+    Weightage = models.IntegerField(default=0)
     feedback = models.CharField(max_length=255,blank=True)
 
     class Meta:
@@ -987,4 +988,12 @@ class InterviewPlanner(models.Model):
 
     class Meta:
         db_table = 'job_interview_planning'
+        managed = False
+
+class ConfigHiringData(models.Model):
+    id = models.AutoField(primary_key=True)    
+    category_name = models.CharField(max_length=500,blank=True)
+    category_values = models.CharField(max_length=500,blank=True)
+    class Meta:
+        db_table = 'config_hiring_data'
         managed = False

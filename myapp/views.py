@@ -37,15 +37,15 @@ from datetime import timedelta, timezone as dt_timezone
 
 
 
-from .models import ApprovalStatus, Approver, CandidateApproval, CandidateInterviewStages, CandidateReview, CandidateSubmission, \
+from .models import ApprovalStatus, Approver, CandidateApproval, CandidateInterviewStages, CandidateReview, CandidateSubmission, ConfigHiringData, \
     ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, \
     InterviewReview, InterviewSchedule, InterviewSlot, Interviewer, OfferNegotiation, RequisitionDetails, StageAlertResponsibility, \
     UserDetails, UserroleDetails
 from .models import Candidate
 from .models import InterviewRounds, HiringPlan
 from .models import JobRequisition
-from .serializers import ApproverDetailSerializer, ApproverSerializer, CandidateApprovalStatusSerializer, CandidateDetailWithInterviewSerializer, CandidateInterviewStagesSerializer, \
-    CandidateSubmissionSerializer, ConfigPositionRoleSerializer, ConfigScoreCardSerializer, \
+from .serializers import ApproverDetailSerializer, ApproverSerializer, CandidateApprovalStatusSerializer, CandidateDetailWithInterviewSerializer, CandidateInterviewStagesSerializer, CandidateSerializer, \
+    CandidateSubmissionSerializer, ConfigHiringDataSerializer, ConfigPositionRoleSerializer, ConfigScoreCardSerializer, \
     ConfigScreeningTypeSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, InterviewPlannerSerializer, \
     InterviewerSerializer, JobRequisitionSerializer, JobTemplateSerializer, OfferNegotiationSerializer, \
     StageAlertResponsibilitySerializer
@@ -775,6 +775,68 @@ class InterviewerListCreateAPIView(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         try:
+            if 'file' in request.FILES:
+                # ✅ Save manually to desired folder
+                file = request.FILES['file']
+                os.makedirs(RESUME_STORAGE_FOLDER, exist_ok=True)
+                file_path = os.path.join(RESUME_STORAGE_FOLDER, file.name)
+                
+                with open(file_path, "wb") as f:
+                    f.write(file.read())
+
+                wb = openpyxl.load_workbook(file_path)
+                sheet = wb.active
+
+                created_count = 0
+                skipped_rows = []
+
+                for row_idx, row in enumerate(sheet.iter_rows(min_row=2), start=2):
+                    data = {
+                        "req_id": row[0].value,
+                        "client_id": row[1].value,
+                        "first_name": row[2].value,
+                        "last_name": row[3].value,
+                        "job_title": row[4].value,
+                        "interview_mode": row[5].value,
+                        "interviewer_stage": row[6].value,
+                        "email": row[7].value,
+                        "contact_number": row[8].value,
+                        "slots": [{
+                            "date": row[9].value,
+                            "start_time": row[10].value,
+                            "end_time": row[11].value
+                        }]
+                    }
+
+                    exists = Interviewer.objects.filter(
+                        req_id__RequisitionID=data["req_id"],
+                        email=data["email"]
+                    ).exists()
+
+                    if exists:
+                        skipped_rows.append(row_idx)
+                        continue
+
+                    serializer = self.get_serializer(data=data)
+                    if serializer.is_valid():
+                        serializer.save()
+                        created_count += 1
+                    else:
+                        return Response(api_json_response_format(
+                            False,
+                            f"Error at row {row_idx}: {serializer.errors}",
+                            400,
+                            {}
+                        ), status=200)
+
+                return Response(api_json_response_format(
+                    True,
+                    f"{created_count} interviewers created. Skipped rows: {skipped_rows}",
+                    200,
+                    {}
+                ), status=200)
+
+
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -1630,6 +1692,57 @@ class CandidateSubmissionViewSet(viewsets.ModelViewSet):
             True, "Submissions retrieved successfully.", 200, serializer.data
         ), status=200)
 
+class CandidateDetailView(APIView):
+    def post(self, request):
+        try:
+            candidate_id = request.data.get("candidate_id")
+            if not candidate_id:
+                return Response(api_json_response_format(False, "Missing candidate_id", 400, {}), status=200)
+
+            candidate = Candidate.objects.select_related("Req_id_fk__HiringManager").get(pk=candidate_id)
+            requisition = candidate.Req_id_fk
+
+            # Serialize base candidate data
+            serializer = CandidateSerializer(candidate)
+            candidate_data = serializer.data
+
+            # Enrich with HR name and position title
+            candidate_data["position_title"] = requisition.PositionTitle if requisition else "Not Provided"
+            candidate_data["hr_name"] = requisition.HiringManager.Name if requisition and requisition.HiringManager else "Unknown"
+
+            return Response(api_json_response_format(
+                True,
+                "Candidate detail retrieved",
+                200,
+                candidate_data
+            ), status=200)
+
+        except Candidate.DoesNotExist:
+            return Response(api_json_response_format(False, "Candidate not found", 404, {}), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, str(e), 500, {}), status=200)
+
+
+
+class CandidateListByRequisitionView(APIView):
+    def post(self, request):
+        try:
+            requisition_id = request.data.get("requisition_id")
+            if not requisition_id:
+                return Response(api_json_response_format(False, "Missing requisition_id", 400, {}), status=200)
+
+            candidates = Candidate.objects.filter(Req_id_fk__RequisitionID=requisition_id)
+            data = [
+                {"id": c.CandidateID, "name": f"{c.candidate_first_name} {c.candidate_last_name}"}
+                for c in candidates
+            ]
+            return Response(api_json_response_format(True, "Candidates fetched successfully", 200, data), status=200)
+        except Exception as e:
+            return Response(api_json_response_format(False, str(e), 500, {}), status=200)
+
+
+
 
 class CandidateScreeningView(APIView):
     def post(self, request):
@@ -2389,10 +2502,8 @@ class InterviewPlannerCalculation(APIView):
         try:   
             plan_id = request.data.get('plan_id')
             req_id = request.data.get('req_id') 
-            if plan_id and req_id:
+            if  req_id:
                 filters = {}
-                if plan_id:
-                    filters['hiring_plan_id'] = plan_id
                 if req_id:
                     filters['requisition_id'] = req_id
 
@@ -2412,8 +2523,6 @@ class InterviewPlannerCalculation(APIView):
         try:
             plan_id = request.data.get('plan_id')
             req_id = request.data.get('req_id')
-            if not plan_id:
-                    return Response(api_json_response_format(False,"plan_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200)
             if not req_id:
                 return Response(api_json_response_format(False,"req_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200) 
             filters = {}
@@ -2577,8 +2686,7 @@ class InterviewPlannerCalculation(APIView):
         try:
             plan_id = request.data.get('plan_id')
             req_id = request.data.get('req_id')            
-            if not plan_id:
-                return Response(api_json_response_format(False,"plan_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200)
+            
             if not req_id:
                 return Response(api_json_response_format(False,"req_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200)
             
@@ -3080,10 +3188,10 @@ class InterviewDesignScreenView(APIView):
     def get(self, request):
         try:
             db_model = InterviewDesignScreen.objects.all()
-            serializer = InterviewDesignScreenSerializer(db_model, many=True)            
-            return Response(api_json_response_format(True,"InterviewDesignScreenView.",200,serializer.data), status=200)
+            serializer = InterviewDesignScreenSerializer(db_model, many=True)
+            return Response(api_json_response_format(True, "InterviewDesignScreenView.", 200, serializer.data), status=200)
         except Exception as e:
-            return Response(api_json_response_format(False,"Error InterviewDesignScreenView get method ()."+str(e),500,{}), status=200)
+            return Response(api_json_response_format(False, f"Error InterviewDesignScreenView get method: {str(e)}", 500, {}), status=200)
 
         
     def post(self, request, *args, **kwargs):
@@ -3091,63 +3199,66 @@ class InterviewDesignScreenView(APIView):
             design_params = request.data.get("params", [])
             interview_design = request.data.copy()
 
-            # 🔁 Extract and assign req_id + plan_id explicitly
             req_id = interview_design.get("req_id")
-            plan_id = interview_design.get("plan_id")
+            plan_id = interview_design.get("plan_id")  # optional
 
-            interview_design["hiring_plan_id"] = plan_id
-            interview_design["req_id"] = req_id  # ✅ Correct field name for model
+            if not req_id:
+                return Response(api_json_response_format(False, "req_id is required.", 400, {}), status=200)
+
+            interview_design["req_id"] = req_id
+            interview_design["hiring_plan_id"] = plan_id or ""  # default to empty string if not provided
+
+            # Optional: inject plan_id only if present
+            if plan_id:
+                interview_design["plan_id"] = plan_id
 
             # 🧠 Auto-fill position_role from JobRequisition
             requisition = JobRequisition.objects.filter(RequisitionID=req_id).first()
             if requisition:
                 interview_design["position_role"] = requisition.PositionTitle
 
-            # 🧹 Clean payload before serializer
-            interview_design.pop("plan_id", None)
+            # Clean payload
             interview_design.pop("params", None)
 
             serializer = InterviewDesignScreenSerializer(data=interview_design)
             if serializer.is_valid():
                 instance = serializer.save()
                 interview_design_id = instance.interview_design_id
-
-                # 🧩 Enrich nested parameters
+                
+                # Attach nested parameters
                 for obj in design_params:
                     obj["score_card"] = obj.get("score_card_name", "")
                     obj["interview_design_id"] = interview_design_id
-                    obj["hiring_plan_id"] = instance.hiring_plan_id
+                    obj["hiring_plan_id"] = instance.hiring_plan_id or ""
 
                 serializer_params = InterviewDesignParametersSerializer(data=design_params, many=True)
                 if serializer_params.is_valid():
                     serializer_params.save()
 
-                    # 🎯 Inject req_id into response
                     response_data = serializer.data.copy()
                     response_data["req_id"] = req_id
+                    response_data["params"] = serializer_params.data
 
                     return Response(api_json_response_format(
                         True,
-                        "Interview Design Screen Details Updated Successfully!",
-                        0,
+                        "Interview Design Screen Details Saved Successfully!",
+                        200,
                         response_data
-                    ))
+                    ), status=200)
 
-                else:
-                    return Response(api_json_response_format(
-                        False,
-                        f"Could not save Interview Design parameters: {serializer_params.errors}",
-                        status.HTTP_400_BAD_REQUEST,
-                        {}
-                    ))
-
-            else:
                 return Response(api_json_response_format(
                     False,
-                    f"Could not save Interview Design: {serializer.errors}",
-                    status.HTTP_400_BAD_REQUEST,
+                    f"Could not save Interview Design parameters: {serializer_params.errors}",
+                    400,
                     {}
-                ))
+                ), status=200)
+
+            return Response(api_json_response_format(
+                False,
+                f"Could not save Interview Design: {serializer.errors}",
+                400,
+                {}
+            ), status=200)
 
         except Exception as e:
             return Response(api_json_response_format(
@@ -3155,16 +3266,8 @@ class InterviewDesignScreenView(APIView):
                 f"Could not save Interview Design: {str(e)}",
                 500,
                 {}
-            ))
+            ), status=200)
 
-
-        except Exception as e:
-            return Response(api_json_response_format(
-                False,
-                f"Could not save Interview Design: {str(e)}",
-                500,
-                {}
-            ))
 
     def put(self, request, *args, **kwargs):
         try:
@@ -3410,6 +3513,7 @@ class InterviewScreenDashboardView(APIView):
                 requisition = JobRequisition.objects.filter(RequisitionID=design.req_id).first()
 
                 design_screen_data = {
+                    "interview_design_id":design.interview_design_id,
                     "plan_id": design.hiring_plan_id,
                     "position_role": design.position_role,
                     "tech_stacks": design.tech_stacks,
@@ -3694,6 +3798,63 @@ class ConfigScoreCardView(APIView):
         except Exception as error:
             return Response(api_json_response_format(False,"Could not delete Job Position Role ."+str(error),500,{}), status=200) 
 
+class AdminConfigurationView(APIView):
+    def get(self, request):
+        try:        
+            category_name = request.query_params.get('category_name')
+            if not category_name:
+                categories = ConfigHiringData.objects.values_list('category_name', flat=True).distinct()
+                data = {}
+                for category in categories:
+                    values = ConfigHiringData.objects.filter(category_name=category).values_list('category_values', flat=True)
+                    data[category] = list(values)         
+                return Response(api_json_response_format(True,"Admin Configuration Details details",200,data), status=200)
+            else:
+                print(category_name)
+                queryset = ConfigHiringData.objects.filter(category_name=category_name)
+                serializer = ConfigHiringDataSerializer(queryset, many=True)
+                return Response(api_json_response_format(True,"Admin Configuration Details details",200,serializer.data), status=200)                
+
+        except Exception as e:
+            return Response(api_json_response_format(False,"Error in Admin Configuration Details details get method  "+str(e),500,{}), status=status.HTTP_200_OK)
+            
+    def post(self, request):
+        try:            
+            serializer = ConfigHiringDataSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(api_json_response_format(True,"Admin Configuration Details updated Successfully!.",201,serializer.data), status=200)
+            return Response(api_json_response_format(False,"Could not update Admin Configuration details",201,{}), status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response(api_json_response_format(False,"Error during Could not update Admin Configuration details post method "+str(e),500,{}), status=status.HTTP_200_OK)
+        
+    def put(self, request):
+        ref_id = request.data.get('id')        
+        if not ref_id:
+            return Response(api_json_response_format(False,"ref_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200)       
+        try:
+            instance = ConfigHiringData.objects.get(id=ref_id)
+            serializer = ConfigHiringDataSerializer(instance, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(api_json_response_format(True,"Admin Configuration Details Details updated successfully : ",status.HTTP_200_OK,serializer.data), status=200)
+            return Response(api_json_response_format(False,"Could not update Admin Configuration Details error : "+str(serializer.errors),500,{}), status=200)       
+                
+        except Exception as error:
+            return Response(api_json_response_format(False,"Could not update Admin Configuration Details error in put method : "+str(error),500,{}), status=200)            
+        
+
+    def delete(self, request):
+        try:
+            ref_id = request.data.get('id') 
+            if not ref_id:
+                return Response(api_json_response_format(False,"id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200)
+            obj = ConfigHiringData.objects.get(id=ref_id)
+            obj.delete()
+            return Response(api_json_response_format(True,"Admin Configuration Details  deleted successfully.",200,{}), status=200)             
+        except Exception as error:
+            return Response(api_json_response_format(False,"Could not delete Admin Configuration Details ."+str(error),500,{}), status=204) 
 
 @api_view(['GET'])
 def design_screen_list_data(request):
