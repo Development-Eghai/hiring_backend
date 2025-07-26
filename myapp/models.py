@@ -9,7 +9,7 @@ class HiringPlan(models.Model):
     hiring_plan_id = models.CharField(max_length=50,blank=True,unique=True,db_index=True)
     job_position = models.CharField(max_length=255,blank=True)
     tech_stacks = models.CharField(max_length=255,blank=True)
-    jd_details = models.CharField(max_length=255,blank=True)    
+    jd_details = models.TextField(blank=True)   
     designation = models.CharField(max_length=255,blank=True)
     experience_range = models.CharField(max_length=255,blank=True)
     target_companies = models.CharField(max_length=255,blank=True)
@@ -997,3 +997,44 @@ class ConfigHiringData(models.Model):
     class Meta:
         db_table = 'config_hiring_data'
         managed = False
+
+class BgVendor(models.Model):
+    name = models.CharField(max_length=255)
+    contact_email = models.EmailField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "bg_vendor"
+
+    def __str__(self):
+        return self.name
+
+
+class BgPackage(models.Model):
+    vendor = models.ForeignKey(BgVendor, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    rate = models.DecimalField(max_digits=10, decimal_places=2)
+    included_checks = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "bg_package"
+
+    def __str__(self):
+        return f"{self.name} ({self.vendor.name})"
+
+
+class BgCheckRequest(models.Model):
+    requisition = models.ForeignKey(JobRequisition, to_field="RequisitionID", on_delete=models.CASCADE)
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE)
+    vendor = models.ForeignKey(BgVendor, on_delete=models.CASCADE)
+    selected_package = models.ForeignKey(BgPackage, null=True, blank=True, on_delete=models.SET_NULL)
+    custom_checks = models.JSONField(default=list)
+    status = models.CharField(max_length=50, default="Initiated")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "bg_check_request"
+
+    def __str__(self):
+        return f"{self.candidate} - {self.status}"

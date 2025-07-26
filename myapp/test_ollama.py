@@ -14,7 +14,7 @@ LOCAL_DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "media", "resumes")
 os.makedirs(LOCAL_DOWNLOAD_FOLDER, exist_ok=True)
 
 # 📄 Resume to process
-resume_filename = "Resume_Vinay_J.pdf"
+resume_filename = "Anand_Sivakumar_March.pdf"
 local_resume_path = os.path.join(LOCAL_DOWNLOAD_FOLDER, resume_filename)
 
 # 🌐 SCP download from server
@@ -54,11 +54,11 @@ def get_matching_score(job_description, resume_text, resume_name):
     Return ONLY this JSON:
     {{
         "resume_name": "{resume_name}",
-        "percentage": 90,
-        "candidate_first_name": "[First Name]",
-        "candidate_last_name": "[Last Name]",
-        "email": "[Candidate Email Address]",
-        "phone": "[Phone Number]"
+        "percentage": "Your estimate of match percentage (integer)",
+        "candidate_first_name": "Extracted first name",
+        "candidate_last_name": "Extracted last name",
+        "email": "Extracted email address",
+        "phone": "Extracted phone number"
     }}
 
     Do NOT include any extra commentary or formatting.
@@ -67,8 +67,9 @@ def get_matching_score(job_description, resume_text, resume_name):
     {job_description}
 
     Resume Text:
-    {resume_text[:2000]}
+    {resume_text[:5000]}
     """
+
 
     ai_output = ollama_model.invoke(prompt)
     first_name, last_name, email, phone = extract_candidate_info(ai_output, resume_text)
@@ -102,7 +103,7 @@ def extract_candidate_info(ai_output, fallback_text):
     last_name = name_fallback.group(2) if name_fallback and name_fallback.group(2) else ""
     email = email_fallback.group(1).strip() if email_fallback else "Not found"
     phone = phone_fallback.group(1).strip() if phone_fallback else "Not found"
-
+    print(first_name, last_name, email, phone)
     return first_name, last_name, email, phone
 
 # 🚀 Main Execution

@@ -72,7 +72,10 @@ urlpatterns = [
     path("candidates/detail/", CandidateDetailView.as_view(), name="candidate-detail"),
     path("candidates/screening/", CandidateScreeningView.as_view(), name="candidate-screening"),#TODO screen to develop and integrated
     path("candidates/schedule-meet/", ScheduleMeetView.as_view(), name="schedule-meet"),# TODO testing in process
-    
+    path("api/schedule/update/", update_interview_schedule, name="update-interview-schedule"),
+    path("api/schedule/delete/", delete_interview_schedule, name="delete-interview-schedule"),
+    path("api/schedule/get/", get_interview_schedule_by_id, name="get-interview-schedule-by-id"),
+
     path('api/schedule/context/', ScheduleContextAPIView.as_view()),
     path('api/interviewers/', InterviewerListCreateAPIView.as_view(), name='interviewer-list-create'),# create interviewer slot
 
@@ -87,6 +90,8 @@ urlpatterns = [
 
     path('api/set-approver/', ApproverCreateListView.as_view(), name='set-approver'),
     path('api/set-approver/filter/', ApproverFilterView.as_view(), name='filter-approver'),
+    path("api/approvers/by-requisition/", get_approvers_by_requisition, name="get-approvers-by-requisition"),
+
 
     path('interivew_design_dashboard/', InterviewScreenDashboardView.as_view(), name='interivew_desing_dashboard'),
     path('get_plan_id_position_role/', get_plan_id_position_role, name='get_plan_id_position_role'),
@@ -107,6 +112,7 @@ urlpatterns = [
     path('screening-type/search/', ConfigScreeningTypeSearchView.as_view(), name='screening_type_search'),
     path('scorecard/search/', ConfigScoreCardSearchView.as_view(), name='score_card_search'),    
     path('design_screen_list_data/', design_screen_list_data, name='design_screen_list_data'),
+    path('design_screen_list_data_interviewer/', design_screen_list_data_interviewer, name='design_screen_list_data_interviewer'),
     path('manage-requisition/', ManageRequisitionView.as_view(), name='manage_requisition'),
     path('api/candidates/interview-details/', CandidateInterviewDetailView.as_view(), name='candidate-interview-details'),
     path("api/candidates/all-details/", CandidateAllRequisitionsView.as_view(), name="candidate-all-details"),
@@ -120,9 +126,13 @@ urlpatterns = [
     path("api/design/by-id/", interview_design_by_id, name="interview-design-by-id"),
     path("api/planner/by-id/", interview_planner_by_id, name="interview-planner-by-id"),
     path('api/hiringplan/detail/', HiringPlanDetailView.as_view(), name='hiringplan-detail'),
+    path("offer/generate/", GenerateOfferView.as_view(), name="generate-offer"),
+    
+    path("bg-package-setup/", BgPackageSetupView.as_view(), name="bg-package-setup"),
+    path("initiate-bg-check/", InitiateBgCheckView.as_view(), name="initiate-bg-check"),
+    path("bg-check-request/", BgCheckRequestView.as_view(), name="bg-check-request"),
+
 ]
-
-
 
 
 if settings.DEBUG:

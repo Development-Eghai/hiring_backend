@@ -1,6 +1,6 @@
 from datetime import datetime
 from rest_framework import serializers
-from .models import Approver, AssetDetails, Benefit, Candidate, CandidateInterviewStages, CandidateReference, CandidateReview, CandidateSubmission, Candidates, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
+from .models import Approver, AssetDetails, Benefit, BgCheckRequest, BgPackage, BgVendor, Candidate, CandidateInterviewStages, CandidateReference, CandidateReview, CandidateSubmission, Candidates, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
 from .models import CommunicationSkills,InterviewRounds,HiringPlan
@@ -350,6 +350,8 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
 
         # 💾 RequisitionDetails
         if details_data:
+            details_data.pop("date_of_requisition", None)
+            details_data.pop("due_date_of_requisition", None)
             details_data["primary_skills"] = ", ".join(skills_data.get("primary_skills", []))
             details_data["secondary_skills"] = ", ".join(skills_data.get("secondary_skills", []))
             if getattr(instance, "position_information", None):
@@ -703,6 +705,12 @@ class ApproverDetailSerializer(serializers.Serializer):
     decision = serializers.CharField()
     comment = serializers.CharField()
     # reviewed_at = serializers.CharField()
+    candidate_id = serializers.CharField()
+    candidate_first_name = serializers.CharField()
+    candidate_last_name = serializers.CharField()
+    screening_status = serializers.CharField()
+    # recruiter_name = serializers.CharField()
+
 
 
 class CandidateApprovalStatusSerializer(serializers.Serializer):
@@ -769,3 +777,37 @@ class InterviewPlannerSerializer(serializers.ModelSerializer):
     class Meta:
         model = InterviewPlanner
         fields = '__all__'
+
+class BgVendorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BgVendor
+        fields = ["id", "name", "contact_email", "created_at"]
+
+
+class BgPackageSerializer(serializers.ModelSerializer):
+    vendor = BgVendorSerializer(read_only=True)
+
+    class Meta:
+        model = BgPackage
+        fields = ["id", "name", "rate", "included_checks", "vendor", "created_at"]
+
+
+class BgCheckRequestSerializer(serializers.ModelSerializer):
+    candidate = serializers.StringRelatedField()
+    requisition = serializers.StringRelatedField()
+    vendor = BgVendorSerializer(read_only=True)
+    selected_package = BgPackageSerializer(read_only=True)
+
+    def create(self, validated_data):
+        requisition_value = self.initial_data.get("requisition")
+        if requisition_value:
+            validated_data["requisition"] = JobRequisition.objects.get(RequisitionID=requisition_value)
+        return super().create(validated_data)
+
+
+    class Meta:
+        model = BgCheckRequest
+        fields = [
+            "id", "requisition", "candidate", "vendor",
+            "selected_package", "custom_checks", "status", "created_at"
+        ]
