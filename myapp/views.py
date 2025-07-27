@@ -57,7 +57,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .jwt_token import api_json_response_format
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .google_calendar import schedule_google_meet
 from django.utils import timezone
 
 
