@@ -91,12 +91,13 @@ class ApproverCreateListView(generics.ListCreateAPIView):
 
             no_of_approvers = len(queryset)
 
-            # 🧩 Serialize each approver with requisition and client metadata
+            # Assuming all approvers share the same requisition and plan metadata
+            first_approver = queryset[0]
+            requisition = first_approver.requisition
+            hiring_plan = first_approver.hiring_plan
+
             approvers_data = []
             for approver in queryset:
-                requisition = approver.requisition
-                hiring_plan = approver.hiring_plan
-
                 approvers_data.append({
                     "approver_id": approver.id,
                     "role": approver.role,
@@ -105,15 +106,15 @@ class ApproverCreateListView(generics.ListCreateAPIView):
                     "last_name": approver.last_name,
                     "email": approver.email,
                     "contact_number": approver.contact_number,
-                    "set_as_approver": approver.set_as_approver,
-                    "req_id": requisition.RequisitionID if requisition else "Unknown",
-                    "planning_id": hiring_plan.hiring_plan_id if hiring_plan else "",
-                    "client_name": requisition.company_client_name if requisition else "",
-                    "client_id": requisition.client_id if requisition else "",
-                    "no_of_approvers": no_of_approvers
+                    "set_as_approver": approver.set_as_approver
                 })
 
             response_payload = {
+                "req_id": requisition.RequisitionID if requisition else "Unknown",
+                "planning_id": hiring_plan.hiring_plan_id if hiring_plan else "",
+                "client_name": requisition.company_client_name if requisition else "",
+                "client_id": requisition.client_id if requisition else "",
+                "no_of_approvers": no_of_approvers,
                 "approvers": approvers_data
             }
 
@@ -2703,6 +2704,32 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                     updated.append(req_id)
                 except JobRequisition.DoesNotExist:
                     not_found.append(req_id)
+            decision = "approved" if new_status.lower() == "approved" else "rejected"
+            login_url = "https://hiring.pixeladvant.com/"
+            # requisition_url = f"https://yourdomain.com/requisitions/{requisition.pk}/details/"
+
+            email_body = f"""
+            Hi Team,
+
+            Your Job Requisition '{requisition.RequisitionID}' has been {decision} by Business Ops.
+
+            📌 Status: {new_status}
+            📝 Comment: {comment or "No comments provided."}
+
+            You can login to review the requisition status:
+            🔗 Login: {login_url}
+
+            Regards,
+            Business Ops Team
+            """
+
+            send_mail(
+                subject=f"Requisition '{requisition.RequisitionID}' {decision.capitalize()}",
+                message=email_body,
+                from_email='hiring@pixeladvant.com',
+                recipient_list=['anand040593@gmail.com'],  # 🔄 Use requisition owner’s email if dynamic
+                fail_silently=False,
+            )
 
             return Response(api_json_response_format(
                 True,

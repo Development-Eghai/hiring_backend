@@ -8,7 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from .models import Interviewer, InterviewSlot
 from django.db.models.functions import Substr, Cast
 from django.db.models import Max, IntegerField
-
+from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
   
@@ -343,6 +343,34 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
         instance.due_requisition_date = details_data.get("due_date_of_requisition")
         if instance.Status == "Incomplete form":
             instance.Status = "Pending Approval"
+            login_url = "https://hiring.pixeladvant.com/"
+            # requisition_url = f"https://yourdomain.com/requisitions/{instance.RequisitionID}/details/"  # Adjust URL pattern to match your routing
+
+            # Email content with login and requisition details
+            email_body = f"""
+            Hi Team,
+
+            Your Job Requisition '{instance.RequisitionID}' has been submitted for approval.
+
+            📅 Date of Requisition: {instance.requisition_date}
+            📌 Position Title: {instance.PositionTitle}
+            👥 No. of Positions: {instance.No_of_positions}
+
+            To view or manage your requisition:
+            🔗 Login here: {login_url}
+
+            Regards,
+            Hiring Team
+            """
+
+            send_mail(
+                subject=f"Requisition '{instance.RequisitionID}' - Pending Approval",
+                message=email_body,
+                from_email='hiring@pixeladvant.com',
+                recipient_list=['anand040593@gmail.com'],
+                fail_silently=False,
+            )
+
 
         for attr, val in validated_data.items():
             setattr(instance, attr, val)
