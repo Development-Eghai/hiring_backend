@@ -13,9 +13,126 @@ from django.core.mail import send_mail
 logger = logging.getLogger(__name__)
   
 class HiringPlanSerializer(serializers.ModelSerializer):
+    # Explicitly declare sensitive or edge-prone fields
+    compensation_range = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    designation = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    experience_range = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    target_companies = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    location = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    job_type = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    role_type = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    shift_timings = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    education_qualification = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    tech_stacks = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    bg_verification_type = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    jd_details = serializers.CharField(
+    allow_blank=True, allow_null=True, required=False
+    )
+
     class Meta:
         model = HiringPlan
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        def flatten_list(key):
+            raw = data.get(key, [])
+            return ", ".join([
+                item.get("value") for item in raw
+                if isinstance(item, dict) and item.get("value")
+            ]) if isinstance(raw, list) else ""
+
+        def flatten_single(key, fallback=None):
+            val = data.get(key)
+            return val[0].get("value", fallback) if isinstance(val, list) and val else fallback
+
+        data = data.copy()
+
+        # Multi-select fields (comma-separated strings)
+        for field in ["tech_stacks", "target_companies", "bg_verification_type"]:
+            val = flatten_list(field)
+            if val:
+                data[field] = val
+
+        # Single-select flattening (label-value)
+        flatten_map = {
+            "designation": "designation",
+            "education_qualification": "education_qualification",
+            "shift_timings": "shift_timings",
+            "location": "location",
+            "job_type": "job_type",
+            "role_type": "role_type",
+            "experience_range": "experience_range",
+            "compensation_range": "compensation_range"
+        }
+        for source, target in flatten_map.items():
+            val = flatten_single(source)
+            if val is not None:
+                data[target] = val
+
+        # Working model remap
+        data["working_model"] = flatten_single("working_modal")
+
+        # Communication language + proficiency
+        cl = data.get("communication_language")
+        if isinstance(cl, list) and cl and isinstance(cl[0], dict):
+            data["communication_language"] = cl[0].get("language", "")
+            data["language_proficiency"] = cl[0].get("proficiency", "")
+        elif isinstance(cl, str):
+            data["communication_language"] = cl
+
+        # Social media data
+        sm = data.get("social_media_data")
+        if isinstance(sm, list) and sm and isinstance(sm[0], dict):
+            media = sm[0]
+            data["social_media_links"] = f"{media.get('media_type', '')}: {media.get('media_link', '')}"
+
+        # Auto-generate job_position if missing
+        if not data.get("job_position"):
+            role = flatten_single("job_role", "")
+            designation = flatten_single("designation", "")
+            data["job_position"] = f"{designation} - {role}".strip(" -")
+
+        # Passthrough for raw fields
+        passthrough_fields = [
+            "jd_details", "compensation", "interview_status", "mode_of_working",
+            "education_decision", "domain_knowledge", "domain_yn", "domain_name",
+            "visa_requirements", "visa_country", "visa_type", "background_verification",
+            "social_media_link", "github_link", "notice_period", "additional_comp",
+            "requisition_template", "screening_questions"
+        ]
+        for key in passthrough_fields:
+            val = data.get(key)
+            if isinstance(val, (str, int, float)):
+                data[key] = str(val)
+
+        return super().to_internal_value(data)
+
+    def validate(self, attrs):
+        errors = {}
+
+        # Multi-select validations
+        for field in ["tech_stacks", "target_companies", "bg_verification_type"]:
+            if field in attrs and not isinstance(attrs[field], str):
+                errors[field] = "Must be a comma-separated string."
+
+        # Numeric validation
+        try:
+            if attrs.get("relocation_amount"):
+                float(attrs["relocation_amount"])
+        except ValueError:
+            errors["relocation_amount"] = "Relocation amount must be a number."
+
+        # Optional: Compensation type enforcement
+        if "compensation_range" in attrs and not isinstance(attrs["compensation_range"], str):
+            errors["compensation_range"] = "Must be a string."
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
+
+
+
 
 class HiringInterviewRoundsSerializer(serializers.ModelSerializer):
     class Meta:

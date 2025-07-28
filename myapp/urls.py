@@ -71,6 +71,8 @@ urlpatterns = [
     path("candidates/by-requisition/", CandidateListByRequisitionView.as_view(), name="candidates-by-req"),
     path("candidates/detail/", CandidateDetailView.as_view(), name="candidate-detail"),
     path("candidates/screening/", CandidateScreeningView.as_view(), name="candidate-screening"),#TODO screen to develop and integrated
+    path('api/approve-decision', CandidateApprovalDecisionView.as_view(), name='candidate_approval_decision'),
+
     path("candidates/schedule-meet/", ScheduleMeetView.as_view(), name="schedule-meet"),# TODO testing in process
     path("api/schedule/update/", update_interview_schedule, name="update-interview-schedule"),
     path("api/schedule/delete/", delete_interview_schedule, name="delete-interview-schedule"),
@@ -107,6 +109,7 @@ urlpatterns = [
 
     path('configuration/', admin_configuration, name='configuration'),
     path('admin_configuration/', AdminConfigurationView.as_view(), name='admin_configuration'),
+    path('admin_configuration/mapped_admin_configurations/', MappedAdminConfigView.as_view()),
     path('config_position_role/', ConfigPositionRoleView.as_view(), name='config_position_role'),
     path('position-role/search/', ConfigPositionRoleSearchView.as_view(), name='position_role_search'),
     path('screening-type/search/', ConfigScreeningTypeSearchView.as_view(), name='screening_type_search'),
