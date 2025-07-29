@@ -62,6 +62,11 @@ class HiringPlan(models.Model):
 
     requisition_template = models.CharField(max_length=255, blank=True, null=True)
     no_of_openings = models.IntegerField(default=0)
+    citizen_describe = models.CharField(max_length=255, blank=True, null=True)
+    health_describe = models.CharField(max_length=255, blank=True, null=True)
+    social_media_data = models.TextField(blank=True, null=True)
+
+
 
     # Uncomment and set null=True when needed
     # requisition_date = models.DateField(null=True, blank=True)

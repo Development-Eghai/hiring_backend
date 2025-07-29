@@ -54,7 +54,7 @@ def get_matching_score(job_description, resume_text, resume_name):
     Return ONLY this JSON:
     {{
         "resume_name": "{resume_name}",
-        "percentage": "Your estimate of match percentage (integer)",
+        "percentage": "Your estimate of match percentage (integer) between 0 and 100 inclusive",
         "candidate_first_name": "Extracted first name",
         "candidate_last_name": "Extracted last name",
         "email": "Extracted email address",

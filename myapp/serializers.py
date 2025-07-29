@@ -11,7 +11,8 @@ from django.db.models import Max, IntegerField
 from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
-  
+
+
 class HiringPlanSerializer(serializers.ModelSerializer):
     # Explicitly declare sensitive or edge-prone fields
     compensation_range = serializers.CharField(allow_blank=True, allow_null=True, required=False)
@@ -28,12 +29,27 @@ class HiringPlanSerializer(serializers.ModelSerializer):
     jd_details = serializers.CharField(
     allow_blank=True, allow_null=True, required=False
     )
+    visa_requirements = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    background_verification = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    social_media_data = serializers.JSONField(required=False)
+
 
     class Meta:
         model = HiringPlan
         fields = '__all__'
 
     def to_internal_value(self, data):
+        remap_fields = {
+            "visa_required": "visa_requirements",
+            "background_verfication": "background_verification",
+            "has_domain": "domain_yn",
+            "social_media_links":"social_media_data"
+        }
+
+        for source_key, target_key in remap_fields.items():
+            if source_key in data and isinstance(data[source_key], str):
+                data[target_key] = data[source_key]
+
         def flatten_list(key):
             raw = data.get(key, [])
             return ", ".join([
@@ -100,10 +116,18 @@ class HiringPlanSerializer(serializers.ModelSerializer):
             "social_media_link", "github_link", "notice_period", "additional_comp",
             "requisition_template", "screening_questions"
         ]
+        
+
         for key in passthrough_fields:
             val = data.get(key)
-            if isinstance(val, (str, int, float)):
+            if isinstance(val, dict) and "value" in val:
+                data[key] = str(val["value"])
+            elif isinstance(val, (str, int, float)):
                 data[key] = str(val)
+
+        print("🧪 visa_requirements:", data.get("visa_requirements"))
+        print("🧪 background_verification:", data.get("background_verification"))
+
 
         return super().to_internal_value(data)
 
@@ -388,12 +412,20 @@ class JobRequisitionCompactSerializer(serializers.ModelSerializer):
 
 class JobRequisitionSerializer(serializers.ModelSerializer):
     RequisitionID = serializers.CharField(read_only=False, required=False)
-    Planning_id = serializers.SlugRelatedField(
+    class CustomSlugField(serializers.SlugRelatedField):
+        def to_internal_value(self, data):
+            if data == "Not Provided":
+                return None
+            return super().to_internal_value(data)
+
+    # Use it in your serializer
+    Planning_id = CustomSlugField(
         slug_field='hiring_plan_id',
         queryset=HiringPlan.objects.all(),
         required=False,
         allow_null=True
     )
+
 
     client_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     requisition_date = serializers.DateField(required=False)
@@ -447,6 +479,10 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
 
 
     def update(self, instance, validated_data):
+        planning_raw = self.initial_data.get("Planning_id")
+        if planning_raw == "Not Provided":
+            validated_data["Planning_id"] = None  # or you can do validated_data.pop("Planning_id", None)
+
         details_data = validated_data.pop("position_information", {})
         billing_data = validated_data.pop("billing_details", {})
         asset_data = validated_data.pop("asset_details", {})

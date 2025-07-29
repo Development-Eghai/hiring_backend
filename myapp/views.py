@@ -2,6 +2,7 @@
 import base64
 import datetime
 from io import BytesIO
+import json
 import openpyxl
 from openpyxl.styles import Font
 from urllib.parse import quote
@@ -2389,8 +2390,8 @@ class CandidateScreeningView(APIView):
                 # 📧 Send HTML emails to approvers
                 for approver in approvers:
                     subject = f"Candidate Screening Decision Requested - {requisition_id}"
-                    approve_url = f"http://127.0.0.1:8000/api/approve-decision?candidate_id={candidate.pk}&approver_id={approver.id}&decision=Approve"
-                    reject_url = f"http://127.0.0.1:8000/api/approve-decision?candidate_id={candidate.pk}&approver_id={approver.id}&decision=Reject"
+                    approve_url = f"https://api.pixeladvant.com/api/approve-decision?candidate_id={candidate.pk}&approver_id={approver.id}&decision=Approve"
+                    reject_url = f"https://api.pixeladvant.com/api/approve-decision?candidate_id={candidate.pk}&approver_id={approver.id}&decision=Reject"
 
                     html_message = f"""
                         <html>
@@ -3706,10 +3707,13 @@ class HiringPlanOverviewDetails(APIView):
             raw["communication_language"] = cl
 
         # 🔹 Social media links
-        sm = raw.get("social_media_data")
-        if isinstance(sm, list) and sm and isinstance(sm[0], dict):
-            media = sm[0]
-            raw["social_media_links"] = f"{media.get('media_type', '')}: {media.get('media_link', '')}"
+        # sm = raw.get("social_media_data")
+        # if isinstance(sm, list):
+        #     raw["social_media_data"] = "\n".join([
+        #         f"{item.get('media_type', '')}: {item.get('media_link', '')}"
+        #         for item in sm if isinstance(item, dict)
+        #     ])
+        
 
         # 🔹 job_position auto-fill
         if not raw.get("job_position"):
@@ -3832,6 +3836,13 @@ def get_all_req_ids(request):
     ), status=200)
 
 
+def parse_social_media(raw_string):
+    try:
+        return json.loads(raw_string.replace("'", '"'))  # replace single quotes with double
+    except json.JSONDecodeError:
+        return []
+
+
 @api_view(['POST'])
 def get_hiring_plan_details(request):
     hiring_plan_id = request.data.get('hiring_plan_id')
@@ -3855,43 +3866,45 @@ def get_hiring_plan_details(request):
 
         structured_data = {
             "hiring_plan_id": plan.hiring_plan_id,
-            "job_role": [{"label": plan.job_position, "value": plan.job_position}] if plan.job_position else [],
-            "job_position": [{"label": plan.job_position, "value": plan.job_position}] if plan.job_position else [],
+            "job_role": format_label_value(plan.job_position),
+            "job_position": format_label_value(plan.job_position),
             "no_of_openings": plan.no_of_openings,
             "designation": format_label_value(plan.designation),
             "tech_stacks": format_list_label_value(plan.tech_stacks),
-            "jd_details": plan.jd_details or "",
+            "experience_range": format_label_value(plan.experience_range),
             "target_companies": format_list_label_value(plan.target_companies),
-            "education_qualification": format_label_value(plan.education_qualification),
-            "shift_timings": format_label_value(plan.shift_timings),
+            "compensation_range": format_label_value(plan.compensation_range),
             "location": format_label_value(plan.location),
             "working_modal": format_list_label_value(plan.working_model),
+            "mode_of_working": format_label_value(plan.mode_of_working),
             "job_type": format_label_value(plan.job_type),
             "role_type": format_label_value(plan.role_type),
-            "experience_range": format_label_value(plan.experience_range),
-            "communication_language": [{
-                "language": plan.communication_language or "",
-                "proficiency": plan.language_proficiency or ""
-            }],
             "relocation": plan.relocation or "No",
             "relocation_amount": plan.relocation_amount or "",
             "has_domain": plan.domain_yn or "No",
             "domain_name": plan.domain_name or "",
+            "education_qualification": format_label_value(plan.education_qualification),
+            "travel_opportunities": plan.travel_opportunities or "",
             "visa_required": plan.visa_requirements or "No",
             "visa_country": plan.visa_country or "",
             "visa_type": plan.visa_type or "",
             "background_verfication": plan.background_verification or "No",
             "bg_verification_type": format_list_label_value(plan.bg_verification_type),
+            "communication_language": [{
+                "language": plan.communication_language or "",
+                "proficiency": plan.language_proficiency or ""
+            }],
+            "citizen_requirement": plan.citizen_requirement or "No",
+            "citizen_describe": plan.citizen_describe if hasattr(plan, "citizen_describe") else "",
+            "job_health_requirement": plan.job_health_requirement or "No",
+            "health_describe": plan.health_describe if hasattr(plan, "health_describe") else "",
             "career_gap": plan.career_gap or "No",
             "social_media_link": "Yes" if plan.social_media_links else "No",
-            "social_media_data": [{
-                "media_type": plan.social_media_links.split(":")[0].strip(),
-                "media_link": plan.social_media_links.split(":")[1].strip()
-            }] if plan.social_media_links and ":" in plan.social_media_links else [],
-            "citizen_requirement": plan.citizen_requirement or "No",
-            "job_health_requirement": plan.job_health_requirement or "No",
-            "travel_opportunities": plan.travel_opportunities or ""
+            "social_media_data":  parse_social_media(plan.social_media_data) if plan.social_media_data else [],
+            "jd_details": plan.jd_details or "",
+            "shift_timings": format_label_value(plan.shift_timings),
         }
+
 
         return Response(api_json_response_format(
             True, "Hiring plan detail fetched successfully!", 200, structured_data
