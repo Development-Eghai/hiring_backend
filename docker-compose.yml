@@ -10,7 +10,7 @@ services:
       - "8000:8000"
     depends_on:
       - mysql
-      - ollama
+      # - ollama
     environment:
       DATABASE_HOST: mysql
       DATABASE_NAME: pixeladvant_hiring
@@ -36,17 +36,17 @@ services:
     networks:
       - mynetwork
 
-  ollama:
-    build:
-      context: .
-      dockerfile: Dockerfile_ollama  # Ensure Dockerfile_ollama exists for Ollama
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ~/.ollama:/root/.ollama
-    networks:
-      - mynetwork
+  # ollama:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile_ollama  # Ensure Dockerfile_ollama exists for Ollama
+  #   container_name: ollama
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ~/.ollama:/root/.ollama
+  #   networks:
+  #     - mynetwork
 
 networks:
   mynetwork:

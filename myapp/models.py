@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db.models import JSONField  # ✅ Correct for models
 from django.utils.timezone import now
 
 
@@ -582,16 +583,8 @@ class Interviewer(models.Model):
     class Meta:
         db_table = 'interviewer'
 
-class InterviewSlot(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    interviewer   = models.ForeignKey(Interviewer, on_delete=models.CASCADE,null=True,blank=True,db_column="interviewer_id", related_name='slots')
-    date = models.DateField()
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        db_table = 'interview_slot'
+
 
 class InterviewSchedule(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -617,9 +610,17 @@ class InterviewSchedule(models.Model):
 
 class InterviewReview(models.Model):
     schedule = models.ForeignKey(InterviewSchedule, on_delete=models.CASCADE, related_name='reviews')
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE,db_column="candidate_id")
     feedback = models.TextField(blank=True)
     result = models.CharField(max_length=100, blank=True)  # e.g., "Selected", "Rejected", etc.
     reviewed_at = models.DateTimeField(auto_now_add=True)
+    ParameterDefined = JSONField(null=True, blank=True)
+    Guidelines = JSONField(null=True, blank=True)
+    MinimumQuestions = JSONField(null=True, blank=True)
+    ActualRating = JSONField(null=True, blank=True)
+    Weightage = models.IntegerField(default=0)
+    Feedback_param  = JSONField(null=True, blank=True)  # final textual feedback list
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'interview_review'
@@ -659,16 +660,46 @@ class InterviewDesignParameters(models.Model):
         db_table = 'job_interview_design_parameters'
         managed = False
 
+class InterviewSlot(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    interviewer   = models.ForeignKey(Interviewer, on_delete=models.CASCADE,null=True,blank=True,db_column="interviewer_id", related_name='slots')
+    round = models.ForeignKey(
+    InterviewDesignParameters,
+    on_delete=models.CASCADE,
+    null=True,
+    blank=True,
+    db_column="round_id",
+    related_name="slots"
+)
+
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'interview_slot'
+
 class CandidateInterviewStages(models.Model):
     interview_stage_id = models.AutoField(primary_key=True)
-    interview_plan_id = models.IntegerField(default=0)
+    # interview_plan_id = models.IntegerField(default=0)
     candidate_id = models.IntegerField(default=0)
-    recuiter_id = models.IntegerField(default=0)
+    Req_id = models.ForeignKey(
+        JobRequisition,
+        to_field='RequisitionID',
+        on_delete=models.CASCADE,
+        related_name="CandidateInterviewStages",
+        db_column="Req_id"
+    )
     interview_stage = models.CharField(max_length=255,blank=True)  
     interview_date = models.DateField()
     mode_of_interview = models.CharField(max_length=255,blank=True)
     feedback = models.CharField(max_length=255,blank=True)
-    status = models.CharField(max_length=255,blank=True)    
+    status = models.CharField(max_length=255,blank=True) 
+    final_rating = models.IntegerField(default=0)
+    result = models.CharField(max_length=100, default="")
+
+   
     
     class Meta:
         db_table = 'candidate_interview_stages'
@@ -701,6 +732,7 @@ class OfferNegotiation(models.Model):
         related_name="offer_negotiations"
     )
     client_name = models.CharField(max_length=100)
+    client_id = models.CharField(max_length=100)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     position_applied = models.CharField(max_length=150)
@@ -960,7 +992,63 @@ class ApprovalStatus(models.Model):
 
     def __str__(self):
         return f"{self.approver} - {self.offer_negotiation} [{self.status}]"
-    
+
+class GeneratedOffer(models.Model):
+    requisition = models.ForeignKey(JobRequisition, on_delete=models.CASCADE, db_column='requisition_id', related_name='generated_offers')
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, db_column='candidate_id', related_name='generated_offers')
+
+    recruiter_email = models.EmailField(max_length=254)
+    job_title = models.CharField(max_length=100)
+    job_city = models.CharField(max_length=100)
+    job_country = models.CharField(max_length=100)
+
+    currency = models.CharField(max_length=10)
+    # salary = models.DecimalField(max_digits=12, decimal_places=2)
+    # variable_pay = models.CharField(max_length=20)
+
+    estimated_start_date = models.DateField(null=True, blank=True)
+
+    negotiation_status = models.CharField(max_length=20, default='Generated')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'generated_offer'
+        verbose_name = 'Generated Offer'
+        verbose_name_plural = 'Generated Offers'
+
+    def __str__(self):
+        return f"Offer for {self.candidate.first_name} - {self.job_title}"
+
+class OfferSalaryComponent(models.Model):
+    offer = models.ForeignKey(
+        'GeneratedOffer',
+        on_delete=models.CASCADE,
+        db_column='offer_id',
+        related_name='salary_components'
+    )
+    name = models.CharField(max_length=100)
+    value = models.CharField(max_length=100)
+
+    class Meta:
+        db_table = 'offer_salary_component'
+        managed = True
+
+
+class OfferVariablePayComponent(models.Model):
+    offer = models.ForeignKey(
+        'GeneratedOffer',
+        on_delete=models.CASCADE,
+        db_column='offer_id',
+        related_name='variable_pay_components'
+    )
+    name = models.CharField(max_length=100)
+    value = models.CharField(max_length=100)
+
+    class Meta:
+        db_table = 'offer_variable_pay_component'
+        managed = True
+
 
 class ConfigPositionRole(models.Model):
     id = models.AutoField(primary_key=True)    

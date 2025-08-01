@@ -1,6 +1,6 @@
 from datetime import datetime
 from rest_framework import serializers
-from .models import Approver, AssetDetails, Benefit, BgCheckRequest, BgPackage, BgVendor, Candidate, CandidateInterviewStages, CandidateReference, CandidateReview, CandidateSubmission, Candidates, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
+from .models import Approver, AssetDetails, Benefit, BgCheckRequest, BgPackage, BgVendor, Candidate, CandidateInterviewStages, CandidateReference, CandidateReview, CandidateSubmission, Candidates, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, InterviewReview, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
 from .models import CommunicationSkills,InterviewRounds,HiringPlan
@@ -609,6 +609,8 @@ class InterviewerSerializer(serializers.ModelSerializer):
     slots = InterviewSlotSerializer(many=True)
     client_id = serializers.SerializerMethodField()
     client_name = serializers.SerializerMethodField()
+    # contact_number = serializers.CharField(allow_blank=True, allow_null=True)
+
 
 
     class Meta:
@@ -722,12 +724,44 @@ class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
         return obj.Resume or "N/A"
 
     def get_Candidate_current_stage(self, obj):
-        stage = CandidateInterviewStages.objects.filter(candidate_id=obj.CandidateID).order_by('-interview_date').first()
-        return stage.interview_stage if stage and stage.interview_stage else "N/A"
+        latest_stage = (
+            CandidateInterviewStages.objects
+            .filter(candidate_id=obj.CandidateID)
+            .order_by('-interview_date')
+            .first()
+        )
+
+        # Show current stage as final stage if status is Completed
+        if latest_stage and latest_stage.status.lower() == "completed":
+            return latest_stage.interview_stage
+
+        return latest_stage.interview_stage if latest_stage else "N/A"
+
 
     def get_Candidate_Next_Stage(self, obj):
-        # Business logic placeholder: adjust how you determine next stage
-        return "N/A"
+        latest_stage = (
+            CandidateInterviewStages.objects
+            .filter(candidate_id=obj.CandidateID)
+            .order_by('-interview_date')
+            .first()
+        )
+
+        # If status is Completed, candidate journey is finished
+        if latest_stage and latest_stage.status.lower() == "completed":
+            return "N/A"
+
+        # Find next stage if interview not yet completed
+        today = datetime.now().date()
+        next_stage = (
+            CandidateInterviewStages.objects
+            .filter(candidate_id=obj.CandidateID, interview_date__gt=today)
+            .order_by('interview_date')
+            .first()
+        )
+
+        return next_stage.interview_stage if next_stage else "N/A"
+
+
 
     def get_Time_in_Stage(self, obj):
         stage = CandidateInterviewStages.objects.filter(candidate_id=obj.CandidateID).order_by('-interview_date').first()
@@ -813,6 +847,29 @@ class StageAlertResponsibilitySerializer(serializers.ModelSerializer):
         model = StageAlertResponsibility
         fields = '__all__'
 
+class InterviewReviewSerializer(serializers.ModelSerializer):
+    feedback = serializers.SerializerMethodField()
+    result = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InterviewReview
+        fields = '__all__'  # Keeps your structure intact
+
+    def get_feedback(self, obj):
+        print(f"Looking for stage: CandidateID={obj.candidate_id}, Stage={obj.ParameterDefined.strip()}")
+        stage = CandidateInterviewStages.objects.filter(
+            candidate_id=obj.candidate_id,
+            interview_stage__iexact=obj.ParameterDefined.strip()
+        ).first()
+        return stage.feedback if stage else ""
+
+    def get_result(self, obj):
+        stage = CandidateInterviewStages.objects.filter(
+            candidate_id=obj.candidate_id,
+            interview_stage__iexact=obj.ParameterDefined.strip()
+        ).first()
+        return stage.result if stage else ""
+
 
 
 
@@ -851,6 +908,7 @@ class OfferNegotiationSerializer(serializers.ModelSerializer):
         # Update basic fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+        instance.negotiation_status = "Successful"
         instance.save()
 
         # Optional: update benefits if included in payload
@@ -955,6 +1013,7 @@ class ConfigHiringDataSerializer(serializers.ModelSerializer):
 
 
 class InterviewPlannerSerializer(serializers.ModelSerializer):
+    hiring_plan_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     class Meta:
         model = InterviewPlanner
         fields = '__all__'

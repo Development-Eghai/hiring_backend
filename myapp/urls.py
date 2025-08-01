@@ -60,6 +60,9 @@ urlpatterns = [
     path('state_alert_responsibility/', StateAlertResposibilityView.as_view(), name='state_alert_responsibility'),
     # path('interviewer_calender/', InterviewerCalenderView.as_view(), name='interviewer_calender'),
     path('candidate_interview_stages/', CandidateInterviewStagesView.as_view(), name='candidate_interview_stages'),
+    # path('candidate-interview-stage-details/', CandidateInterviewStageView.as_view(), name='candidate-interview-stage-details'),
+    path('candidate-interview-journey/', InterviewJourneyView.as_view(), name='candidate-interview-journey'),
+    path('api/interview-review/', GetCandidateReviewView.as_view(), name='get_candidate_review'),
 
     path('api/hiring-plans/', get_hiring_plans, name='hiring_plans'), #TODO screen to develop and integrated
     path('api/hiring-plan/details/', get_hiring_plan_details, name='hiring_plan_details'), #TODO screen to develop and integrated
@@ -69,11 +72,15 @@ urlpatterns = [
     path('api/', include(router2.urls)),#TODO get template to develop and integrated
     
     path("candidates/by-requisition/", CandidateListByRequisitionView.as_view(), name="candidates-by-req"),
+    path("interviewer/by-requisition/", InterviewerListByRequisitionView.as_view(), name="interviewer-by-req"),
+    path("api/interviewer-context/", InterviewerContextAPIView.as_view(), name="interviewer_context"),
+
     path("candidates/detail/", CandidateDetailView.as_view(), name="candidate-detail"),
     path("candidates/screening/", CandidateScreeningView.as_view(), name="candidate-screening"),#TODO screen to develop and integrated
     path('api/approve-decision', CandidateApprovalDecisionView.as_view(), name='candidate_approval_decision'),
 
     path("candidates/schedule-meet/", ScheduleMeetView.as_view(), name="schedule-meet"),# TODO testing in process
+    path("schedule-meet/", ScheduleCandidateRecruiterMeetView.as_view(), name="schedule_meet"),
     path("api/schedule/update/", update_interview_schedule, name="update-interview-schedule"),
     path("api/schedule/delete/", delete_interview_schedule, name="delete-interview-schedule"),
     path("api/schedule/get/", get_interview_schedule_by_id, name="get-interview-schedule-by-id"),
@@ -82,6 +89,7 @@ urlpatterns = [
     path('api/interviewers/', InterviewerListCreateAPIView.as_view(), name='interviewer-list-create'),# create interviewer slot
 
     path('api/interview/review/', SubmitInterviewReviewView.as_view()),  # Submitting feedback
+    path('api/interview-reviews/', GetInterviewReviewsByCandidate.as_view(), name='get_interview_reviews_by_candidate'),
     path('api/interview/report/', InterviewReportAPIView.as_view()),  # Generating interview report
 
     path("api/interview/schedules/", GetInterviewScheduleAPIView.as_view()),
@@ -105,6 +113,7 @@ urlpatterns = [
     path('approval/approve/<int:negotiation_id>/', views.approve_offer, name='approve-offer'),
     path('approval/reject/<int:negotiation_id>/', views.reject_offer, name='reject-offer'),
     path('candidate-approver-status/', CandidateApprovalStatusView.as_view(), name='candidate-approver-status'),
+    path("offer-approvals/status/", OfferApprovalStatusView.as_view(), name="offer-approval-status"),
 
 
     path('configuration/', admin_configuration, name='configuration'),
@@ -130,7 +139,10 @@ urlpatterns = [
     path("api/planner/by-id/", interview_planner_by_id, name="interview-planner-by-id"),
     path('api/hiringplan/detail/', HiringPlanDetailView.as_view(), name='hiringplan-detail'),
     path("offer/generate/", GenerateOfferView.as_view(), name="generate-offer"),
-    
+    path('api/offer-details/', OfferDetailsViewSet.as_view(), name='offer-details'),
+    path("offer-details/fetch-offer/", OfferRetrievalView.as_view(), name="fetch_offer"),
+    path("offer-details/prefill-generate-offer/", GenerateOfferPrefillView.as_view(), name="prefill_generate_offer"),
+
     path("bg-package-setup/", BgPackageSetupView.as_view(), name="bg-package-setup"),
     path("initiate-bg-check/", InitiateBgCheckView.as_view(), name="initiate-bg-check"),
     path("bg-check-request/", BgCheckRequestView.as_view(), name="bg-check-request"),

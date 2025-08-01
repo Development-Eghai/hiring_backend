@@ -1,6 +1,6 @@
 # Import necessary modules and models
 import base64
-import datetime
+from django.core.mail import EmailMessage
 from io import BytesIO
 import json
 import openpyxl
@@ -41,15 +41,15 @@ from django.core.files.storage import default_storage
 
 
 from .models import ApprovalStatus, Approver, BgCheckRequest, BgPackage, BgVendor, CandidateApproval, CandidateInterviewStages, CandidateReview, CandidateSubmission, ConfigHiringData, \
-    ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, \
-    InterviewReview, InterviewSchedule, InterviewSlot, Interviewer, OfferNegotiation, RequisitionDetails, StageAlertResponsibility, \
+    ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, GeneratedOffer, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, \
+    InterviewReview, InterviewSchedule, InterviewSlot, Interviewer, OfferNegotiation, OfferSalaryComponent, OfferVariablePayComponent, RequisitionDetails, StageAlertResponsibility, \
     UserDetails, UserroleDetails
 from .models import Candidate
 from .models import InterviewRounds, HiringPlan
 from .models import JobRequisition
-from .serializers import ApproverDetailSerializer, ApproverSerializer, BgCheckRequestSerializer, BgPackageSerializer, CandidateApprovalStatusSerializer, CandidateDetailWithInterviewSerializer, CandidateInterviewStagesSerializer, CandidateSerializer, \
+from .serializers import ApproverDetailSerializer, ApproverSerializer, BgCheckRequestSerializer, BgPackageSerializer, CandidateApprovalStatusSerializer, CandidateDetailWithInterviewSerializer, CandidateInterviewStagesSerializer, CandidateReviewSerializer, CandidateSerializer, \
     CandidateSubmissionSerializer, ConfigHiringDataSerializer, ConfigPositionRoleSerializer, ConfigScoreCardSerializer, \
-    ConfigScreeningTypeSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, InterviewPlannerSerializer, \
+    ConfigScreeningTypeSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, InterviewPlannerSerializer, InterviewReviewSerializer, \
     InterviewerSerializer, JobRequisitionSerializer, JobTemplateSerializer, OfferNegotiationSerializer, \
     StageAlertResponsibilitySerializer
 from .serializers import HiringInterviewRoundsSerializer, HiringSkillsSerializer, HiringPlanSerializer
@@ -63,7 +63,8 @@ from rest_framework.response import Response
 from django.utils import timezone
 
 
-from datetime import datetime
+from datetime import datetime, date
+
 import pytz
 # from sentence_transformers import SentenceTransformer, util
 # import torch
@@ -407,6 +408,19 @@ class BgPackageSetupView(APIView):
                 {}
             ), status=200)
 
+class GetCandidateReviewView(APIView):
+    def post(self, request):
+        candidate_id = request.data.get("candidate_id")
+        if not candidate_id:
+            return Response(api_json_response_format(False, "Missing candidate_id", 400, {}), status=200)
+
+        reviews = InterviewReview.objects.filter(candidate_id=candidate_id)
+        if not reviews.exists():
+            return Response(api_json_response_format(False, "No reviews found", 404, {}), status=200)
+
+        serializer = InterviewReviewSerializer(reviews, many=True)
+        return Response(api_json_response_format(True, "Reviews retrieved", 200, serializer.data), status=200)
+
 class InitiateBgCheckView(APIView):
     def post(self, request):
         try:
@@ -509,6 +523,21 @@ class BgCheckRequestView(APIView):
         except Exception as e:
             return Response(api_json_response_format(False, str(e), 500, {}), status=200)
 
+
+def resolve_offer_approval_status(approvals, expected_roles):
+    decision_map = {
+        approval.approver.role: approval.status
+        for approval in approvals
+        if approval.approver and hasattr(approval.approver, "role")
+    }
+
+    decisions = [decision_map.get(role, "Awaiting") for role in expected_roles]
+
+    if any(d == "Awaiting" for d in decisions):
+        return "Awaiting Approval"
+    if all(d == "Approved" for d in decisions):
+        return "Approved"
+    return "Partially Approved"
 
 
 def compute_overall_status(approvals, expected_roles):
@@ -675,6 +704,60 @@ class CandidateApprovalStatusView(APIView):
                 {}
             ), status=200)
 
+class OfferApprovalStatusView(APIView):
+    def get(self, request):
+        try:
+            negotiations = OfferNegotiation.objects.filter(
+                negotiation_status="Successful"
+            ).select_related("requisition").prefetch_related("approvals__approver")
+
+            final_data = []
+
+            for offer in negotiations:
+                requisition = offer.requisition
+                candidate = Candidate.objects.filter(Req_id_fk=requisition.RequisitionID).first()
+                approvals = ApprovalStatus.objects.filter(offer_negotiation=offer).select_related("approver")
+
+                expected_roles = [approval.approver.role for approval in approvals if approval.approver]
+                overall_status = resolve_offer_approval_status(approvals, expected_roles)
+
+                for approval in approvals:
+                    approver = approval.approver
+                    if approver:
+                        final_data.append({
+                            "req_id": requisition.RequisitionID,
+                            "client_id": requisition.client_id,
+                            "client_name": offer.client_name,
+                            "role": approver.role,
+                            "name": f"{approver.first_name} {approver.last_name}",
+                            "email": approver.email,
+                            "contact_number": approver.contact_number,
+                            "job_title": approver.job_title,
+                            "status": approver.set_as_approver,
+                            "decision": approval.status if approval.status else "Awaiting",
+                            # "comment": approval.comment or "",
+                            "candidate_id": candidate.CandidateID if candidate else None,
+                            "candidate_first_name": offer.first_name,
+                            "candidate_last_name": offer.last_name,
+                            # "screening_status": getattr(candidate, "screening_status", None) if candidate else None
+                        })
+
+            return Response({
+                "success": True,
+                "message": "approval status retrieved!",
+                "error_code": 200,
+                "data": final_data
+            }, status=200)
+
+        except Exception as e:
+            return Response({
+                "success": False,
+                "message": f"Error retrieving approval status. {str(e)}",
+                "error_code": 500,
+                "data": []
+            }, status=200)
+
+
 
 
 class ApproverFilterView(APIView):
@@ -723,16 +806,54 @@ class OfferNegotiationViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
-            return Response(api_json_response_format(
-                True, "Offer negotiation created successfully!", 200, serializer.data
-            ), status=200)
+            offer_id = request.data.get("id")
+            if not offer_id:
+                return Response(api_json_response_format(False, "Missing offer ID", 400, {}), status=200)
+
+            offer_data = request.data
+            requisition_id = offer_data.get("requisition")
+
+            # Step 1: Validate requisition lookup
+            try:
+                requisition = JobRequisition.objects.get(RequisitionID=requisition_id)
+            except JobRequisition.DoesNotExist:
+                return Response(api_json_response_format(False, "Requisition not found.", 404, {}), status=200)
+
+            # Step 2: Get offer object
+            try:
+                offer = OfferNegotiation.objects.get(id=offer_id)
+            except OfferNegotiation.DoesNotExist:
+                return Response(api_json_response_format(False, "Offer negotiation not found.", 404, {}), status=200)
+
+            # Step 3: Handle benefits safely
+            benefit_data = offer_data.get("benefits", [])
+            benefit_ids = []
+            for item in benefit_data:
+                try:
+                    if isinstance(item, dict):
+                        benefit_ids.append(int(item.get("id")))
+                    else:
+                        benefit_ids.append(int(item))
+                except (ValueError, TypeError):
+                    continue  # Could log invalid items if needed
+
+            offer.benefits.set(benefit_ids)
+
+            # Step 4: Assign other fields
+            for field, value in offer_data.items():
+                if hasattr(offer, field) and field not in ["id", "requisition", "benefits"]:
+                    setattr(offer, field, value)
+
+            offer.requisition = requisition
+            offer.save()
+
+            # Step 5: Serialize and respond
+            serializer = self.get_serializer(offer)
+            return Response(api_json_response_format(True, "Offer negotiation updated successfully!", 200, serializer.data), status=200)
+
         except Exception as e:
-            return Response(api_json_response_format(
-                False, f"Error creating offer negotiation. {str(e)}", 500, {}
-            ), status=200)
+            return Response(api_json_response_format(False, f"Error updating offer negotiation. {str(e)}", 500, {}), status=200)
+
 
     @action(detail=False, methods=['get'], url_path='pending-approvals')
     def pending_approvals(self, request):
@@ -787,6 +908,31 @@ class OfferNegotiationViewSet(viewsets.ModelViewSet):
                 False, f"Error fetching pending approvals. {str(e)}", 500, {}
             ), status=200)
 
+    @action(detail=False, methods=['post'], url_path='get-by-id')
+    def get_by_id(self, request):
+        try:
+            offer_id = request.data.get("id")
+            if not offer_id:
+                return Response(api_json_response_format(
+                    False, "Missing offer ID in request body.", 400, {}
+                ), status=200)
+
+            try:
+                offer = OfferNegotiation.objects.prefetch_related('benefits').get(id=offer_id)
+            except OfferNegotiation.DoesNotExist:
+                return Response(api_json_response_format(
+                    False, "Offer negotiation not found.", 404, {}
+                ), status=200)
+
+            serializer = self.get_serializer(offer)
+            return Response(api_json_response_format(
+                True, "Offer negotiation retrieved successfully!", 200, serializer.data
+            ), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(
+                False, f"Error fetching offer negotiation. {str(e)}", 500, {}
+            ), status=200)
 
 
 
@@ -846,7 +992,8 @@ class GetInterviewScheduleAPIView(APIView):
 
                 data.append({
                     "Schedule ID": schedule.id,
-                    "Candidate Name": candidate.Name,
+                    "Candidate First Name": candidate.candidate_first_name,
+                    "Candidate Last Name":  candidate.candidate_last_name,
                     "Requisition ID": requisition.RequisitionID,
                     "Position Title": requisition.PositionTitle,
                     "Interview Date": schedule.date.strftime("%Y-%m-%d"),
@@ -863,79 +1010,228 @@ class GetInterviewScheduleAPIView(APIView):
         
         
 class InterviewReportAPIView(APIView):
-    def post(self, request):
-        req_id = request.data.get("requisition_id")
-        if not req_id:
-            return Response(api_json_response_format(False, "Missing requisition_id", 400, {}), status=200)
+    def get(self, request):
+        try:
+            interviewers = Interviewer.objects.all()
+            data = []
 
-        interviewers = Interviewer.objects.filter(req_id=req_id)
-        data = []
+            for interviewer in interviewers:
+                req_id = interviewer.req_id.RequisitionID if interviewer.req_id else ""
+                interviews = InterviewSchedule.objects.filter(interviewer=interviewer).select_related('candidate')
 
-        for interviewer in interviewers:
-            interviews = InterviewSchedule.objects.filter(
-                interviewer=interviewer,
-                candidate__Req_id_fk_id=req_id
-            ).select_related('candidate')
+                for interview in interviews:
+                    candidate = interview.candidate
+                    requisition = candidate.Req_id_fk if candidate else None
 
-            for interview in interviews:
-                candidate = interview.candidate
-                reviews = interview.reviews.all()
-                latest_review = reviews.latest("reviewed_at") if reviews.exists() else None
+                    # Fetch feedback and result from CandidateInterviewStages
+                    stage = CandidateInterviewStages.objects.filter(
+                        candidate_id=candidate.CandidateID,
+                        Req_id=req_id,
+                        interview_stage=interview.round_name
+                    ).first()
 
-                data.append({
-                    "Schedule ID": interview.id,
-                    "Req ID": req_id,
-                    "Client ID": interviewer.client_id,
-                    "First Name": interviewer.first_name,
-                    "Last Name": interviewer.last_name,
-                    "Job Title": interviewer.job_title,
-                    "Interview Mode": interviewer.interview_mode,
-                    "Interviewer Stage": interviewer.interviewer_stage,
-                    "Email ID": interviewer.email,
-                    "Candidate ID": candidate.CandidateID,
-                    "Candidate First Name": candidate.Name.split()[0] if candidate.Name else "",
-                    "Candidate Last Name": candidate.Name.split()[-1] if candidate.Name else "",
-                    "Role": candidate.Req_id_fk.PositionTitle if candidate.Req_id_fk else "",
-                    "Feedback": latest_review.feedback if latest_review else "",
-                    "Interview Results": latest_review.result if latest_review else "",
-                    "Contact Number": interviewer.contact_number,
-                    "Round Name": interview.round_name,
-                    "Interview Date": interview.date.strftime("%Y-%m-%d"),
-                    "Start Time": interview.start_time.strftime("%H:%M"),
-                    "End Time": interview.end_time.strftime("%H:%M"),
-                    "Meet Link": interview.meet_link
-                })
+                    data.append({
+                        "Schedule ID": interview.id,
+                        "Req ID": req_id,
+                        "Client ID": requisition.client_id if requisition and requisition.client_id else "",
+                        "First Name": interviewer.first_name,
+                        "Last Name": interviewer.last_name,
+                        "Job Title": interviewer.job_title,
+                        "Interview Mode": interviewer.interview_mode,
+                        "Interviewer Stage": interviewer.interviewer_stage,
+                        "Email ID": interviewer.email,
+                        "Candidate ID": candidate.CandidateID if candidate else "",
+                        "Candidate First Name": candidate.candidate_first_name if candidate else "",
+                        "Candidate Last Name": candidate.candidate_last_name if candidate else "",
+                        "Role": requisition.PositionTitle if requisition else "",
+                        "Feedback": stage.feedback if stage else "",
+                        "Interview Results": stage.result if stage else "",
+                        "Contact Number": interviewer.contact_number,
+                        "Round Name": interview.round_name,
+                        "Interview Date": interview.date.strftime("%Y-%m-%d"),
+                        "Start Time": interview.start_time.strftime("%H:%M"),
+                        "End Time": interview.end_time.strftime("%H:%M"),
+                        "Meet Link": interview.meet_link
+                    })
 
-        return Response(api_json_response_format(
-            True, "Fetched full interview report", 200, data
-        ), status=200)
-    
+            return Response(api_json_response_format(
+                True, "Fetched full interview report", 200, data
+            ), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(
+                False, f"Error fetching interview report: {str(e)}", 500, {}
+            ), status=200)
 
 class SubmitInterviewReviewView(APIView):
+    def get(self, request):
+        try:
+            data = []
+
+            schedules = InterviewSchedule.objects.select_related("candidate", "candidate__Req_id_fk").all()
+
+            for schedule in schedules:
+                reviews = InterviewReview.objects.filter(schedule=schedule, candidate=schedule.candidate)
+
+                review_data = []
+                for i, review in enumerate(reviews, start=1):
+                    review_data.append({
+                        "sno": i,
+                        "parameterDefined": review.ParameterDefined,
+                        "Guidelines": review.Guidelines,
+                        "MinimumQuestions": str(review.MinimumQuestions),
+                        "weightage": str(review.Weightage),
+                        "ActualRating": review.ActualRating,
+                        "Feedback": review.Feedback_param
+                    })
+
+                stage = CandidateInterviewStages.objects.filter(
+                    candidate_id=schedule.candidate.CandidateID,
+                    Req_id=schedule.candidate.Req_id_fk.RequisitionID,
+                    interview_stage=schedule.round_name
+                ).first()
+
+                entry = {
+                    "schedule_id": schedule.id,
+                    "reqId": schedule.candidate.Req_id_fk.RequisitionID,
+                    "candidate_id": schedule.candidate.CandidateID,
+                    "final_rating": stage.final_rating if stage else 0,
+                    "result": stage.result if stage else "",
+                    "final_feedback": stage.feedback if stage else "",
+                    "reviews": review_data
+                }
+
+                data.append(entry)
+
+            return Response(api_json_response_format(True, "All interview reviews retrieved", 200, data), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Failed to retrieve data: {e}", 500, {}), status=200)
+
     def post(self, request):
         try:
-            schedule_id = request.data.get("schedule_id")
-            feedback = request.data.get("feedback", "")
-            result = request.data.get("result", "")
+            req_id          = request.data.get("reqId")
+            candidate_id    = request.data.get("candidate_id")
+            final_rating    = request.data.get("final_rating", 0)
+            result          = request.data.get("result", "")
+            final_feedback  = request.data.get("final_feedback", "")
+            reviews         = request.data.get("reviews", [])
 
-            if not schedule_id:
-                return Response(api_json_response_format(False, "Missing schedule_id", 400, {}), status=200)
+            if not req_id or not candidate_id:
+                return Response(api_json_response_format(False, "Missing reqId or candidate_id", 400, {}), status=200)
 
-            schedule = InterviewSchedule.objects.get(id=schedule_id)
+            # Fetch schedule based on candidate and requisition
+            schedule = InterviewSchedule.objects.filter(
+                candidate__CandidateID=candidate_id,
+                candidate__Req_id_fk__RequisitionID=req_id
+            ).first()
 
-            InterviewReview.objects.create(
-                schedule=schedule,
-                feedback=feedback,
+            if not schedule:
+                return Response(api_json_response_format(False, "Schedule not found", 404, {}), status=200)
+
+            # Create or update InterviewReview for each parameter
+            for review in reviews:
+                InterviewReview.objects.update_or_create(
+                    schedule=schedule,
+                    candidate=schedule.candidate,
+                    ParameterDefined=review.get("parameterDefined", ""),
+
+                    defaults={
+                        "Guidelines": review.get("Guidelines", ""),
+                        "MinimumQuestions": review.get("MinimumQuestions", 0),
+                        "Weightage": review.get("weightage", 0),
+                        "ActualRating": review.get("ActualRating", 0),
+                        "Feedback_param": review.get("Feedback", "")
+                    }
+
+                )
+
+            # Update CandidateInterviewStages with final feedback
+            CandidateInterviewStages.objects.filter(
+                candidate_id=schedule.candidate.CandidateID,
+                Req_id=schedule.candidate.Req_id_fk.RequisitionID,
+                interview_stage=schedule.round_name
+            ).update(
+                status="Completed",
+                feedback=final_feedback,
+                final_rating=final_rating,
                 result=result
             )
 
             return Response(api_json_response_format(True, "Feedback saved", 200, {}), status=200)
 
-        except InterviewSchedule.DoesNotExist:
-            return Response(api_json_response_format(False, "Schedule not found", 404, {}), status=200)
-
         except Exception as e:
             return Response(api_json_response_format(False, f"Failed to save review: {e}", 500, {}), status=200)
+
+    def put(self, request):
+        try:
+            schedule_id     = request.data.get("schedule_id")
+            req_id          = request.data.get("reqId")
+            candidate_id    = request.data.get("candidate_id")
+            final_rating    = request.data.get("final_rating", 0)
+            result          = request.data.get("result", "")
+            final_feedback  = request.data.get("final_feedback", "")
+            reviews         = request.data.get("reviews", [])
+
+            if not schedule_id or not req_id or not candidate_id:
+                return Response(api_json_response_format(False, "Missing schedule_id, reqId, or candidate_id", 400, {}), status=200)
+
+            schedule = InterviewSchedule.objects.filter(
+                id=schedule_id,
+                candidate__CandidateID=candidate_id,
+                candidate__Req_id_fk__RequisitionID=req_id
+            ).first()
+
+            if not schedule:
+                return Response(api_json_response_format(False, "Schedule not found", 404, {}), status=200)
+
+            # Update each review
+            for review in reviews:
+                InterviewReview.objects.update_or_create(
+                    schedule=schedule,
+                    candidate=schedule.candidate,
+                    ParameterDefined=review.get("parameterDefined", ""),
+                    defaults={
+                        "Guidelines": review.get("Guidelines", ""),
+                        "MinimumQuestions": int(review.get("MinimumQuestions", 0)),
+                        "Weightage": int(review.get("weightage", 0)),
+                        "ActualRating": int(review.get("ActualRating", 0)),
+                        "Feedback_param": review.get("Feedback", "")
+                    }
+                )
+
+            # Update CandidateInterviewStages
+            CandidateInterviewStages.objects.filter(
+                candidate_id=schedule.candidate.CandidateID,
+                Req_id=schedule.candidate.Req_id_fk.RequisitionID,
+                interview_stage=schedule.round_name
+            ).update(
+                final_rating=final_rating,
+                result=result,
+                feedback=final_feedback,
+                status="Completed"
+            )
+
+            return Response(api_json_response_format(True, "Interview review updated", 200, {}), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Failed to update review: {str(e)}", 500, {}), status=200)
+
+
+class GetInterviewReviewsByCandidate(APIView):
+    def post(self, request):
+        try:
+            candidate_id = request.data.get("candidate_id")
+            if not candidate_id:
+                return Response(api_json_response_format(False, "Missing candidate_id", 400, {}), status=200)
+
+            reviews = InterviewReview.objects.filter(candidate_id=candidate_id)
+            serializer = InterviewReviewSerializer(reviews, many=True)
+
+            return Response(api_json_response_format(True, "Reviews fetched", 200, serializer.data), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Failed to fetch reviews: {e}", 500, {}), status=200)
 
 
 def get_fully_approved_candidates(instance):
@@ -963,8 +1259,7 @@ class ScheduleContextAPIView(APIView):
 
         try:
             instance = JobRequisition.objects.prefetch_related(
-                "candidates",
-                "interviewer__slots", "interviewer"
+                "candidates", "interviewer__slots", "interviewer"
             ).get(RequisitionID=req_id)
         except JobRequisition.DoesNotExist:
             return Response(
@@ -972,7 +1267,7 @@ class ScheduleContextAPIView(APIView):
                 status=200
             )
 
-        # 🔍 Fetch design metadata
+        # 🔍 Design screen and round metadata
         design_screen = InterviewDesignScreen.objects.filter(req_id=req_id).first()
         interview_design_id = design_screen.interview_design_id if design_screen else None
 
@@ -982,7 +1277,6 @@ class ScheduleContextAPIView(APIView):
                 interview_design_id=interview_design_id
             ).order_by("interview_desing_params_id")
             round_names = [param.score_card for param in design_params]
-
 
         candidate = instance.candidates.first()
         if not candidate:
@@ -998,14 +1292,11 @@ class ScheduleContextAPIView(APIView):
                 status=200
             )
 
-        # 🧠 Compose candidate & interviewer names
-        candidate_name = f"{candidate.candidate_first_name} {candidate.candidate_last_name}" if candidate else "Not Available"
-        interviewer = instance.interviewer.first()
-        interviewer_name = f"{interviewer.first_name} {interviewer.last_name}" if interviewer else "Not Assigned"
+        candidate_name = f"{candidate.candidate_first_name} {candidate.candidate_last_name}"
 
-        # 🔁 Fetch slots from InterviewSlot for the selected interviewer
-        slots = []
-        if interviewer:
+        # 🔁 Build interviewer-specific schedules
+        interviewer_payload = []
+        for i, interviewer in enumerate(instance.interviewer.all()):
             slot_qs = InterviewSlot.objects.filter(interviewer=interviewer).order_by("date", "start_time")[:5]
             slots = [
                 {
@@ -1013,22 +1304,24 @@ class ScheduleContextAPIView(APIView):
                     "time": slot.start_time.strftime("%I:%M %p")
                 } for slot in slot_qs
             ]
+            interviewer_payload.append({
+                "name": f"{interviewer.first_name} {interviewer.last_name}",
+                "mode": interviewer.interview_mode if interviewer.interview_mode else "Not Specified",
+                "round_name": round_names[i] if i < len(round_names) else f"Round {i+1}",
+                "slots": slots
+            })
 
-        # 🎯 Compose payload-style response
+        # 🎯 Final payload
         response_payload = {
             "req_id": instance.RequisitionID,
-            "job_postion": instance.PositionTitle,
+            "job_position": instance.PositionTitle,
             "planning_id": instance.Planning_id.hiring_plan_id if instance.Planning_id else "N/A",
             "candidate_name": candidate_name,
-            "interviewer_name": interviewer_name,
+            "interviewers": interviewer_payload,
             "location": "Zoom",
             "time_zone": "IST",
             "durations": "30 mins",
-            "purpose": "Technical Screening",
-            "no_of_rounds": len(slots),
-            "mode": interviewer.interview_mode if interviewer and interviewer.interview_mode else "Not Specified",
-            "round_name": round_names[0] if round_names else "Not Defined",
-            "schedule_slots": slots
+            "purpose": "Technical Screening"
         }
 
         return Response(
@@ -1036,6 +1329,72 @@ class ScheduleContextAPIView(APIView):
             status=200
         )
 
+class InterviewerContextAPIView(APIView):
+    def post(self, request):
+        interviewer_id = request.data.get("interviewer_id")
+        if not interviewer_id:
+            return Response(api_json_response_format(False, "Missing interviewer ID", 400, {}), status=200)
+
+        try:
+            interviewer = Interviewer.objects.get(interviewer_id=interviewer_id)
+        except Interviewer.DoesNotExist:
+            return Response(api_json_response_format(False, "Interviewer not found", 404, {}), status=200)
+
+        req_id = getattr(interviewer, "req_id_id", None)
+        rounds_payload = []
+
+        # Step 1: Get all slots for the given interviewer
+        all_slots = list(InterviewSlot.objects.filter(
+            interviewer=interviewer
+        ).order_by("date", "start_time"))
+
+        if req_id:
+            try:
+                # Step 2: Get requisition and list of interviewers
+                requisition = JobRequisition.objects.prefetch_related("interviewer").get(RequisitionID=req_id)
+                interviewer_list = list(requisition.interviewer.all())
+
+                if interviewer in interviewer_list:
+                    index = interviewer_list.index(interviewer)
+
+                    # Step 3: Get design rounds for this requisition
+                    design_screen = InterviewDesignScreen.objects.filter(req_id=req_id).first()
+                    interview_design_id = getattr(design_screen, "interview_design_id", None)
+
+                    if interview_design_id:
+                        round_list = list(InterviewDesignParameters.objects.filter(
+                            interview_design_id=interview_design_id
+                        ).order_by("interview_desing_params_id"))
+
+                        # Step 4: Pick round by interviewer index only
+                        if index < len(round_list):
+                            round_obj = round_list[index]
+                            round_name = round_obj.score_card or f"Round {index + 1}"
+
+                            # Assign first 5 available slots for that interviewer
+                            slots_chunk = all_slots[:5]
+
+                            formatted_slots = [
+                                {
+                                    "date": slot.date.strftime("%Y-%m-%d"),
+                                    "time": slot.start_time.strftime("%I:%M %p")
+                                } for slot in slots_chunk
+                            ]
+
+                            rounds_payload.append({
+                                "round_name": round_name,
+                                "slots": formatted_slots
+                            })
+
+            except JobRequisition.DoesNotExist:
+                pass
+
+        response_payload = {
+            "mode": interviewer.interview_mode or "Not Specified",
+            "rounds": rounds_payload
+        }
+
+        return Response(api_json_response_format(True, "Interviewer context retrieved", 200, response_payload), status=200)
 
 class InterviewerListCreateAPIView(generics.ListCreateAPIView):
     queryset = Interviewer.objects.prefetch_related('slots').all()
@@ -1064,8 +1423,11 @@ class InterviewerListCreateAPIView(generics.ListCreateAPIView):
 
                 created_count = 0
                 skipped_rows = []
-
+                
                 for row_idx, row in enumerate(sheet.iter_rows(min_row=2), start=2):
+                    excel_date = row[9].value
+                    parsed_date = excel_date.date() if isinstance(excel_date, datetime) else excel_date
+
                     data = {
                         "req_id": row[0].value,
                         "client_id": row[1].value,
@@ -1077,15 +1439,19 @@ class InterviewerListCreateAPIView(generics.ListCreateAPIView):
                         "email": row[7].value,
                         "contact_number": row[8].value,
                         "slots": [{
-                            "date": row[9].value,
+                            "date": parsed_date,
                             "start_time": row[10].value,
                             "end_time": row[11].value
                         }]
+
                     }
 
                     exists = Interviewer.objects.filter(
                         req_id__RequisitionID=data["req_id"],
-                        email=data["email"]
+                        email=data["email"],
+                        interviewer_stage=data["interviewer_stage"],
+                        slots__date=data["slots"][0]["date"],
+                        slots__start_time=data["slots"][0]["start_time"]
                     ).exists()
 
                     if exists:
@@ -1142,13 +1508,36 @@ class InterviewerListCreateAPIView(generics.ListCreateAPIView):
                 return Response(api_json_response_format(False, "Missing 'id' in request body", 400, {}), status=200)
 
             interviewer = Interviewer.objects.get(pk=interviewer_id)
+
+            # 🧹 Delete Interview Slots
+            InterviewSlot.objects.filter(interviewer=interviewer).delete()
+
+            # 🧹 Find Related Schedules
+            schedules = InterviewSchedule.objects.filter(interviewer=interviewer)
+
+            # 🧹 Delete Reviews linked to those schedules
+            InterviewReview.objects.filter(schedule__in=schedules).delete()
+
+            # 🧹 Delete Interview Schedules
+            schedules.delete()
+
+            # 🧹 Optionally delete CandidateInterviewStages based on stage match
+            stage = interviewer.interviewer_stage.strip().lower()
+            CandidateInterviewStages.objects.filter(
+                Req_id=interviewer.req_id,
+                interview_stage__iexact=stage
+            ).delete()
+
+
+            # 🧹 Finally delete the Interviewer
             interviewer.delete()
-            return Response(api_json_response_format(True, "Deleted successfully", 200, {}), status=200)
+
+            return Response(api_json_response_format(True, "Deleted successfully with related records", 200, {}), status=200)
+
         except Interviewer.DoesNotExist:
             return Response(api_json_response_format(False, "Interviewer not found", 404, {}), status=200)
         except Exception as e:
             return Response(api_json_response_format(False, str(e), 500, {}), status=200)
-
 
 class ScheduleMeetView(APIView):
     def get(self, request):
@@ -1223,11 +1612,28 @@ class ScheduleMeetView(APIView):
                 Req_id_fk__RequisitionID=req_id
             )
 
-            interviewer = Interviewer.objects.get(
+            matches = Interviewer.objects.filter(
                 first_name__iexact=interviewer_name.split()[0],
                 last_name__iexact=interviewer_name.split()[1],
-                req_id__RequisitionID=req_id
+                req_id__RequisitionID=req_id,
+                interviewer_stage__iexact=round_name
             )
+
+
+            # Refine by round_name if multiple interviewers matched
+            # if matches.count() > 1:
+            #     matches = matches.filter(interview_stage__iexact=round_name).distinct()
+
+            if matches.count() == 0:
+                return Response(api_json_response_format(
+                    False,
+                    "No matching interviewer found with the given name, requisition, and round name.",
+                    404,
+                    {}
+                ), status=200)
+
+            interviewer = matches.first()
+
 
             guest_emails = [g.get("email") for g in payload.get("guests", []) if g.get("email")]
 
@@ -1253,6 +1659,17 @@ class ScheduleMeetView(APIView):
                 guests=payload.get("guests"),
                 durations=payload.get("durations")
             )
+            CandidateInterviewStages.objects.create(
+                candidate_id=candidate.CandidateID,
+                Req_id_id=candidate.Req_id_fk.RequisitionID,
+                interview_date=start.date(),
+                interview_stage=round_name,
+                mode_of_interview=payload.get("mode", ""),
+                status="Stage Scheduled",
+                feedback=""
+            )
+
+
 
             return Response(api_json_response_format(
                 True,
@@ -1269,6 +1686,70 @@ class ScheduleMeetView(APIView):
             return Response(api_json_response_format(False, f"Invalid datetime format: {e}", 400, {}), status=200)
         except Exception as e:
             return Response(api_json_response_format(False, f"Failed to schedule: {str(e)}", 500, {}), status=200)
+
+
+
+class ScheduleCandidateRecruiterMeetView(APIView):
+    def post(self, request):
+        try:
+            payload = request.data
+            candidate_email = payload.get("candidate_email")
+            recruiter_email = payload.get("recruiter_email")
+            round_name = payload.get("purpose", "Interview")
+            summary = payload.get("summary", f"{round_name} Interview")
+
+            slot = payload.get("schedule_slots", [{}])[0]
+            date = slot.get("date")
+            time = slot.get("time")
+            duration_raw = payload.get("durations", "30 mins")
+            duration_mins = int(duration_raw.split()[0]) if duration_raw else 30
+
+            if not all([candidate_email, recruiter_email, date, time]):
+                return Response(api_json_response_format(False, "Missing required fields", 400, {}), status=200)
+
+            tz = pytz.timezone("Asia/Kolkata")
+            start = tz.localize(datetime.strptime(f"{date} {time}", "%Y-%m-%d %I:%M %p"))
+            end = start + timedelta(minutes=duration_mins)
+
+            # Meeting Link Generation
+            join_url = schedule_zoom_meet(
+                topic=summary,
+                start_time_iso=start.isoformat(),
+                duration_minutes=duration_mins,
+                timezone=tz.zone
+            )
+
+            # Compose mail content
+            subject = f"{summary} - Scheduled on {start.strftime('%d %b %Y at %I:%M %p')}"
+            message = (
+                f"Dear Participant,\n\n"
+                f"You have a scheduled meeting:\n"
+                f"Topic: {summary}\n"
+                f"Date: {start.strftime('%Y-%m-%d')}\n"
+                f"Time: {start.strftime('%I:%M %p')} IST\n"
+                f"Duration: {duration_mins} minutes\n"
+                f"Join Link: {join_url}\n\n"
+                f"Please be ready at the scheduled time.\n\nBest regards."
+            )
+
+            recipients = [candidate_email]
+
+            email = EmailMessage(
+                subject=subject,
+                body=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[candidate_email],
+                cc=[recruiter_email]  # Recruiter added in CC
+            )
+
+            email.send(fail_silently=False)
+
+            return Response(api_json_response_format(True, "Meeting link sent via email", 200, {
+                "meet_link": join_url
+            }), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Failed to send email: {str(e)}", 500, {}), status=200)
 
 @api_view(["POST"])
 def get_interview_schedule_by_id(request):
@@ -1367,10 +1848,27 @@ def delete_interview_schedule(request):
         if not schedule_id:
             return Response(api_json_response_format(False, "Missing 'schedule_id' in request.", 400, {}), status=200)
 
-        schedule = InterviewSchedule.objects.get(id=schedule_id)
+        schedule = InterviewSchedule.objects.select_related("candidate", "interviewer").get(id=schedule_id)
+
+        # Delete related Interviewer slot(s)
+        # InterviewSlot.objects.filter(interviewer=schedule.interviewer).delete()
+
+        # Delete related CandidateInterviewStage entry for this round
+        CandidateInterviewStages.objects.filter(
+            candidate_id=schedule.candidate.CandidateID,
+            Req_id_id=schedule.candidate.Req_id_fk.RequisitionID,
+            interview_stage=schedule.round_name
+        ).delete()
+
+        # Delete the actual schedule
         schedule.delete()
 
-        return Response(api_json_response_format(True, "Interview schedule deleted successfully!", 200, {}), status=200)
+        return Response(api_json_response_format(
+            True,
+            "Interview schedule, and candidate stage deleted successfully!",
+            200,
+            {}
+        ), status=200)
 
     except InterviewSchedule.DoesNotExist:
         return Response(api_json_response_format(False, "Schedule not found.", 404, {}), status=200)
@@ -1743,6 +2241,59 @@ class CandidateExcelExportView(APIView):
                 500,
                 {}
             ), status=200)
+
+class CandidateInterviewStageView(APIView):
+    def get(self, request):
+        try:
+            stages = CandidateInterviewStages.objects.select_related('candidate__Req_id_fk').all()
+            if not stages.exists():
+                return Response(api_json_response_format(False, "No interview stages available", 404, {}), status=200)
+
+            enriched_data = []
+            for stage in stages:
+                candidate = Candidate.objects.select_related('Req_id_fk').filter(CandidateID=stage.candidate_id).first()
+                requisition = candidate.Req_id_fk if candidate else None
+
+                enriched_data.append({
+                    "Req_ID": requisition.RequisitionID if requisition else "",
+                    "Client": requisition.ClientName if requisition else "",
+                    "Candidate_ID": candidate.CandidateID if candidate else "",
+                    "Candidate_Name": candidate.CandidateName if candidate else "",
+                    "Interview_Date": stage.interview_date,
+                    "Last_Interview_Stage": stage.interview_stage,
+                    "Current_Interview_Status": stage.status,
+                    "Interview_Details": {
+                        "Mode": stage.mode_of_interview,
+                        "Feedback": stage.feedback,
+                    }
+                })
+
+            return Response(api_json_response_format(True, "Candidate interview stage data retrieved", 200, enriched_data), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error retrieving interview stage data: {str(e)}", 500, {}), status=200)
+
+    def post(self, request):
+        try:
+            candidate_id = request.data.get("candidate_id")
+            req_id = request.data.get("req_id")
+
+            if not candidate_id:
+                return Response(api_json_response_format(False, "candidate_id is required", 400, {}), status=200)
+
+            filters = {"candidate_id": candidate_id}
+            if req_id:
+                filters["Req_id_id"] = req_id
+
+            stages = CandidateInterviewStages.objects.filter(**filters)
+            if not stages.exists():
+                return Response(api_json_response_format(False, "No interview stages found for given criteria", 404, {}), status=200)
+
+            serializer = CandidateInterviewStagesSerializer(stages, many=True)
+            return Response(api_json_response_format(True, "Interview stages retrieved successfully", 200, serializer.data), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error retrieving interview stages: {str(e)}", 500, {}), status=200)
 
 
 class CandidateAllRequisitionsView(APIView):
@@ -2185,7 +2736,21 @@ class CandidateListByRequisitionView(APIView):
             return Response(api_json_response_format(False, str(e), 500, {}), status=200)
 
 
+class InterviewerListByRequisitionView(APIView):
+    def post(self, request):
+        try:
+            requisition_id = request.data.get("requisition_id")
+            if not requisition_id:
+                return Response(api_json_response_format(False, "Missing requisition_id", 400, {}), status=200)
 
+            candidates = Interviewer.objects.filter(req_id__RequisitionID=requisition_id)
+            data = [
+                {"id": c.interviewer_id, "name": f"{c.first_name} {c.last_name}"}
+                for c in candidates
+            ]
+            return Response(api_json_response_format(True, "interviewer fetched successfully", 200, data), status=200)
+        except Exception as e:
+            return Response(api_json_response_format(False, str(e), 500, {}), status=200)
 
 class CandidateScreeningView(APIView):
     def get(self, request):
@@ -2513,52 +3078,273 @@ class CandidateApprovalDecisionView(APIView):
         </html>
         """
 
+class OfferDetailsViewSet(APIView):
+    def get(self, request):
+        try:
+            negotiations = OfferNegotiation.objects.filter(
+                negotiation_status__in=["Pending", "Generated", "Approved", "Successful", "open", "In progress"]
+            ).select_related("requisition").prefetch_related("approvals__approver")
+
+            data = []
+
+            for offer in negotiations:
+                requisition = offer.requisition
+                candidate = Candidate.objects.filter(Req_id_fk=requisition.RequisitionID).first()
+                approvals = offer.approvals.select_related("approver")
+
+                approvers_data = []
+                for a in approvals:
+                    approver = a.approver
+                    if approver:
+                        approvers_data.append({
+                            "role": approver.role,
+                            "job_title": approver.job_title,
+                            "first_name": approver.first_name,
+                            "last_name": approver.last_name,
+                            "email": approver.email,
+                            "contact_number": approver.contact_number,
+                            "set_as_approver": "Yes" if approver.set_as_approver else "No"
+                        })
+
+                generated_offer_data = []
+                generated_offers = GeneratedOffer.objects.filter(
+                    requisition=requisition,
+                    candidate=candidate
+                )
+
+                for gen_offer in generated_offers:
+                    salary_data = [
+                        {"name": s.name, "value": s.value}
+                        for s in gen_offer.salary_components.all()
+                    ]
+                    variable_pay_data = [
+                        {"name": v.name, "value": v.value}
+                        for v in gen_offer.variable_pay_components.all()
+                    ]
+
+                    generated_offer_data.append({
+                        "offer_id": gen_offer.id,
+                        "job_title": gen_offer.job_title,
+                        "job_city": {
+                            "label": gen_offer.job_city,
+                            "value": gen_offer.job_city
+                        },
+                        "job_country": {
+                            "label": gen_offer.job_country,
+                            "value": gen_offer.job_country
+                        },
+                        "currency": {
+                            "label": gen_offer.currency,
+                            "value": gen_offer.currency
+                        },
+
+                        "salary": salary_data,
+                        "variable_pay": variable_pay_data,
+                        "estimated_start_date": gen_offer.estimated_start_date,
+                        "recruiter_email": gen_offer.recruiter_email,
+                        "negotiation_status": gen_offer.negotiation_status,
+                        "created_at": gen_offer.created_at,
+                        "updated_at": gen_offer.updated_at
+                    })
+
+                data.append({
+                    "Req_ID": requisition.RequisitionID,
+                    "Client_Id": requisition.client_id,
+                    "Client_Name": offer.client_name,
+                    "Candidate_Id": candidate.CandidateID if candidate else "N/A",
+                    "Candidate_First_Name": offer.first_name,
+                    "Candidate_Last_Name": offer.last_name,
+                    "Applied_Position": offer.position_applied,
+                    "Approvers": approvers_data,
+                    "Generate_Offer": generated_offer_data,
+                    "Status": offer.negotiation_status
+                })
+
+            return Response(api_json_response_format(True, "Offer details grid retrieved successfully", 200, data), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error loading grid. {str(e)}", 500, []), status=200)
+
+
+class GenerateOfferPrefillView(APIView):
+    def post(self, request):
+        try:
+            req_id = request.data.get("requisition_id")
+            candidate_id = request.data.get("candidate_id")
+
+            if not req_id or not candidate_id:
+                return Response(api_json_response_format(False, "Missing requisition or candidate ID", 400, {}), status=200)
+
+            requisition = JobRequisition.objects.filter(RequisitionID=req_id).first()
+            candidate = Candidate.objects.filter(CandidateID=candidate_id).first()
+            negotiation = OfferNegotiation.objects.filter(requisition=requisition).first()
+
+            if not requisition or not candidate or not negotiation:
+                return Response(api_json_response_format(False, "Data not found for prefill", 404, {}), status=200)
+
+            # Structured salary and variable pay format
+            salary_components = [
+                {
+                    "name": "Base Salary",
+                    "value": str(negotiation.offered_salary or negotiation.expected_salary or 0)
+                }
+            ]
+
+            variable_pay_components = [
+                {
+                    "name": "Variable Pay",
+                    "value": "0"
+                }
+            ]
+
+            prefill_data = {
+                "first_name": negotiation.first_name,
+                "last_name": negotiation.last_name,
+                "candidate_email": candidate.Email,
+                "recruiter_email": "pixelreq@gmail.com",
+                "job_title": negotiation.offered_title or negotiation.expected_title,
+                "estimated_start_date": negotiation.offered_doj or negotiation.expected_doj,
+                "job_city": {
+                    "label": negotiation.offered_location or negotiation.expected_location,
+                    "value": negotiation.offered_location or negotiation.expected_location
+                },
+                "job_country": {
+                    "label": "India",
+                    "value": "India"
+                },
+                "currency": {
+                    "label": "INR",
+                    "value": "INR"
+                },
+                "salary": salary_components,
+                "variable_pay": variable_pay_components
+            }
+
+            return Response(api_json_response_format(True, "Prefill data retrieved successfully", 200, prefill_data), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error retrieving prefill data. {str(e)}", 500, {}), status=200)
+
 
 class GenerateOfferView(APIView):
     def post(self, request):
         try:
-            candidate_id = request.data.get("candidate_id")
-            requisition_id = request.data.get("requisition_id")
+            data = request.data
 
-            if not candidate_id or not requisition_id:
-                return Response(api_json_response_format(
-                    False,
-                    "Missing candidate_id or requisition_id",
-                    400,
-                    {}
-                ), status=200)
+            requisition = JobRequisition.objects.filter(RequisitionID=data.get("req_id")).first()
+            candidate = Candidate.objects.filter(CandidateID=data.get("candidate_id")).first()
 
-            approvals = CandidateApproval.objects.select_related("approver").filter(
-                candidate_id=candidate_id,
-                approver__requisition__RequisitionID=requisition_id
+            if not requisition or not candidate:
+                return Response(api_json_response_format(False, "Invalid requisition or candidate ID", 400, {}), status=200)
+
+            offer, created = GeneratedOffer.objects.update_or_create(
+                requisition=requisition,
+                candidate=candidate,
+                defaults={
+                    "recruiter_email": data.get("recruiter_email"),
+                    "job_title": data.get("job_title"),
+                    "job_city": data.get("job_city"),
+                    "job_country": data.get("job_country"),
+                    "currency": data.get("currency"),
+                    "estimated_start_date": data.get("estimated_start_date"),
+                    "negotiation_status": "Generated"
+                }
             )
 
-            response_data = []
-            for approval in approvals:
-                approver = approval.approver
-                response_data.append({
-                    "role": approver.role,
-                    "approver_name": f"{approver.first_name} {approver.last_name}",
-                    "email": approver.email,
-                    "decision": approval.decision,
-                    "comment": approval.comment,
-                    "reviewed_at": approval.reviewed_at.strftime("%Y-%m-%d %H:%M") if approval.reviewed_at else None
-                })
+            # 🔁 Clear old salary & variable pay components
+            OfferSalaryComponent.objects.filter(offer=offer).delete()
+            OfferVariablePayComponent.objects.filter(offer=offer).delete()
 
-            return Response(api_json_response_format(
-                True,
-                "Approver status retrieved successfully.",
-                200,
-                response_data
-            ), status=200)
+            # 💰 Save salary components
+            for item in data.get("salary", []):
+                if item.get("name") and item.get("value"):
+                    OfferSalaryComponent.objects.create(
+                        offer=offer,
+                        name=item["name"],
+                        value=item["value"]
+                    )
+
+            # 🎯 Save variable pay components
+            for item in data.get("variable_pay", []):
+                if item.get("name") and item.get("value"):
+                    OfferVariablePayComponent.objects.create(
+                        offer=offer,
+                        name=item["name"],
+                        value=item["value"]
+                    )
+
+            message = "Offer updated successfully" if not created else "Offer generated successfully"
+            return Response(api_json_response_format(True, message, 200, {
+                "offer_id": offer.id,
+                "candidate_name": f"{candidate.candidate_first_name} {candidate.candidate_last_name}",
+                "job_title": offer.job_title,
+                "status": offer.negotiation_status
+            }), status=200)
 
         except Exception as e:
-            return Response(api_json_response_format(
-                False,
-                f"Error retrieving approver status: {str(e)}",
-                500,
-                {}
-            ), status=200)
+            return Response(api_json_response_format(False, f"Error saving offer. {str(e)}", 500, {}), status=200)
+
+class OfferRetrievalView(APIView):
+    def post(self, request):
+        try:
+            data = request.data
+            offer_id = data.get("id")
+
+            def extract_components(queryset):
+                return [
+                    {"name": component.name, "value": component.value}
+                    for component in queryset
+                ]
+
+            if offer_id:
+                offer = GeneratedOffer.objects.select_related("candidate", "requisition").filter(id=offer_id).first()
+                if not offer:
+                    return Response(api_json_response_format(False, "Offer not found", 404, {}), status=200)
+
+                offer_data = {
+                    "offer_id": offer.id,
+                    "req_id": offer.requisition.RequisitionID,
+                    "candidate_id": offer.candidate.CandidateID,
+                    "candidate_name": f"{offer.candidate.candidate_first_name} {offer.candidate.candidate_last_name}",
+                    "job_title": offer.job_title,
+                    "job_city": offer.job_city,
+                    "job_country": offer.job_country,
+                    "currency": offer.currency,
+                    "salary": extract_components(offer.salary_components.all()),
+                    "variable_pay": extract_components(offer.variable_pay_components.all()),
+                    "estimated_start_date": offer.estimated_start_date,
+                    "recruiter_email": offer.recruiter_email,
+                    "negotiation_status": offer.negotiation_status,
+                    "created_at": offer.created_at,
+                    "updated_at": offer.updated_at
+                }
+                return Response(api_json_response_format(True, "Offer retrieved successfully", 200, offer_data), status=200)
+
+            offers = GeneratedOffer.objects.select_related("candidate", "requisition").all()
+            all_data = []
+            for offer in offers:
+                all_data.append({
+                    "offer_id": offer.id,
+                    "req_id": offer.requisition.RequisitionID,
+                    "candidate_id": offer.candidate.CandidateID,
+                    "candidate_name": f"{offer.candidate.candidate_first_name} {offer.candidate.candidate_last_name}",
+                    "job_title": offer.job_title,
+                    "job_city": offer.job_city,
+                    "job_country": offer.job_country,
+                    "currency": offer.currency,
+                    "salary": extract_components(offer.salary_components.all()),
+                    "variable_pay": extract_components(offer.variable_pay_components.all()),
+                    "estimated_start_date": offer.estimated_start_date,
+                    "recruiter_email": offer.recruiter_email,
+                    "negotiation_status": offer.negotiation_status,
+                    "created_at": offer.created_at,
+                    "updated_at": offer.updated_at
+                })
+            return Response(api_json_response_format(True, "All offers retrieved successfully", 200, all_data), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error retrieving offer(s). {str(e)}", 500, {}), status=200)
+
 
 # class GenerateOfferView(APIView):
 #     def post(self, request):
@@ -3302,7 +4088,7 @@ class InterviewPlannerCalculation(APIView):
 
     def post(self, request):
         try:
-            plan_id = request.data.get('plan_id')
+            plan_id = request.data.get('plan_id') or ""
             req_id = request.data.get('req_id')
             if not req_id:
                 return Response(api_json_response_format(False,"req_id is required.",status.HTTP_400_BAD_REQUEST,{}), status=200) 
@@ -3342,7 +4128,7 @@ class InterviewPlannerCalculation(APIView):
                      (dead_line_days * working_hours_per_day)) * no_of_interviewer_need
                 )
             )    
-                 
+            print(f"[DEBUG] request.data type: {type(request.data)}")  # Should be <class 'dict'> or <class 'QueryDict'>
             data = request.data.copy()  
             data["hiring_plan_id"] = plan_id    
             data["requisition_id"] = req_id
@@ -3355,7 +4141,7 @@ class InterviewPlannerCalculation(APIView):
             data["no_of_interviewer_need"] = no_of_interviewer_need
             data["leave_adjustment"] = leave_adjustment             
             serializer = InterviewPlannerSerializer(data=data)
-            if serializer.is_valid():
+            if serializer.is_valid():  # 🔥 will show the root cause
                 serializer.save()
                 interview_plan_data = {
                     "required_candidate": required_candidate,
@@ -4391,16 +5177,72 @@ def get_candidates_by_req_id(self, request):
     serializer = CandidateDetailWithInterviewSerializer(candidates, many=True)
     return Response(api_json_response_format(True, "Candidates retrieved successfully.", 200, serializer.data), status=200)
 
+from collections import defaultdict
+
+
 class CandidateInterviewStagesView(APIView):
     def get(self, request):
         try:
-            db_model = CandidateInterviewStages.objects.all()
-            serializer = CandidateInterviewStagesSerializer(db_model, many=True)
-            
-            return Response(api_json_response_format(True,"Interviwer Calender Details Details.",200,serializer.data), status=200)
+            stage_groups = defaultdict(list)
+            for stage in CandidateInterviewStages.objects.all():
+                key = (stage.candidate_id, stage.Req_id_id)
+                stage_groups[key].append(stage)
+
+            # Enrich data per group
+            enriched_data = []
+            for (cid, req_id), stages in stage_groups.items():
+                candidate = Candidate.objects.select_related('Req_id_fk').filter(CandidateID=cid).first()
+                requisition = candidate.Req_id_fk if candidate else None
+
+                last_completed = None
+                current_stage = None
+
+                for s in sorted(stages, key=lambda x: x.interview_date, reverse=True):
+                    if s.status == "Completed" and not last_completed:
+                        last_completed = s
+                    elif not current_stage:
+                        current_stage = s
+
+                enriched_data.append({
+                    "Req_ID": requisition.RequisitionID if requisition else "",
+                    "Client": requisition.company_client_name if requisition else "",
+                    "Candidate_ID": candidate.CandidateID if candidate else "",
+                    "Candidate_Name": candidate.candidate_first_name if candidate else "",
+                    "Interview_Date": current_stage.interview_date if current_stage else "",
+                    "Last_Interview_Stage": last_completed.interview_stage if last_completed else "",
+                    "Current_Interview_Stage": current_stage.interview_stage if current_stage else "",
+                    "Current_Interview_Status": current_stage.status if current_stage else "",
+                    "Interview_Details": {
+                        "Mode": current_stage.mode_of_interview if current_stage else "",
+                        "Feedback": current_stage.feedback if current_stage else ""
+                    }
+                })
+                if current_stage and current_stage.status == "Completed":
+                # Candidate and requisition info already fetched earlier
+                    offer_data = {
+                        "client_name": requisition.company_client_name if requisition else "",
+                        "client_id": requisition.client_id if requisition else "",
+                        "first_name": candidate.candidate_first_name if candidate else "",
+                        "last_name": candidate.candidate_last_name if candidate else "",
+                        "position_applied": requisition.PositionTitle if candidate else ""
+                    }
+
+                    OfferNegotiation.objects.update_or_create(
+                        requisition=requisition,
+                        first_name=offer_data["first_name"],
+                        last_name=offer_data["last_name"],
+                        client_name=offer_data["client_name"],
+                        client_id=offer_data["client_id"],
+                        defaults={"position_applied": offer_data["position_applied"]}
+                    )
+
+
+
+            return Response(api_json_response_format(True, "Candidate interview stage data retrieved", 200, enriched_data), status=200)
+
         except Exception as e:
-            return Response(api_json_response_format(False,"Error during get Interviwer Calender Details  "+str(e),500,{}), status=200)
-            
+            return Response(api_json_response_format(False, f"Error retrieving interview stage data: {str(e)}", 500, {}), status=200)
+
     def post(self, request):
         try:             
             serializer = CandidateInterviewStagesSerializer(data=request.data)
@@ -4412,6 +5254,85 @@ class CandidateInterviewStagesView(APIView):
         except Exception as e:
             return Response(api_json_response_format(False,"Error during Could not update Interviwer Calender Details Details "+str(e),500,{}), status=200)
      
+class InterviewJourneyView(APIView):
+    def post(self, request):
+        try:
+            candidate_id = request.data.get("candidate_id")
+
+            if not candidate_id:
+                return Response(api_json_response_format(False, "candidate_id is required", 400, {}), status=200)
+
+            candidate = Candidate.objects.select_related('Req_id_fk').filter(CandidateID=candidate_id).first()
+            if not candidate:
+                return Response(api_json_response_format(False, "Candidate not found", 404, {}), status=200)
+
+            stages = CandidateInterviewStages.objects.filter(candidate_id=candidate_id).order_by('interview_date')
+            journey = []
+            screening_review = CandidateReview.objects.filter(CandidateID=candidate).order_by("Created_at").first()
+            screening_date = screening_review.Created_at.strftime("%Y-%m-%d") if screening_review else "N/A"
+            screening_feedback = candidate.Feedback or "N/A"
+            screening_status = candidate.Result or "Pending"
+
+            # Recruiter info from UserDetails via Candidate.created_by or custom mapping
+            # Assuming Email is unique and maps to Candidate.created_by or inferred somehow
+            recruiter = UserDetails.objects.filter(Email="pixelreq@gmail.com").first()  # Adjust if recruiter email is stored differently
+            recruiter_name = recruiter.Name if recruiter else "N/A"
+
+            # Construct the screening stage
+            screening_stage = {
+                "Stage": "Screening",
+                "Date": screening_date,
+                "Mode": "online",  # Optional, populate if available
+                "Interviewer": recruiter_name,
+                "Feedback": screening_feedback,
+                "Status": screening_status
+            }
+
+            journey.append(screening_stage)
+
+            for stage in stages:
+                # Find corresponding InterviewSchedule
+                interview_schedule = InterviewSchedule.objects.filter(
+                    candidate__CandidateID=candidate_id,
+                    candidate__Req_id_fk_id=stage.Req_id_id,
+                    round_name=stage.interview_stage
+                ).first()
+                interviewer_name = ""
+                interviewer = Interviewer.objects.filter(
+                    req_id=candidate.Req_id_fk.RequisitionID,
+                    interviewer_stage=stage.interview_stage
+                ).first()
+
+                if interviewer:
+                    interviewer_name = f"{interviewer.first_name or ''} {interviewer.last_name or ''}".strip()
+                # Get the latest review if available
+                latest_review = interview_schedule.reviews.latest("reviewed_at") if interview_schedule and interview_schedule.reviews.exists() else None
+
+                journey.append({
+                    "Stage": stage.interview_stage,
+                    "Date": stage.interview_date.strftime("%Y-%m-%d"),
+                    "Mode": stage.mode_of_interview,
+                    "Interviewer": interviewer_name,  # Optional — fill if you have a related Interviewer field
+                    "Feedback": stage.feedback,
+                    "Status": stage.result
+
+                })
+               
+
+
+
+            response = {
+                "Candidate_ID": candidate.CandidateID,
+                "Candidate_Name": f"{candidate.candidate_first_name} {candidate.candidate_last_name}",
+                "Requisition_ID": candidate.Req_id_fk.RequisitionID,
+                "Client": candidate.Req_id_fk.company_client_name,
+                "Interview_Journey": journey
+            }
+
+            return Response(api_json_response_format(True, "Interview journey fetched", 200, response), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error: {str(e)}", 500, {}), status=200)
 
 @api_view(["POST"])
 def get_plan_id_position_role(request):
