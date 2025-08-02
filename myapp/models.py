@@ -1002,7 +1002,7 @@ class GeneratedOffer(models.Model):
     job_city = models.CharField(max_length=100)
     job_country = models.CharField(max_length=100)
 
-    currency = models.CharField(max_length=10)
+    currency = models.CharField(max_length=50)
     # salary = models.DecimalField(max_digits=12, decimal_places=2)
     # variable_pay = models.CharField(max_length=20)
 

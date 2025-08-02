@@ -83,25 +83,26 @@ class ApproverCreateListView(generics.ListCreateAPIView):
 
     def list(self, request, *args, **kwargs):
         try:
-            queryset = self.get_queryset()
-            if not queryset:
-                return Response(api_json_response_format(
-                    False,
-                    "No approvers found.",
-                    404,
-                    {}
-                ), status=200)
+            queryset = self.get_queryset().select_related("requisition", "hiring_plan").order_by("requisition__RequisitionID")
 
-            no_of_approvers = len(queryset)
+            if not queryset.exists():
+                return Response(api_json_response_format(False, "No approvers found.", 404, {}), status=200)
 
-            # Assuming all approvers share the same requisition and plan metadata
-            first_approver = queryset[0]
-            requisition = first_approver.requisition
-            hiring_plan = first_approver.hiring_plan
-
-            approvers_data = []
+            requisition_groups = {}
             for approver in queryset:
-                approvers_data.append({
+                req = approver.requisition
+                req_id = req.RequisitionID if req else "Unknown"
+
+                if req_id not in requisition_groups:
+                    requisition_groups[req_id] = {
+                        "req_id": req_id,
+                        "planning_id": approver.hiring_plan.hiring_plan_id if approver.hiring_plan else "",
+                        "client_name": req.company_client_name if req else "",
+                        "client_id": req.client_id if req else "",
+                        "approvers": []
+                    }
+
+                requisition_groups[req_id]["approvers"].append({
                     "approver_id": approver.id,
                     "role": approver.role,
                     "job_title": approver.job_title,
@@ -109,33 +110,19 @@ class ApproverCreateListView(generics.ListCreateAPIView):
                     "last_name": approver.last_name,
                     "email": approver.email,
                     "contact_number": approver.contact_number,
-                    "set_as_approver": approver.set_as_approver
+                    "set_as_approver": "Yes" if approver.set_as_approver else "No"
                 })
 
-            response_payload = {
-                "req_id": requisition.RequisitionID if requisition else "Unknown",
-                "planning_id": hiring_plan.hiring_plan_id if hiring_plan else "",
-                "client_name": requisition.company_client_name if requisition else "",
-                "client_id": requisition.client_id if requisition else "",
-                "no_of_approvers": no_of_approvers,
-                "approvers": approvers_data
-            }
+            # Add count per requisition
+            for group in requisition_groups.values():
+                group["no_of_approvers"] = len(group["approvers"])
 
-            return Response(api_json_response_format(
-                True,
-                "Approvers retrieved successfully!",
-                200,
-                response_payload
-            ), status=200)
+            response_data = list(requisition_groups.values())
+
+            return Response(api_json_response_format(True, "Approvers grouped by requisition.", 200, response_data), status=200)
 
         except Exception as e:
-            return Response(api_json_response_format(
-                False,
-                f"Error retrieving approvers. {str(e)}",
-                500,
-                {}
-            ), status=200)
-
+            return Response(api_json_response_format(False, f"Error fetching grouped approvers. {str(e)}", 500, {}), status=200)
 
 
     def create(self, request, *args, **kwargs):
@@ -3123,6 +3110,9 @@ class OfferDetailsViewSet(APIView):
                     ]
 
                     generated_offer_data.append({
+                        "first_name": candidate.candidate_first_name,
+                        "last_name": candidate.candidate_last_name,
+                        "candidate_email": candidate.Email,
                         "offer_id": gen_offer.id,
                         "job_title": gen_offer.job_title,
                         "job_city": {
