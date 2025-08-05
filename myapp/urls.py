@@ -110,6 +110,9 @@ urlpatterns = [
     
     path('api/', include(router4.urls)),
     path('api/candidate-submissions/get-submissions-by-candidate-id/', CandidateSubmissionViewSet.as_view({'post': 'get_submissions_by_candidate_id'})),
+    path("send-form-link/", send_form_invite, name="send-form-link"),
+
+    
     path('approval/approve/<int:negotiation_id>/', views.approve_offer, name='approve-offer'),
     path('approval/reject/<int:negotiation_id>/', views.reject_offer, name='reject-offer'),
     path('candidate-approver-status/', CandidateApprovalStatusView.as_view(), name='candidate-approver-status'),
@@ -144,8 +147,19 @@ urlpatterns = [
     path("offer-details/prefill-generate-offer/", GenerateOfferPrefillView.as_view(), name="prefill_generate_offer"),
 
     path("bg-package-setup/", BgPackageSetupView.as_view(), name="bg-package-setup"),
-    path("initiate-bg-check/", InitiateBgCheckView.as_view(), name="initiate-bg-check"),
-    path("bg-check-request/", BgCheckRequestView.as_view(), name="bg-check-request"),
+    path("initiate-bg-check/", BgCheckRequestView.as_view(), name="initiate-bg-check"),
+    # path("bg-check-request/", BgCheckRequestView.as_view(), name="bg-check-request"),
+    path('api/bg-check/contextual-data/', BgCheckContextualDetailsView.as_view(), name='bg-check-contextual-data'),
+
+
+
+    path("api/candidate/pre-onboarding-form/all/", get_all_pre_onboarding_forms, name="get_all_pre_onboarding_forms"),
+    path(
+        "api/candidate/pre-onboarding-form/",
+        submit_pre_onboarding_form,
+        name="submit_pre_onboarding_form"
+    ),
+
 
 ]
 

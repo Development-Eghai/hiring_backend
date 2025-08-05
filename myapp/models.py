@@ -3,6 +3,10 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import JSONField  # ✅ Correct for models
 from django.utils.timezone import now
+import uuid
+from datetime import timedelta
+from django.utils import timezone
+
 
 
 class HiringPlan(models.Model):
@@ -102,26 +106,26 @@ class CommunicationSkills(models.Model):
         db_table = 'job_communication_skills'
         managed = False
 # Create your models here.
-class Candidates(models.Model):
-    CandidateID = models.AutoField(primary_key=True)
-    Name = models.CharField(max_length=255,blank=True)
-    Email = models.CharField(max_length=255,unique=True)
-    Resume = models.FileField(upload_to='resumes/')
-    #  pdf_file = models.FileField(upload_to='pdfs/')
-    Final_rating = models.IntegerField()
-    Feedback = models.TextField(null=True, blank=True)
-    Result = models.CharField(max_length=50,blank=True)
-    ProfileCreated = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return self.Name
+# class Candidates(models.Model):
+#     CandidateID = models.AutoField(primary_key=True)
+#     Name = models.CharField(max_length=255,blank=True)
+#     Email = models.CharField(max_length=255,unique=True)
+#     Resume = models.FileField(upload_to='resumes/')
+#     #  pdf_file = models.FileField(upload_to='pdfs/')
+#     Final_rating = models.IntegerField()
+#     Feedback = models.TextField(null=True, blank=True)
+#     Result = models.CharField(max_length=50,blank=True)
+#     ProfileCreated = models.DateTimeField(auto_now_add=True)
+#     def __str__(self):
+#         return self.Name
     
-    class Meta:
-        db_table = 'candidates'
-        managed = False
+#     class Meta:
+#         db_table = 'candidates'
+#         managed = False
 
 class CandidateSubmission(models.Model):
     candidate = models.ForeignKey(
-        'Candidates',  # Referencing existing model
+        'Candidate',  # Referencing existing model
         to_field='CandidateID',
         on_delete=models.CASCADE,
         related_name='submissions'
@@ -731,6 +735,15 @@ class OfferNegotiation(models.Model):
         on_delete=models.CASCADE,
         related_name="offer_negotiations"
     )
+    candidate = models.ForeignKey(
+        Candidate,
+        to_field='CandidateID',
+        on_delete=models.CASCADE,
+        related_name="offer_negotiations",
+        null=False,  # Explicit even though it's default
+        blank=False
+    )
+
     client_name = models.CharField(max_length=100)
     client_id = models.CharField(max_length=100)
     first_name = models.CharField(max_length=100)
@@ -1113,6 +1126,7 @@ class ConfigHiringData(models.Model):
 class BgVendor(models.Model):
     name = models.CharField(max_length=255)
     contact_email = models.EmailField()
+    address = models.CharField(max_length=255)  # Newly added
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1122,9 +1136,13 @@ class BgVendor(models.Model):
         return self.name
 
 
+
 class BgPackage(models.Model):
-    vendor = models.ForeignKey(BgVendor, on_delete=models.CASCADE)
+    id = models.AutoField(primary_key=True)  
+    vendor = models.ForeignKey(BgVendor, on_delete=models.CASCADE, related_name='packages')
     name = models.CharField(max_length=255)
+    title = models.CharField(max_length=255)  # Newly added
+    description = models.TextField()          # Newly added
     rate = models.DecimalField(max_digits=10, decimal_places=2)
     included_checks = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1136,17 +1154,241 @@ class BgPackage(models.Model):
         return f"{self.name} ({self.vendor.name})"
 
 
+
 class BgCheckRequest(models.Model):
-    requisition = models.ForeignKey(JobRequisition, to_field="RequisitionID", on_delete=models.CASCADE)
-    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE)
-    vendor = models.ForeignKey(BgVendor, on_delete=models.CASCADE)
-    selected_package = models.ForeignKey(BgPackage, null=True, blank=True, on_delete=models.SET_NULL)
+    requisition = models.ForeignKey(
+        'JobRequisition',
+        to_field='RequisitionID',
+        on_delete=models.CASCADE
+    )
+    candidate = models.ForeignKey(
+        'Candidate',
+        to_field='CandidateID',
+        on_delete=models.CASCADE
+    )
+    vendor = models.ForeignKey(
+        'BgVendor',
+        on_delete=models.CASCADE
+    )
+    selected_package = models.ForeignKey(
+        'BgPackage',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
     custom_checks = models.JSONField(default=list)
-    status = models.CharField(max_length=50, default="Initiated")
+    status = models.CharField(max_length=50, default='Initiated')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = "bg_check_request"
+        db_table = 'bg_check_request'
 
     def __str__(self):
         return f"{self.candidate} - {self.status}"
+
+    
+class CandidateSubmission(models.Model):
+    candidate = models.ForeignKey(
+        'Candidate',
+        to_field='CandidateID',
+        on_delete=models.CASCADE,
+        related_name='submissions'
+    )
+    recruiter_email = models.EmailField(null=True, blank=True,default="pixelreq@gmail.com")
+    job_title = models.CharField(max_length=100,null=True,blank=True,default="No Job Title")
+    start_date = models.DateField(null=True,blank=True,default=None)
+    city = models.CharField(max_length=100,null=True,blank=True,default=None)
+    country = models.CharField(max_length=100,null=True,blank=True,default=None)
+    currency = models.CharField(max_length=10,null=True,blank=True,default=None)
+    salary = models.DecimalField(max_digits=12, decimal_places=2,null=True,blank=True,default=None)
+    variable_pay = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True,default=None)
+    status = models.CharField(max_length=50,null=True,blank=True,default=None)
+    open_date = models.DateField(null=True,blank=True,default=None)
+    target_start_date = models.DateField(null=True,blank=True,default=None)
+    close_date = models.DateField(null=True, blank=True,default=None)
+    close_reason = models.TextField(null=True, blank=True,default=None)
+    opening_salary_currency = models.CharField(max_length=10, null=True, blank=True,default=None)
+    opening_salary_range = models.CharField(max_length=50, null=True, blank=True,default=None)
+    driving_license_number = models.CharField(max_length=50, null=True, blank=True,default=None)
+    driving_license_validity = models.DateField(null=True, blank=True,default=None)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'candidate_submission'
+
+    def __str__(self):
+        return f"{self.candidate.Name} — {self.job_title}"
+
+class CandidatePersonal(models.Model):
+    submission = models.OneToOneField(CandidateSubmission, on_delete=models.CASCADE, related_name='personal_detail')
+    title = models.CharField(max_length=20)
+    first_name = models.CharField(max_length=100)
+    middle_name = models.CharField(max_length=100, blank=True, null=True)
+    last_name = models.CharField(max_length=100)
+
+    class Meta:
+        db_table = 'candidate_personal'
+
+class CandidateEducation(models.Model):
+    submission = models.ForeignKey(CandidateSubmission, on_delete=models.CASCADE, related_name='education_details')
+    qualification = models.CharField(max_length=50)
+    institution_city = models.CharField(max_length=200)
+    university_board = models.CharField(max_length=100)
+    from_date = models.DateField()
+    to_date = models.DateField()
+    program = models.CharField(max_length=100)
+    marks_or_cgpa = models.CharField(max_length=20)
+
+    class Meta:
+        db_table = 'candidate_education'
+
+class CandidateEmployment(models.Model):
+    submission = models.ForeignKey(CandidateSubmission, on_delete=models.CASCADE, related_name='employment_details')
+    company_name = models.CharField(max_length=200)
+    address = models.TextField()
+    employment_type = models.CharField(max_length=50)
+    designation = models.CharField(max_length=100)
+    reported_to_name = models.CharField(max_length=100)
+    reported_to_position = models.CharField(max_length=100)
+    reported_to_contact = models.CharField(max_length=20)
+    from_date = models.DateField()
+    to_date = models.DateField()
+    emp_code_or_ssn = models.CharField(max_length=50, blank=True, null=True)
+    monthly_salary = models.DecimalField(max_digits=12, decimal_places=2)
+    pf_account_number = models.CharField(max_length=50, blank=True, null=True)
+    reason_for_leaving = models.CharField(max_length=50)
+    mode_of_separation = models.CharField(max_length=50)
+    other_reason = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'candidate_employment'
+
+class CandidateReference(models.Model):
+    candidate_submission = models.ForeignKey(CandidateSubmission, on_delete=models.CASCADE, related_name='references')
+    name = models.CharField(max_length=100)
+    designation = models.CharField(max_length=100)
+    organization = models.CharField(max_length=100)
+    relationship = models.CharField(max_length=100)
+    phone_number = models.CharField(max_length=20)
+    email = models.EmailField()
+    address = models.TextField()
+
+    class Meta:
+        db_table = 'candidate_reference'
+
+class CandidateFormInvite(models.Model):
+    candidate = models.ForeignKey(
+        'Candidate',
+        to_field='CandidateID',
+        on_delete=models.CASCADE
+    )
+    token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(days=5)
+        super().save(*args, **kwargs)
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    class Meta:
+        db_table = 'candidate_form_invite'
+
+class CandidateProfile(models.Model):
+    candidate_id = models.CharField(max_length=20, unique=True)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    date_of_joining = models.DateField()
+
+    class Meta:
+        db_table = "candidate_profile"
+
+class PersonalDetails(models.Model):
+    candidate = models.OneToOneField(CandidateProfile, on_delete=models.CASCADE)
+    dob = models.DateField()
+    marital_status = models.CharField(max_length=20)
+    gender = models.CharField(max_length=20)
+    permanent_address = models.TextField()
+    present_address = models.TextField()
+    blood_group = models.CharField(max_length=5)
+    emergency_contact_name = models.CharField(max_length=100)
+    emergency_contact_number = models.CharField(max_length=20)
+    photograph = models.ImageField(upload_to="photographs/")
+
+    class Meta:
+        db_table = "personal_details"
+
+class ReferenceCheck(models.Model):
+    candidate = models.ForeignKey(CandidateProfile, on_delete=models.CASCADE)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    designation = models.CharField(max_length=100)
+    reporting_manager_name = models.CharField(max_length=100)
+    official_email = models.EmailField()
+    phone_number = models.CharField(max_length=20)
+
+    class Meta:
+        db_table = "reference_check"
+
+class BankingDetails(models.Model):
+    candidate = models.OneToOneField(CandidateProfile, on_delete=models.CASCADE)
+    bank_name = models.CharField(max_length=100)
+    account_number = models.CharField(max_length=50)
+    ifsc_code = models.CharField(max_length=20)
+    branch_address = models.TextField()
+    bank_statement = models.FileField(upload_to="bank_docs/")
+    cancel_cheque = models.FileField(upload_to="bank_docs/")
+
+    class Meta:
+        db_table = "banking_details"
+
+class FinancialDocuments(models.Model):
+    candidate = models.OneToOneField(CandidateProfile, on_delete=models.CASCADE)
+    pf_number = models.CharField(max_length=50)
+    uan_number = models.CharField(max_length=50)
+    pran_number = models.CharField(max_length=50)
+    form_16 = models.FileField(upload_to="financial_docs/")
+    salary_slips = models.FileField(upload_to="financial_docs/")
+
+    class Meta:
+        db_table = "financial_documents"
+
+class Nominee(models.Model):
+    candidate = models.ForeignKey(CandidateProfile, on_delete=models.CASCADE)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    share_percentage = models.IntegerField()
+
+    class Meta:
+        db_table = "nominee"
+
+class InsuranceDetail(models.Model):
+    candidate = models.ForeignKey(CandidateProfile, on_delete=models.CASCADE)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    dob = models.DateField()
+
+    class Meta:
+        db_table = "insurance_detail"
+
+class DocumentItem(models.Model):
+    CATEGORY_CHOICES = [
+        ("Education", "Education"),
+        ("Employment", "Previous Employment"),
+        ("Mandatory", "Mandatory"),
+    ]
+
+    candidate = models.ForeignKey(CandidateProfile, on_delete=models.CASCADE)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    type = models.CharField(max_length=100)
+    institution_name = models.CharField(max_length=100)
+    document_name = models.CharField(max_length=100)
+    document_status = models.CharField(max_length=50)
+    comment = models.TextField(blank=True)
+    uploaded_file = models.FileField(upload_to="documents/", blank=True, null=True)
+
+    class Meta:
+        db_table = "document_item"

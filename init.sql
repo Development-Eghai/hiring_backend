@@ -59,7 +59,7 @@ CREATE TABLE `approval_status` (
   PRIMARY KEY (`id`),
   KEY `offer_negotiation_id` (`offer_negotiation_id`),
   KEY `approver_id` (`approver_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -68,7 +68,7 @@ CREATE TABLE `approval_status` (
 
 LOCK TABLES `approval_status` WRITE;
 /*!40000 ALTER TABLE `approval_status` DISABLE KEYS */;
-INSERT INTO `approval_status` VALUES (1,1,1,'Approved','2025-08-01 06:08:38');
+INSERT INTO `approval_status` VALUES (1,1,1,'Pending','2025-08-05 10:26:02'),(2,1,2,'Pending','2025-08-05 10:26:02'),(3,2,1,'Approved','2025-08-05 11:12:04'),(4,2,2,'Approved','2025-08-05 11:11:50');
 /*!40000 ALTER TABLE `approval_status` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -95,7 +95,7 @@ CREATE TABLE `approver` (
   UNIQUE KEY `id` (`id`),
   KEY `fk_requisition` (`requisition_id`),
   CONSTRAINT `fk_requisition` FOREIGN KEY (`requisition_id`) REFERENCES `jobrequisition` (`RequisitionID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -104,7 +104,7 @@ CREATE TABLE `approver` (
 
 LOCK TABLES `approver` WRITE;
 /*!40000 ALTER TABLE `approver` DISABLE KEYS */;
-INSERT INTO `approver` VALUES (1,'PL0001','HR','Anand','Sivakumar','anandsivakumar27@gmail.com','09994551690','Software Engineer','2025-07-30 09:47:55','Yes','RQ0001');
+INSERT INTO `approver` VALUES (1,'PL0001','MANAGER','Anand','Sivakumar','anand040593@gmail.com','09994551690','Software Engineer','2025-08-05 10:16:58','Yes','RQ0001'),(2,'PL0001','HR','Rajkumar','R','anandsivakumar27@gmail.com','8667735882','Principal Backend Architect','2025-08-05 10:16:58','Yes','RQ0001');
 /*!40000 ALTER TABLE `approver` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -306,6 +306,37 @@ LOCK TABLES `auth_user_user_permissions` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `banking_details`
+--
+
+DROP TABLE IF EXISTS `banking_details`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `banking_details` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `candidate_id` int DEFAULT NULL,
+  `bank_name` varchar(100) DEFAULT NULL,
+  `account_number` varchar(50) DEFAULT NULL,
+  `ifsc_code` varchar(20) DEFAULT NULL,
+  `branch_address` text,
+  `bank_statement` varchar(255) DEFAULT NULL,
+  `cancel_cheque` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `candidate_id` (`candidate_id`),
+  CONSTRAINT `banking_details_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `candidate_profile` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `banking_details`
+--
+
+LOCK TABLES `banking_details` WRITE;
+/*!40000 ALTER TABLE `banking_details` DISABLE KEYS */;
+/*!40000 ALTER TABLE `banking_details` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `benefit`
 --
 
@@ -339,23 +370,23 @@ DROP TABLE IF EXISTS `bg_check_request`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `bg_check_request` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `requisition_id` varchar(50) NOT NULL,
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `requisition_id` varchar(255) NOT NULL,
   `candidate_id` int NOT NULL,
   `vendor_id` int NOT NULL,
   `selected_package_id` int DEFAULT NULL,
   `custom_checks` json DEFAULT NULL,
-  `status` varchar(50) NOT NULL DEFAULT 'Initiated',
+  `status` varchar(50) DEFAULT 'Initiated',
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `requisition_id` (`requisition_id`),
   KEY `candidate_id` (`candidate_id`),
   KEY `vendor_id` (`vendor_id`),
   KEY `selected_package_id` (`selected_package_id`),
-  CONSTRAINT `bg_check_request_ibfk_1` FOREIGN KEY (`requisition_id`) REFERENCES `jobrequisition` (`RequisitionID`),
-  CONSTRAINT `bg_check_request_ibfk_2` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`),
-  CONSTRAINT `bg_check_request_ibfk_3` FOREIGN KEY (`vendor_id`) REFERENCES `bg_vendor` (`id`),
-  CONSTRAINT `bg_check_request_ibfk_4` FOREIGN KEY (`selected_package_id`) REFERENCES `bg_package` (`id`)
+  CONSTRAINT `bg_check_request_ibfk_1` FOREIGN KEY (`requisition_id`) REFERENCES `jobrequisition` (`RequisitionID`) ON DELETE CASCADE,
+  CONSTRAINT `bg_check_request_ibfk_2` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE,
+  CONSTRAINT `bg_check_request_ibfk_3` FOREIGN KEY (`vendor_id`) REFERENCES `bg_vendor` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `bg_check_request_ibfk_4` FOREIGN KEY (`selected_package_id`) REFERENCES `bg_package` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -378,14 +409,16 @@ DROP TABLE IF EXISTS `bg_package`;
 CREATE TABLE `bg_package` (
   `id` int NOT NULL AUTO_INCREMENT,
   `vendor_id` int NOT NULL,
-  `name` varchar(255) NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `rate` decimal(10,2) NOT NULL,
   `included_checks` json NOT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `vendor_id` (`vendor_id`),
   CONSTRAINT `bg_package_ibfk_1` FOREIGN KEY (`vendor_id`) REFERENCES `bg_vendor` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -406,12 +439,12 @@ DROP TABLE IF EXISTS `bg_vendor`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `bg_vendor` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL,
-  `contact_email` varchar(254) NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `contact_email` varchar(254) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `address` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `name` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -450,7 +483,7 @@ CREATE TABLE `billing_details` (
 
 LOCK TABLES `billing_details` WRITE;
 /*!40000 ALTER TABLE `billing_details` DISABLE KEYS */;
-INSERT INTO `billing_details` VALUES (1,'RQ0001','Recrruing','2025-07-30','2025-07-30 09:44:45','2025-07-30 09:44:45','2025-10-30','2025-07-30','2025-10-30');
+INSERT INTO `billing_details` VALUES (1,'RQ0001','Recrruing','2025-08-05','2025-08-05 10:14:14','2025-08-05 10:14:14','2026-01-05','2025-08-05','2026-01-05');
 /*!40000 ALTER TABLE `billing_details` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -475,7 +508,7 @@ CREATE TABLE `candidate_approval` (
   KEY `fk_candidate_approval_approver` (`approver_id`),
   CONSTRAINT `fk_candidate_approval_approver` FOREIGN KEY (`approver_id`) REFERENCES `approver` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_candidate_approval_candidate` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -484,8 +517,109 @@ CREATE TABLE `candidate_approval` (
 
 LOCK TABLES `candidate_approval` WRITE;
 /*!40000 ALTER TABLE `candidate_approval` DISABLE KEYS */;
-INSERT INTO `candidate_approval` VALUES (2,2,1,'HR','Approve',NULL,'2025-07-31 05:57:01','2025-07-31 05:56:27'),(3,3,1,'HR','Approve',NULL,'2025-07-31 16:26:14','2025-07-31 16:25:35');
+INSERT INTO `candidate_approval` VALUES (1,1,1,'MANAGER','Approve',NULL,'2025-08-05 10:23:13','2025-08-05 10:22:49'),(2,1,2,'HR','Approve',NULL,'2025-08-05 10:27:12','2025-08-05 10:22:49');
 /*!40000 ALTER TABLE `candidate_approval` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `candidate_education`
+--
+
+DROP TABLE IF EXISTS `candidate_education`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `candidate_education` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `submission_id` int NOT NULL,
+  `qualification` varchar(50) DEFAULT NULL,
+  `institution_city` varchar(200) DEFAULT NULL,
+  `university_board` varchar(100) DEFAULT NULL,
+  `from_date` date DEFAULT NULL,
+  `to_date` date DEFAULT NULL,
+  `program` varchar(100) DEFAULT NULL,
+  `marks_or_cgpa` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `submission_id` (`submission_id`),
+  CONSTRAINT `candidate_education_ibfk_1` FOREIGN KEY (`submission_id`) REFERENCES `candidate_submission` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `candidate_education`
+--
+
+LOCK TABLES `candidate_education` WRITE;
+/*!40000 ALTER TABLE `candidate_education` DISABLE KEYS */;
+/*!40000 ALTER TABLE `candidate_education` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `candidate_employment`
+--
+
+DROP TABLE IF EXISTS `candidate_employment`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `candidate_employment` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `submission_id` int NOT NULL,
+  `company_name` varchar(200) DEFAULT NULL,
+  `address` text,
+  `employment_type` varchar(50) DEFAULT NULL,
+  `designation` varchar(100) DEFAULT NULL,
+  `reported_to_name` varchar(100) DEFAULT NULL,
+  `reported_to_position` varchar(100) DEFAULT NULL,
+  `reported_to_contact` varchar(20) DEFAULT NULL,
+  `from_date` date DEFAULT NULL,
+  `to_date` date DEFAULT NULL,
+  `emp_code_or_ssn` varchar(50) DEFAULT NULL,
+  `monthly_salary` decimal(12,2) DEFAULT NULL,
+  `pf_account_number` varchar(50) DEFAULT NULL,
+  `reason_for_leaving` varchar(50) DEFAULT NULL,
+  `mode_of_separation` varchar(50) DEFAULT NULL,
+  `other_reason` text,
+  PRIMARY KEY (`id`),
+  KEY `submission_id` (`submission_id`),
+  CONSTRAINT `candidate_employment_ibfk_1` FOREIGN KEY (`submission_id`) REFERENCES `candidate_submission` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `candidate_employment`
+--
+
+LOCK TABLES `candidate_employment` WRITE;
+/*!40000 ALTER TABLE `candidate_employment` DISABLE KEYS */;
+/*!40000 ALTER TABLE `candidate_employment` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `candidate_form_invite`
+--
+
+DROP TABLE IF EXISTS `candidate_form_invite`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `candidate_form_invite` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `candidate_id` int NOT NULL,
+  `token` char(36) NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `token` (`token`),
+  KEY `candidate_id` (`candidate_id`),
+  CONSTRAINT `candidate_form_invite_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `candidate_form_invite`
+--
+
+LOCK TABLES `candidate_form_invite` WRITE;
+/*!40000 ALTER TABLE `candidate_form_invite` DISABLE KEYS */;
+/*!40000 ALTER TABLE `candidate_form_invite` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -507,7 +641,7 @@ CREATE TABLE `candidate_interview_stages` (
   `result` varchar(100) DEFAULT NULL,
   `status` varchar(100) NOT NULL DEFAULT '',
   PRIMARY KEY (`interview_stage_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -516,8 +650,65 @@ CREATE TABLE `candidate_interview_stages` (
 
 LOCK TABLES `candidate_interview_stages` WRITE;
 /*!40000 ALTER TABLE `candidate_interview_stages` DISABLE KEYS */;
-INSERT INTO `candidate_interview_stages` VALUES (9,2,'RQ0001','Technical','2025-07-29','Online','good',4,'Selected','Completed'),(10,2,'RQ0001','Communication','2025-07-31','Online','good',5,'Selected','Completed'),(11,3,'RQ0001','Technical','2025-07-29','Online','good',3,'Selected','Completed');
+INSERT INTO `candidate_interview_stages` VALUES (1,1,'RQ0001','Technical','2025-08-04','online','good',5,'Selected','Completed'),(2,1,'RQ0001','Communication','2025-08-05','online','good',5,'Selected','Completed');
 /*!40000 ALTER TABLE `candidate_interview_stages` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `candidate_personal`
+--
+
+DROP TABLE IF EXISTS `candidate_personal`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `candidate_personal` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `submission_id` int NOT NULL,
+  `title` varchar(20) DEFAULT NULL,
+  `first_name` varchar(100) DEFAULT NULL,
+  `middle_name` varchar(100) DEFAULT NULL,
+  `last_name` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `submission_id` (`submission_id`),
+  CONSTRAINT `candidate_personal_ibfk_1` FOREIGN KEY (`submission_id`) REFERENCES `candidate_submission` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `candidate_personal`
+--
+
+LOCK TABLES `candidate_personal` WRITE;
+/*!40000 ALTER TABLE `candidate_personal` DISABLE KEYS */;
+/*!40000 ALTER TABLE `candidate_personal` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `candidate_profile`
+--
+
+DROP TABLE IF EXISTS `candidate_profile`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `candidate_profile` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `candidate_id` varchar(20) NOT NULL,
+  `first_name` varchar(100) DEFAULT NULL,
+  `last_name` varchar(100) DEFAULT NULL,
+  `date_of_joining` date DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `candidate_id` (`candidate_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `candidate_profile`
+--
+
+LOCK TABLES `candidate_profile` WRITE;
+/*!40000 ALTER TABLE `candidate_profile` DISABLE KEYS */;
+INSERT INTO `candidate_profile` VALUES (1,'1','Aravind','Kumar','2025-08-12');
+/*!40000 ALTER TABLE `candidate_profile` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -570,7 +761,7 @@ CREATE TABLE `candidate_reviews` (
   PRIMARY KEY (`ReviewID`),
   KEY `can_id_fk` (`CandidateID`),
   CONSTRAINT `can_id_fk` FOREIGN KEY (`CandidateID`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -579,7 +770,7 @@ CREATE TABLE `candidate_reviews` (
 
 LOCK TABLES `candidate_reviews` WRITE;
 /*!40000 ALTER TABLE `candidate_reviews` DISABLE KEYS */;
-INSERT INTO `candidate_reviews` VALUES (3,2,'Technical','Good',25,5.0,'','2025-07-31 05:56:27'),(4,2,'Communication','Good',25,0.0,'','2025-07-31 05:56:27'),(5,3,'Technical','Good',25,3.0,'','2025-07-31 16:25:35'),(6,3,'Communication','Good',25,4.0,'','2025-07-31 16:25:35');
+INSERT INTO `candidate_reviews` VALUES (1,1,'Technical','Good',5,5.0,'','2025-08-05 10:22:49'),(2,1,'Communication','Good',5,5.0,'','2025-08-05 10:22:49');
 /*!40000 ALTER TABLE `candidate_reviews` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -592,22 +783,22 @@ DROP TABLE IF EXISTS `candidate_submission`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `candidate_submission` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `candidate_id` int NOT NULL,
-  `recruiter_email` varchar(254) NOT NULL,
-  `job_title` varchar(100) NOT NULL,
-  `start_date` date NOT NULL,
-  `city` varchar(100) NOT NULL,
-  `country` varchar(100) NOT NULL,
-  `currency` varchar(10) NOT NULL,
-  `salary` decimal(12,2) NOT NULL,
+  `candidate_id` int DEFAULT NULL,
+  `recruiter_email` varchar(254) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `job_title` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `start_date` date DEFAULT NULL,
+  `city` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `country` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `currency` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `salary` decimal(12,2) DEFAULT NULL,
   `variable_pay` decimal(12,2) DEFAULT NULL,
-  `status` varchar(50) NOT NULL,
-  `open_date` date NOT NULL,
-  `target_start_date` date NOT NULL,
+  `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `open_date` date DEFAULT NULL,
+  `target_start_date` date DEFAULT NULL,
   `close_date` date DEFAULT NULL,
   `close_reason` text,
-  `opening_salary_currency` varchar(10) NOT NULL,
-  `opening_salary_range` varchar(50) NOT NULL,
+  `opening_salary_currency` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `opening_salary_range` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `driving_license_number` varchar(50) DEFAULT NULL,
   `driving_license_validity` date DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -648,7 +839,7 @@ CREATE TABLE `candidates` (
   `candidate_first_name` varchar(100) DEFAULT NULL,
   `candidate_last_name` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`CandidateID`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -657,7 +848,7 @@ CREATE TABLE `candidates` (
 
 LOCK TABLES `candidates` WRITE;
 /*!40000 ALTER TABLE `candidates` DISABLE KEYS */;
-INSERT INTO `candidates` VALUES (2,'RQ0001','anand040593@gmail.com','Anand_Sivakumar_March.pdf',5,'good','Recommended','2025-07-31 05:54:18','Resume.pdf','Refferal',85,'8667735882','Anand','Sivakumar'),(3,'RQ0001','candidate4042@gmail.com','Resume.pdf',4,'moving for approval','Recommended','2025-07-31 16:17:28','This is a sample cover letter for candidate4042.','Refferal',NULL,'9999999999','CandidateFirst4042','CandidateLast4042');
+INSERT INTO `candidates` VALUES (1,'RQ0001','anand040593@gmail.com','Anand_Sivakumar_March.pdf',5,'good','Recommended','2025-08-05 10:19:11','Resume.pdf','Refferal',85,'8667735882','Aravind','Kumar');
 /*!40000 ALTER TABLE `candidates` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -896,6 +1087,68 @@ INSERT INTO `django_session` VALUES ('rwv83m8axcqjughixkhje6umpvetn77e','eyJyb2x
 UNLOCK TABLES;
 
 --
+-- Table structure for table `document_item`
+--
+
+DROP TABLE IF EXISTS `document_item`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `document_item` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `candidate_id` int DEFAULT NULL,
+  `category` enum('Education','Employment','Mandatory') DEFAULT NULL,
+  `type` varchar(100) DEFAULT NULL,
+  `institution_name` varchar(100) DEFAULT NULL,
+  `document_name` varchar(100) DEFAULT NULL,
+  `document_status` varchar(50) DEFAULT NULL,
+  `comment` text,
+  `uploaded_file` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `candidate_id` (`candidate_id`),
+  CONSTRAINT `document_item_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `candidate_profile` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `document_item`
+--
+
+LOCK TABLES `document_item` WRITE;
+/*!40000 ALTER TABLE `document_item` DISABLE KEYS */;
+/*!40000 ALTER TABLE `document_item` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `financial_documents`
+--
+
+DROP TABLE IF EXISTS `financial_documents`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `financial_documents` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `candidate_id` int DEFAULT NULL,
+  `pf_number` varchar(50) DEFAULT NULL,
+  `uan_number` varchar(50) DEFAULT NULL,
+  `pran_number` varchar(50) DEFAULT NULL,
+  `form_16` varchar(255) DEFAULT NULL,
+  `salary_slips` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `candidate_id` (`candidate_id`),
+  CONSTRAINT `financial_documents_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `candidate_profile` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `financial_documents`
+--
+
+LOCK TABLES `financial_documents` WRITE;
+/*!40000 ALTER TABLE `financial_documents` DISABLE KEYS */;
+/*!40000 ALTER TABLE `financial_documents` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `generated_offer`
 --
 
@@ -910,9 +1163,7 @@ CREATE TABLE `generated_offer` (
   `job_title` varchar(100) NOT NULL,
   `job_city` varchar(100) NOT NULL,
   `job_country` varchar(100) NOT NULL,
-  `currency` varchar(10) NOT NULL,
-  `salary` decimal(12,2) NOT NULL,
-  `variable_pay` varchar(20) NOT NULL,
+  `currency` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `estimated_start_date` date DEFAULT NULL,
   `negotiation_status` varchar(20) NOT NULL DEFAULT 'Generated',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -922,7 +1173,7 @@ CREATE TABLE `generated_offer` (
   KEY `candidate_id` (`candidate_id`),
   CONSTRAINT `generated_offer_ibfk_1` FOREIGN KEY (`requisition_id`) REFERENCES `jobrequisition` (`id`) ON DELETE CASCADE,
   CONSTRAINT `generated_offer_ibfk_2` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -931,7 +1182,36 @@ CREATE TABLE `generated_offer` (
 
 LOCK TABLES `generated_offer` WRITE;
 /*!40000 ALTER TABLE `generated_offer` DISABLE KEYS */;
+INSERT INTO `generated_offer` VALUES (1,1,1,'pixelreq@gmail.com','Senior Software engineer','Select city','India','INR','2025-08-12','Generated','2025-08-05 11:13:46','2025-08-05 11:13:46');
 /*!40000 ALTER TABLE `generated_offer` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `insurance_detail`
+--
+
+DROP TABLE IF EXISTS `insurance_detail`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `insurance_detail` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `candidate_id` int DEFAULT NULL,
+  `first_name` varchar(100) DEFAULT NULL,
+  `last_name` varchar(100) DEFAULT NULL,
+  `dob` date DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `candidate_id` (`candidate_id`),
+  CONSTRAINT `insurance_detail_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `candidate_profile` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `insurance_detail`
+--
+
+LOCK TABLES `insurance_detail` WRITE;
+/*!40000 ALTER TABLE `insurance_detail` DISABLE KEYS */;
+/*!40000 ALTER TABLE `insurance_detail` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -989,7 +1269,7 @@ CREATE TABLE `interview_review` (
   KEY `fk_candidate_review` (`candidate_id`),
   CONSTRAINT `fk_candidate_review` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE,
   CONSTRAINT `fk_schedule` FOREIGN KEY (`schedule_id`) REFERENCES `interview_schedule` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -998,7 +1278,7 @@ CREATE TABLE `interview_review` (
 
 LOCK TABLES `interview_review` WRITE;
 /*!40000 ALTER TABLE `interview_review` DISABLE KEYS */;
-INSERT INTO `interview_review` VALUES (5,9,'','','2025-07-31 14:19:21','\"Technical\"','\"good\"','10','5',50,'\"good\"','2025-07-31 14:19:21',2),(6,10,'','','2025-07-31 14:19:40','\"Communication\"','\"good\"','10','5',50,'\"good\"','2025-07-31 14:19:40',2),(7,11,'','','2025-07-31 16:28:51','\"Technical\"','\"good\"','10','4',50,'\"good\"','2025-07-31 16:28:51',3);
+INSERT INTO `interview_review` VALUES (1,1,'','','2025-08-05 10:25:27','\"Technical\"','\"good\"','5','4',50,'\"good\"','2025-08-05 10:25:27',1),(2,1,'','','2025-08-05 11:00:13','\"communication\"','\"good\"','\"5\"','5',50,'\"good\"','2025-08-05 05:30:13',1);
 /*!40000 ALTER TABLE `interview_review` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1030,7 +1310,7 @@ CREATE TABLE `interview_schedule` (
   KEY `fk_interviewer` (`interviewer_id`),
   CONSTRAINT `fk_candidate` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_interviewer` FOREIGN KEY (`interviewer_id`) REFERENCES `interviewer` (`interviewer_id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1039,7 +1319,7 @@ CREATE TABLE `interview_schedule` (
 
 LOCK TABLES `interview_schedule` WRITE;
 /*!40000 ALTER TABLE `interview_schedule` DISABLE KEYS */;
-INSERT INTO `interview_schedule` VALUES (9,2,1,'Technical','2025-07-29','14:30:00','15:00:00','https://us05web.zoom.us/j/86923806417?pwd=w4l3HApup8iS5y3x4uZauMoxgbtJFt.1','2025-07-31 14:16:50','Zoom','IST','Technical','Online','[]','30 mins'),(10,2,4,'Communication','2025-07-31','19:00:00','19:30:00','https://us05web.zoom.us/j/89201885153?pwd=7bP4gm06N9LSoGNErFsJBgbrxrppaa.1','2025-07-31 14:18:50','Zoom','IST','Communication','Online','[]','30 mins'),(11,3,1,'Technical','2025-07-29','14:30:00','15:00:00','https://us05web.zoom.us/j/86767083072?pwd=VK6Jpn5sk2l6zyq4Rzaboa1RXxAyDk.1','2025-07-31 16:26:48','Zoom','IST','Technical','Online','[]','30 mins');
+INSERT INTO `interview_schedule` VALUES (1,1,1,'Technical','2025-08-04','15:00:00','15:30:00','https://us05web.zoom.us/j/84636259845?pwd=41g5dCoVmdWvao7EyH2y2TybpFtbRL.1','2025-08-05 10:24:12','Zoom','IST','Technical','online','[]','30 mins'),(2,1,2,'Communication','2025-08-05','14:30:00','15:00:00','https://us05web.zoom.us/j/84593624190?pwd=Ds8lJO7SOsveed2DKyC132vQKP245e.1','2025-08-05 10:24:29','Zoom','IST','Communication','online','[]','30 mins');
 /*!40000 ALTER TABLE `interview_schedule` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1063,7 +1343,7 @@ CREATE TABLE `interview_slot` (
   KEY `fk_round_id` (`round_id`),
   CONSTRAINT `fk_round_id` FOREIGN KEY (`round_id`) REFERENCES `job_interview_design_parameters` (`interview_desing_params_id`),
   CONSTRAINT `int_fk_id` FOREIGN KEY (`interviewer_id`) REFERENCES `interviewer` (`interviewer_id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1072,7 +1352,7 @@ CREATE TABLE `interview_slot` (
 
 LOCK TABLES `interview_slot` WRITE;
 /*!40000 ALTER TABLE `interview_slot` DISABLE KEYS */;
-INSERT INTO `interview_slot` VALUES (1,1,'2025-07-29','14:30:00','15:00:00','2025-07-30 09:48:27',NULL),(5,4,'2025-07-31','19:00:00','19:30:00','2025-07-31 14:18:29',NULL);
+INSERT INTO `interview_slot` VALUES (1,1,'2025-08-04','15:00:00','16:00:00','2025-08-05 10:17:28',NULL),(2,2,'2025-08-05','14:30:00','15:30:00','2025-08-05 10:18:16',NULL);
 /*!40000 ALTER TABLE `interview_slot` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1126,7 +1406,7 @@ CREATE TABLE `interviewer` (
   PRIMARY KEY (`interviewer_id`) USING BTREE,
   UNIQUE KEY `user_id` (`user_id`),
   CONSTRAINT `fk_user_interviewer` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1135,7 +1415,7 @@ CREATE TABLE `interviewer` (
 
 LOCK TABLES `interviewer` WRITE;
 /*!40000 ALTER TABLE `interviewer` DISABLE KEYS */;
-INSERT INTO `interviewer` VALUES (1,'RQ0001','','Anand','Sivakumar','Software Engineer','Online','Technical','anand040593@gmail.com',NULL,'2025-07-30 09:48:27',NULL),(4,'RQ0001','','Anand','Sivakumar','Software Engineer','Online','Communication','anand040593@gmail.com',NULL,'2025-07-31 14:18:29',NULL);
+INSERT INTO `interviewer` VALUES (1,'RQ0001','','Anand','Sivakumar','Software Engineer','online','Technical','anandsivakumar27@gmail.com',NULL,'2025-08-05 10:17:28',NULL),(2,'RQ0001','','Rajkumar','R','Software Engineer','online','Communication','anand040593@gmail.com',NULL,'2025-08-05 10:18:16',NULL);
 /*!40000 ALTER TABLE `interviewer` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1230,7 +1510,7 @@ CREATE TABLE `job_hiring_overview` (
 
 LOCK TABLES `job_hiring_overview` WRITE;
 /*!40000 ALTER TABLE `job_hiring_overview` DISABLE KEYS */;
-INSERT INTO `job_hiring_overview` VALUES (1,'PL0001','Python developer','Django, AWS','<p>sample</p>','Software Engineer I','5-10','Accenture, HCL',NULL,'Hybrid',NULL,'Coimbatore',NULL,'Yes','55',NULL,'Yes','Yes','Adhaar','Day Shift','Full Time','Permanant','English',NULL,NULL,'Yes','Yes',NULL,NULL,'Yes',':','[{\'media_type\': \'\', \'media_link\': \'\'}]','0-8','Advanced',NULL,25,'2025-07-30 09:42:53',NULL,'2000','Yes','Finance','indian','good','B Tech','Usa','B1',NULL);
+INSERT INTO `job_hiring_overview` VALUES (1,'PL0001','Python developer','Python, AWS','<p>sample</p>','Software Engineer I','5-10','Accenture',NULL,'Hybrid',NULL,'Coimbatore',NULL,'Yes','55',NULL,'Yes','Yes','Basic','Day Shift','Full Time','Permanant','English',NULL,NULL,'Yes','Yes',NULL,NULL,'Yes',':','[{\'media_type\': \'\', \'media_link\': \'\'}]','0-5','Advanced',NULL,25,'2025-08-05 10:12:13',NULL,'2000','Yes','Finance','indian','good','B Tech','USA','H1B',NULL);
 /*!40000 ALTER TABLE `job_hiring_overview` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1264,7 +1544,7 @@ CREATE TABLE `job_interview_design_parameters` (
 
 LOCK TABLES `job_interview_design_parameters` WRITE;
 /*!40000 ALTER TABLE `job_interview_design_parameters` DISABLE KEYS */;
-INSERT INTO `job_interview_design_parameters` VALUES (1,'',1,'Technical','4','Good',25,'Online',60,50,'Online','Good'),(2,'',1,'Communication','4','Good',25,'Online',60,50,'Online','Good');
+INSERT INTO `job_interview_design_parameters` VALUES (1,'',1,'Technical','Required','Good',5,'online',60,50,'online','Good'),(2,'',1,'Communication','Required','Good',5,'online',60,50,'online','Good');
 /*!40000 ALTER TABLE `job_interview_design_parameters` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1296,7 +1576,7 @@ CREATE TABLE `job_interview_design_screen` (
 
 LOCK TABLES `job_interview_design_screen` WRITE;
 /*!40000 ALTER TABLE `job_interview_design_screen` DISABLE KEYS */;
-INSERT INTO `job_interview_design_screen` VALUES (1,'PL0001','RQ0001','','Django, AWS','Online Test',2,0,'','');
+INSERT INTO `job_interview_design_screen` VALUES (1,'PL0001','RQ0001','','Python, AWS','Online Test',2,0,'','');
 /*!40000 ALTER TABLE `job_interview_design_screen` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1341,7 +1621,7 @@ CREATE TABLE `job_interview_planning` (
 
 LOCK TABLES `job_interview_planning` WRITE;
 /*!40000 ALTER TABLE `job_interview_planning` DISABLE KEYS */;
-INSERT INTO `job_interview_planning` VALUES (1,'PL0001','RQ0001',10,0,8,25,12,0,25,2,2,10,2,40,300,0,300,600,1200,30,120,495);
+INSERT INTO `job_interview_planning` VALUES (1,'PL0001','RQ0001',10,0,8,25,12,0,12,2,1,10,2,40,300,0,300,600,600,15,60,150);
 /*!40000 ALTER TABLE `job_interview_planning` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1444,8 +1724,36 @@ CREATE TABLE `jobrequisition` (
 
 LOCK TABLES `jobrequisition` WRITE;
 /*!40000 ALTER TABLE `jobrequisition` DISABLE KEYS */;
-INSERT INTO `jobrequisition` VALUES (1,'RQ0001','1','Software Engineer',1,'Not Assigned',25,'0','B.Tech','good','HCL','CL0001','Approved','2025-07-30 09:43:11','2025-07-30 09:49:29','2025-07-30','2025-09-30');
+INSERT INTO `jobrequisition` VALUES (1,'RQ0001','1','Software Engineer',1,'Not Assigned',25,'0','B.Tech','good','Accenture','CL0001','Approved','2025-08-05 10:12:44','2025-08-05 10:18:43','2025-08-05','2025-09-05');
 /*!40000 ALTER TABLE `jobrequisition` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `nominee`
+--
+
+DROP TABLE IF EXISTS `nominee`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `nominee` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `candidate_id` int DEFAULT NULL,
+  `first_name` varchar(100) DEFAULT NULL,
+  `last_name` varchar(100) DEFAULT NULL,
+  `share_percentage` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `candidate_id` (`candidate_id`),
+  CONSTRAINT `nominee_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `candidate_profile` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `nominee`
+--
+
+LOCK TABLES `nominee` WRITE;
+/*!40000 ALTER TABLE `nominee` DISABLE KEYS */;
+/*!40000 ALTER TABLE `nominee` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1477,9 +1785,12 @@ CREATE TABLE `offer_negotiation` (
   `comments` text,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `candidate_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  UNIQUE KEY `id` (`id`),
+  KEY `fk_candidate_offer` (`candidate_id`),
+  CONSTRAINT `fk_candidate_offer` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1488,7 +1799,7 @@ CREATE TABLE `offer_negotiation` (
 
 LOCK TABLES `offer_negotiation` WRITE;
 /*!40000 ALTER TABLE `offer_negotiation` DISABLE KEYS */;
-INSERT INTO `offer_negotiation` VALUES (1,'RQ0001','HCL','CL0001','Anand','Sivakumar','Software Engineer',12.00,123.00,'123','2133','2','3333333','2025-07-11','2025-08-02','asd','asd','Successful','asdad','2025-07-31 06:37:36','2025-08-01 06:11:19');
+INSERT INTO `offer_negotiation` VALUES (2,'RQ0001','Accenture','CL0001','Aravind','Kumar','Software Engineer',2000000.00,15000000.00,'Senior Software engineer','Senior Software engineer','Bangalore','Bangalore','2025-08-14','2025-08-12','Remote','Hybrid','Successful','good to go','2025-08-05 05:33:24','2025-08-05 11:22:34',1);
 /*!40000 ALTER TABLE `offer_negotiation` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1534,7 +1845,7 @@ CREATE TABLE `offer_salary_component` (
   PRIMARY KEY (`id`),
   KEY `offer_id` (`offer_id`),
   CONSTRAINT `offer_salary_component_ibfk_1` FOREIGN KEY (`offer_id`) REFERENCES `generated_offer` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1543,6 +1854,7 @@ CREATE TABLE `offer_salary_component` (
 
 LOCK TABLES `offer_salary_component` WRITE;
 /*!40000 ALTER TABLE `offer_salary_component` DISABLE KEYS */;
+INSERT INTO `offer_salary_component` VALUES (1,1,'Base Salary','15000000.00');
 /*!40000 ALTER TABLE `offer_salary_component` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1603,6 +1915,40 @@ LOCK TABLES `offerletter` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `personal_details`
+--
+
+DROP TABLE IF EXISTS `personal_details`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `personal_details` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `candidate_id` int DEFAULT NULL,
+  `dob` date DEFAULT NULL,
+  `marital_status` varchar(20) DEFAULT NULL,
+  `gender` varchar(20) DEFAULT NULL,
+  `permanent_address` text,
+  `present_address` text,
+  `blood_group` varchar(5) DEFAULT NULL,
+  `emergency_contact_name` varchar(100) DEFAULT NULL,
+  `emergency_contact_number` varchar(20) DEFAULT NULL,
+  `photograph` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `candidate_id` (`candidate_id`),
+  CONSTRAINT `personal_details_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `candidate_profile` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `personal_details`
+--
+
+LOCK TABLES `personal_details` WRITE;
+/*!40000 ALTER TABLE `personal_details` DISABLE KEYS */;
+/*!40000 ALTER TABLE `personal_details` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `posting_details`
 --
 
@@ -1631,7 +1977,7 @@ CREATE TABLE `posting_details` (
 
 LOCK TABLES `posting_details` WRITE;
 /*!40000 ALTER TABLE `posting_details` DISABLE KEYS */;
-INSERT INTO `posting_details` VALUES (1,'RQ0001','2-5 years, 5-10 years','senior_developer, project_manager','','Asia','<p>Sample</p>','<p>Sample</p>','mtech, btech','2025-07-30 09:44:45','2025-07-30 09:44:45');
+INSERT INTO `posting_details` VALUES (1,'RQ0001','2-5 years','senior_developer','','Asia','<p>Sample</p>','<p>sample</p>','mtech','2025-08-05 10:14:14','2025-08-05 10:14:14');
 /*!40000 ALTER TABLE `posting_details` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1664,6 +2010,37 @@ CREATE TABLE `questions` (
 LOCK TABLES `questions` WRITE;
 /*!40000 ALTER TABLE `questions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `questions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `reference_check`
+--
+
+DROP TABLE IF EXISTS `reference_check`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `reference_check` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `candidate_id` int DEFAULT NULL,
+  `first_name` varchar(100) DEFAULT NULL,
+  `last_name` varchar(100) DEFAULT NULL,
+  `designation` varchar(100) DEFAULT NULL,
+  `reporting_manager_name` varchar(100) DEFAULT NULL,
+  `official_email` varchar(254) DEFAULT NULL,
+  `phone_number` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `candidate_id` (`candidate_id`),
+  CONSTRAINT `reference_check_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `candidate_profile` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `reference_check`
+--
+
+LOCK TABLES `reference_check` WRITE;
+/*!40000 ALTER TABLE `reference_check` DISABLE KEYS */;
+/*!40000 ALTER TABLE `reference_check` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1748,7 +2125,7 @@ CREATE TABLE `requisition_details` (
 
 LOCK TABLES `requisition_details` WRITE;
 /*!40000 ALTER TABLE `requisition_details` DISABLE KEYS */;
-INSERT INTO `requisition_details` VALUES (1,'RQ0001','Product Owner I','Product Owner I','Software Engineer','Finance','Banking','Banking','Banking','Sydney','ASIA','General Employee Group','General Sub Group',NULL,NULL,'','HCL','','P3','P3.1','Design, UI, java','aws, docker','Remote','Full Time','Yes',0,'Not Assigned','No Team Assigned','No ISG Team Assigned','Not Available','2025-07-30 09:44:45','2025-07-30 09:44:45',NULL,NULL);
+INSERT INTO `requisition_details` VALUES (1,'RQ0001','Software Engineer I','Software Engineer I','Software Engineer','Finance','Banking','Banking','Banking','Bangalore','ASIA','General Employee Group','General Sub Group',NULL,NULL,'L4','Accenture','','P4','P4.2','Design, java, QA','aws, graphql, jenkins','hybrid','Full Time','Yes',0,'Not Assigned','No Team Assigned','No ISG Team Assigned','Not Available','2025-08-05 10:14:14','2025-08-05 10:14:14',NULL,NULL);
 /*!40000 ALTER TABLE `requisition_details` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1873,4 +2250,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-01  8:14:35
+-- Dump completed on 2025-08-05 11:36:44

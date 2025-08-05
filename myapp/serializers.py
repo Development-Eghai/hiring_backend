@@ -1,6 +1,6 @@
 from datetime import datetime
 from rest_framework import serializers
-from .models import Approver, AssetDetails, Benefit, BgCheckRequest, BgPackage, BgVendor, Candidate, CandidateInterviewStages, CandidateReference, CandidateReview, CandidateSubmission, Candidates, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, InterviewReview, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
+from .models import Approver, AssetDetails, Benefit, BgCheckRequest, BgPackage, BgVendor, Candidate, CandidateEducation, CandidateEmployment, CandidateFormInvite, CandidateInterviewStages, CandidatePersonal, CandidateReference, CandidateReview, CandidateSubmission, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, InterviewReview, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
 from .models import CommunicationSkills,InterviewRounds,HiringPlan
@@ -886,6 +886,10 @@ class OfferNegotiationSerializer(serializers.ModelSerializer):
         slug_field='RequisitionID',  # refers to the unique string like "RQ0001"
         queryset=JobRequisition.objects.all()
     )
+    candidate = serializers.SlugRelatedField(
+        slug_field='CandidateID',
+        queryset=Candidate.objects.all()
+    )
 
     benefits = serializers.ListField(child=serializers.CharField(), write_only=True, required=False)
     benefit_details = OfferNegotiationBenefitSerializer(source='offer_benefits', many=True, read_only=True)
@@ -1051,3 +1055,143 @@ class BgCheckRequestSerializer(serializers.ModelSerializer):
             "id", "requisition", "candidate", "vendor",
             "selected_package", "custom_checks", "status", "created_at"
         ]
+
+
+class CandidateFormInviteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CandidateFormInvite
+        fields = ['id', 'candidate', 'token', 'expires_at']
+
+
+class CandidatePersonalSerializer(serializers.ModelSerializer):
+    submission = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = CandidatePersonal
+        exclude = ['id']
+
+class CandidateEducationSerializer(serializers.ModelSerializer):
+    submission = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = CandidateEducation
+        exclude = ['id']
+
+class CandidateEmploymentSerializer(serializers.ModelSerializer):
+    submission = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = CandidateEmployment
+        exclude = ['id']
+
+class CandidateReferenceSerializer(serializers.ModelSerializer):
+    candidate_submission = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = CandidateReference
+        exclude = ['id']
+
+
+class CandidateSubmissionSerializer(serializers.ModelSerializer):
+    personal_detail = CandidatePersonalSerializer()
+    education_details = CandidateEducationSerializer(many=True)
+    employment_details = CandidateEmploymentSerializer(many=True)
+    references = CandidateReferenceSerializer(many=True)
+
+    class Meta:
+        model = CandidateSubmission
+        fields = '__all__'
+
+    def create(self, validated_data):
+        personal_data = validated_data.pop('personal_detail', {})
+        education_data = validated_data.pop('education_details', [])
+        employment_data = validated_data.pop('employment_details', [])
+        reference_data = validated_data.pop('references', [])
+
+        submission = CandidateSubmission.objects.create(**validated_data)
+
+        if personal_data:
+            CandidatePersonal.objects.create(submission=submission, **personal_data)
+
+        for edu in education_data:
+            CandidateEducation.objects.create(submission=submission, **edu)
+
+        for emp in employment_data:
+            CandidateEmployment.objects.create(submission=submission, **emp)
+
+        for ref in reference_data:
+            CandidateReference.objects.create(candidate_submission=submission, **ref)
+
+        return submission
+
+class PersonalDetailsSerializer(serializers.Serializer):
+    dob = serializers.DateField(required=True)
+    marital_status = serializers.CharField(required=True)
+    gender = serializers.CharField(required=True)
+    permanent_address = serializers.CharField(required=True)
+    present_address = serializers.CharField(required=True)
+    blood_group = serializers.CharField(required=True)
+    emergency_contact_name = serializers.CharField(required=True)
+    emergency_contact_number = serializers.CharField(required=True)
+    photograph = serializers.ImageField(required=True)
+
+class ReferenceCheckSerializer(serializers.Serializer):
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    designation = serializers.CharField(required=True)
+    reporting_manager_name = serializers.CharField(required=True)
+    official_email = serializers.EmailField(required=True)
+    phone_number = serializers.CharField(required=True)
+
+class BankingDetailsSerializer(serializers.Serializer):
+    bank_name = serializers.CharField(required=True)
+    account_number = serializers.CharField(required=True)
+    ifsc_code = serializers.CharField(required=True)
+    branch_address = serializers.CharField(required=True)
+    bank_statement = serializers.FileField(required=True)
+    cancel_cheque = serializers.FileField(required=True)
+
+class FinancialDocumentsSerializer(serializers.Serializer):
+    pf_number = serializers.CharField(required=True)
+    uan_number = serializers.CharField(required=True)
+    pran_number = serializers.CharField(required=True)
+    form_16 = serializers.FileField(required=True)
+    salary_slips = serializers.FileField(required=True)
+
+class NomineeDetailsSerializer(serializers.Serializer):
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    share_percentage = serializers.IntegerField(required=True)
+
+class InsuranceDetailsSerializer(serializers.Serializer):
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    dob = serializers.DateField(required=True)
+
+class DocumentItemSerializer(serializers.Serializer):
+    type = serializers.CharField(required=True)
+    institution_name = serializers.CharField(required=True)
+    document_name = serializers.CharField(required=True)
+    document_status = serializers.CharField(required=True)
+    comment = serializers.CharField(required=True)
+    uploaded_file = serializers.FileField(required=True)
+
+class UploadedDocumentsSerializer(serializers.Serializer):
+    education_documents = DocumentItemSerializer(many=True, required=True)
+    previous_employments = DocumentItemSerializer(many=True, required=True)
+    mandatory_documents = DocumentItemSerializer(many=True, required=True)
+
+class CandidatePreOnboardingSerializer(serializers.Serializer):
+    candidate_id = serializers.CharField(required=True)
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    date_of_joining = serializers.DateField(required=True)
+
+    personal_details = PersonalDetailsSerializer(required=True)
+    references = ReferenceCheckSerializer(many=True, required=True)
+    banking_details = BankingDetailsSerializer(required=True)
+    financial_documents = FinancialDocumentsSerializer(required=True)
+    nominee_details = NomineeDetailsSerializer(many=True, required=True)
+    insurance_details = InsuranceDetailsSerializer(many=True, required=True)
+    uploaded_documents = UploadedDocumentsSerializer(required=True)
+

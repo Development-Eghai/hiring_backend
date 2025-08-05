@@ -40,14 +40,14 @@ from django.core.files.storage import default_storage
 
 
 
-from .models import ApprovalStatus, Approver, BgCheckRequest, BgPackage, BgVendor, CandidateApproval, CandidateInterviewStages, CandidateReview, CandidateSubmission, ConfigHiringData, \
-    ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, GeneratedOffer, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, \
-    InterviewReview, InterviewSchedule, InterviewSlot, Interviewer, OfferNegotiation, OfferSalaryComponent, OfferVariablePayComponent, RequisitionDetails, StageAlertResponsibility, \
+from .models import ApprovalStatus, Approver, BankingDetails, BgCheckRequest, BgPackage, BgVendor, CandidateApproval, CandidateEducation, CandidateEmployment, CandidateFormInvite, CandidateInterviewStages, CandidatePersonal, CandidateProfile, CandidateReference, CandidateReview, CandidateSubmission, ConfigHiringData, \
+    ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, DocumentItem, FinancialDocuments, GeneratedOffer, InsuranceDetail, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, \
+    InterviewReview, InterviewSchedule, InterviewSlot, Interviewer, Nominee, OfferNegotiation, OfferSalaryComponent, OfferVariablePayComponent, PersonalDetails, ReferenceCheck, RequisitionDetails, StageAlertResponsibility, \
     UserDetails, UserroleDetails
 from .models import Candidate
 from .models import InterviewRounds, HiringPlan
 from .models import JobRequisition
-from .serializers import ApproverDetailSerializer, ApproverSerializer, BgCheckRequestSerializer, BgPackageSerializer, CandidateApprovalStatusSerializer, CandidateDetailWithInterviewSerializer, CandidateInterviewStagesSerializer, CandidateReviewSerializer, CandidateSerializer, \
+from .serializers import ApproverDetailSerializer, ApproverSerializer, BgCheckRequestSerializer, BgPackageSerializer, CandidateApprovalStatusSerializer, CandidateDetailWithInterviewSerializer, CandidateFormInviteSerializer, CandidateInterviewStagesSerializer, CandidatePreOnboardingSerializer, CandidateReviewSerializer, CandidateSerializer, \
     CandidateSubmissionSerializer, ConfigHiringDataSerializer, ConfigPositionRoleSerializer, ConfigScoreCardSerializer, \
     ConfigScreeningTypeSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, InterviewPlannerSerializer, InterviewReviewSerializer, \
     InterviewerSerializer, JobRequisitionSerializer, JobTemplateSerializer, OfferNegotiationSerializer, \
@@ -353,14 +353,43 @@ def get_approvers_by_requisition(request):
 
 
 class BgPackageSetupView(APIView):
+    def get(self, request):
+        packages = BgPackage.objects.select_related("vendor").all()
+
+        data = [
+            {
+                "package_id": pkg.id,
+                "vendor_name": pkg.vendor.name,
+                "package_name": pkg.name,
+                "package_rate": str(pkg.rate),
+                "details": pkg.title or pkg.description,
+                # "action": "View / Edit"  # static, frontend uses this
+            }
+            for pkg in packages
+        ]
+
+        return Response(api_json_response_format(
+            True,
+            "Package overview fetched successfully.",
+            200,
+            data
+        ), status=200)
+
     def post(self, request):
         try:
             vendor_name = request.data.get("vendor_name")
+            vendor_email = request.data.get("vendor_email")
+            vendor_address = request.data.get("vendor_address")
+
             package_name = request.data.get("package_name")
+            title = request.data.get("title")
+            description = request.data.get("description")
             rate = request.data.get("rate")
             checks = request.data.get("checks")  # expects list
 
-            if not vendor_name or not package_name or rate is None:
+            # Validate required fields
+            if not all([vendor_name, vendor_email, vendor_address,
+                        package_name, title, description]) or rate is None:
                 return Response(api_json_response_format(
                     False,
                     "Missing required fields.",
@@ -369,12 +398,20 @@ class BgPackageSetupView(APIView):
                 ), status=200)
 
             # Get or create vendor
-            vendor, _ = BgVendor.objects.get_or_create(name=vendor_name)
+            vendor, _ = BgVendor.objects.get_or_create(
+                name=vendor_name,
+                defaults={
+                    "contact_email": vendor_email,
+                    "address": vendor_address
+                }
+            )
 
             # Create package
             bg_package = BgPackage.objects.create(
                 vendor=vendor,
                 name=package_name,
+                title=title,
+                description=description,
                 rate=rate,
                 included_checks=checks
             )
@@ -394,6 +431,202 @@ class BgPackageSetupView(APIView):
                 500,
                 {}
             ), status=200)
+    
+    def put(self, request):
+        try:
+            package_id = request.data.get("package_id")
+
+            # Validate that package_id is provided
+            if not package_id:
+                return Response(api_json_response_format(
+                    False,
+                    "Package ID is required.",
+                    400,
+                    {}
+                ), status=200)
+
+            # Extract vendor data
+            vendor_data = {
+                "name": request.data.get("vendor_name"),
+                "contact_email": request.data.get("vendor_email"),
+                "address": request.data.get("vendor_address")
+            }
+
+            # Extract package data
+            package_data = {
+                "name": request.data.get("package_name"),
+                "title": request.data.get("title"),
+                "description": request.data.get("description"),
+                "rate": request.data.get("rate"),
+                "included_checks": request.data.get("checks")
+            }
+
+            # Validate required fields
+            if not all(vendor_data.values()) or not all([
+                package_data["name"], package_data["title"],
+                package_data["description"]
+            ]) or package_data["rate"] is None:
+                return Response(api_json_response_format(
+                    False,
+                    "Missing required fields.",
+                    400,
+                    {}
+                ), status=200)
+
+            # Lookup package
+            try:
+                bg_package = BgPackage.objects.get(id=package_id)
+            except BgPackage.DoesNotExist:
+                return Response(api_json_response_format(
+                    False,
+                    "Package not found.",
+                    404,
+                    {}
+                ), status=200)
+
+            # Update vendor info
+            vendor = bg_package.vendor
+            vendor.name = vendor_data["name"]
+            vendor.contact_email = vendor_data["contact_email"]
+            vendor.address = vendor_data["address"]
+            vendor.save()
+
+            # Update package info
+            for field, value in package_data.items():
+                setattr(bg_package, field, value)
+            bg_package.save()
+
+            serializer = BgPackageSerializer(bg_package)
+            return Response(api_json_response_format(
+                True,
+                "Package updated successfully.",
+                200,
+                serializer.data
+            ), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Error while updating package: {str(e)}",
+                500,
+                {}
+            ), status=200)
+        
+    def delete(self, request):
+        try:
+            package_id = request.data.get("package_id")
+
+            if not package_id:
+                return Response(api_json_response_format(
+                    False,
+                    "Package ID is required to delete.",
+                    400,
+                    {}
+                ), status=200)
+
+            try:
+                bg_package = BgPackage.objects.select_related('vendor').get(id=package_id)
+            except BgPackage.DoesNotExist:
+                return Response(api_json_response_format(
+                    False,
+                    "Package not found.",
+                    404,
+                    {}
+                ), status=200)
+
+            # Optional: delete vendor first if needed
+            if bg_package.vendor:
+                bg_package.vendor.delete()
+
+            bg_package.delete()
+
+            return Response(api_json_response_format(
+                True,
+                "Package and vendor deleted successfully.",
+                200,
+                {}
+            ), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Error while deleting package: {str(e)}",
+                500,
+                {}
+            ), status=200)
+
+class InitiateBgCheckView(APIView):
+    def post(self, request):
+        try:
+            # Extract incoming data
+            requisition_id = request.data.get("requisition_id")
+            candidate_id = request.data.get("candidate_id")
+            vendor_id = request.data.get("vendor_id")
+            selected_package_id = request.data.get("selected_package_id")
+            custom_checks = request.data.get("custom_checks", [])  # expects list
+            current_stage = request.data.get("current_stage")
+            bg_status = request.data.get("bg_status", "Initiated")  # optional override
+
+            # Validate required fields
+            if not all([requisition_id, candidate_id, vendor_id]) or (
+                not selected_package_id and not custom_checks
+            ):
+                return Response(api_json_response_format(
+                    False,
+                    "Missing required fields or no checks selected.",
+                    400,
+                    {}
+                ), status=200)
+
+            # Resolve foreign keys
+            try:
+                requisition = JobRequisition.objects.get(RequisitionID=requisition_id)
+                candidate = Candidate.objects.get(id=candidate_id)
+                vendor = BgVendor.objects.get(id=vendor_id)
+                package = BgPackage.objects.get(id=selected_package_id) if selected_package_id else None
+            except Exception as e:
+                return Response(api_json_response_format(
+                    False,
+                    f"Invalid reference: {str(e)}",
+                    404,
+                    {}
+                ), status=200)
+
+            # Create BG check record
+            bg_record = BgCheckRequest.objects.create(
+                requisition=requisition,
+                candidate=candidate,
+                vendor=vendor,
+                selected_package=package,
+                custom_checks=custom_checks,
+                status=bg_status
+            )
+
+            response_data = {
+                "bg_request_id": bg_record.id,
+                "status": bg_record.status,
+                "candidate_id": candidate.id,
+                "vendor": vendor.name,
+                "package": package.name if package else None,
+                "custom_checks": custom_checks
+            }
+
+            return Response(api_json_response_format(
+                True,
+                "Background check initiated successfully.",
+                201,
+                response_data
+            ), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(
+                False,
+                f"Error initiating BG check: {str(e)}",
+                500,
+                {}
+            ), status=200)
+
+
 
 class GetCandidateReviewView(APIView):
     def post(self, request):
@@ -408,58 +641,59 @@ class GetCandidateReviewView(APIView):
         serializer = InterviewReviewSerializer(reviews, many=True)
         return Response(api_json_response_format(True, "Reviews retrieved", 200, serializer.data), status=200)
 
-class InitiateBgCheckView(APIView):
-    def post(self, request):
-        try:
-            requisition_id = request.data.get("requisition_id")
-            candidate_id = request.data.get("candidate_id")
-            vendor_id = request.data.get("vendor_id")
-            package_id = request.data.get("package_id")
-            custom_checks = request.data.get("custom_checks", [])  # optional list
+# class InitiateBgCheckView(APIView):
+#     def post(self, request):
+#         try:
+#             requisition_id = request.data.get("requisition_id")
+#             candidate_id = request.data.get("candidate_id")
+#             vendor_id = request.data.get("vendor_id")
+#             package_id = request.data.get("package_id")
+#             custom_checks = request.data.get("custom_checks", [])  # optional list
 
-            if not (requisition_id and candidate_id and vendor_id):
-                return Response(api_json_response_format(
-                    False,
-                    "Missing required fields: requisition_id, candidate_id, vendor_id.",
-                    400,
-                    {}
-                ), status=200)
+#             if not (requisition_id and candidate_id and vendor_id):
+#                 return Response(api_json_response_format(
+#                     False,
+#                     "Missing required fields: requisition_id, candidate_id, vendor_id.",
+#                     400,
+#                     {}
+#                 ), status=200)
 
-            requisition = JobRequisition.objects.get(RequisitionID=requisition_id)
-            candidate = Candidate.objects.get(pk=candidate_id)
-            vendor = BgVendor.objects.get(pk=vendor_id)
+#             requisition = JobRequisition.objects.get(RequisitionID=requisition_id)
+#             candidate = Candidate.objects.get(pk=candidate_id)
+#             vendor = BgVendor.objects.get(pk=vendor_id)
 
-            selected_package = BgPackage.objects.get(pk=package_id) if package_id else None
+#             selected_package = BgPackage.objects.get(pk=package_id) if package_id else None
 
-            bg_request = BgCheckRequest.objects.create(
-                requisition=requisition,
-                candidate=candidate,
-                vendor=vendor,
-                selected_package=selected_package,
-                custom_checks=custom_checks,
-                status="Initiated"
-            )
+#             bg_request = BgCheckRequest.objects.create(
+#                 requisition=requisition,
+#                 candidate=candidate,
+#                 vendor=vendor,
+#                 selected_package=selected_package,
+#                 custom_checks=custom_checks,
+#                 status="Initiated"
+#             )
 
-            serializer = BgCheckRequestSerializer(bg_request)
-            return Response(api_json_response_format(
-                True,
-                "BG Check initiated.",
-                201,
-                serializer.data
-            ), status=200)
+#             serializer = BgCheckRequestSerializer(bg_request)
+#             return Response(api_json_response_format(
+#                 True,
+#                 "BG Check initiated.",
+#                 201,
+#                 serializer.data
+#             ), status=200)
 
-        except JobRequisition.DoesNotExist:
-            return Response(api_json_response_format(False, "Requisition not found", 404, {}), status=200)
-        except Candidate.DoesNotExist:
-            return Response(api_json_response_format(False, "Candidate not found", 404, {}), status=200)
-        except BgVendor.DoesNotExist:
-            return Response(api_json_response_format(False, "Vendor not found", 404, {}), status=200)
-        except BgPackage.DoesNotExist:
-            return Response(api_json_response_format(False, "Package not found", 404, {}), status=200)
-        except Exception as e:
-            return Response(api_json_response_format(False, f"Error initiating BG check: {str(e)}", 500, {}), status=200)
+#         except JobRequisition.DoesNotExist:
+#             return Response(api_json_response_format(False, "Requisition not found", 404, {}), status=200)
+#         except Candidate.DoesNotExist:
+#             return Response(api_json_response_format(False, "Candidate not found", 404, {}), status=200)
+#         except BgVendor.DoesNotExist:
+#             return Response(api_json_response_format(False, "Vendor not found", 404, {}), status=200)
+#         except BgPackage.DoesNotExist:
+#             return Response(api_json_response_format(False, "Package not found", 404, {}), status=200)
+#         except Exception as e:
+#             return Response(api_json_response_format(False, f"Error initiating BG check: {str(e)}", 500, {}), status=200)
 
 class BgCheckRequestView(APIView):
+
     def post(self, request):
         try:
             data = request.data.copy()
@@ -495,20 +729,81 @@ class BgCheckRequestView(APIView):
 
 
     def get(self, request):
+        bg_requests = BgCheckRequest.objects.select_related(
+            "requisition", "candidate", "vendor", "selected_package"
+        ).all()
+
+        data = [
+            {
+                "req_id": req.requisition.RequisitionID,
+                "candidate_id": req.candidate.CandidateID,
+                "first_name": req.candidate.candidate_first_name,
+                "last_name": req.candidate.candidate_last_name,
+                "email_id": req.candidate.Email,
+                "location": getattr(req.requisition.position_information, "location", "Not Provided"),
+                "vendor_name": req.vendor.name,
+                "vendor_package": req.selected_package.name if req.selected_package else "Custom",
+                "add_on_check": req.custom_checks,
+                "status": req.status,
+                "decision": "Approved" if req.status == "Completed" else "Pending"  # Logic placeholder
+            }
+            for req in bg_requests
+        ]
+
+        return Response(api_json_response_format(
+            True,
+            "Dashboard fields loaded.",
+            200,
+            data
+        ), status=200)
+
+class BgCheckContextualDetailsView(APIView):
+    def post(self, request):
+        requisition_id = request.data.get("requisition_id")
+
+        if not requisition_id:
+            return Response(api_json_response_format(
+                False, "Missing requisition_id.", 400, {}
+            ), status=200)
+
         try:
-            req_id = request.query_params.get("requisition_id")
-            candidate_id = request.query_params.get("candidate_id")
-            queryset = BgCheckRequest.objects.all()
+            # Get the candidate linked to the requisition
+            candidate = Candidate.objects.select_related('Req_id_fk').filter(
+                Req_id_fk__RequisitionID=requisition_id
+            ).first()
 
-            if req_id:
-                queryset = queryset.filter(requisition__RequisitionID=req_id)
-            if candidate_id:
-                queryset = queryset.filter(candidate__CandidateID=candidate_id)
+            stage = CandidateInterviewStages.objects.filter(
+                candidate_id=candidate.CandidateID
+            ).order_by('-interview_date').first() if candidate else None
 
-            serializer = BgCheckRequestSerializer(queryset, many=True)
-            return Response(api_json_response_format(True, "BG Requests fetched", 200, serializer.data), status=200)
+            # Get the background check request
+            bg_request = BgCheckRequest.objects.select_related(
+                "vendor", "selected_package", "requisition__position_information"
+            ).filter(
+                requisition__RequisitionID=requisition_id
+            ).first()
+
+            # Get all vendors and packages for dropdown population
+            vendors = BgVendor.objects.values_list("id", "name")
+            packages = BgPackage.objects.values_list("id", "name")
+
+            data = {
+                "vendor_options": [{"id": v[0], "name": v[1],"value": v[1]} for v in vendors],
+                "package_options": [{"id": p[0], "name": p[1],"value": p[1]} for p in packages],
+                "location": getattr(bg_request.requisition.position_information, "location", "Not Provided") if bg_request else "Not Provided",
+                "current_stage": stage.interview_stage if stage else "N/A"
+            }
+
+            return Response(api_json_response_format(
+                True, "Form data loaded successfully.", 200, data
+            ), status=200)
+
         except Exception as e:
-            return Response(api_json_response_format(False, str(e), 500, {}), status=200)
+            return Response(api_json_response_format(
+                False, f"Error loading data: {str(e)}", 500, {}
+            ), status=200)
+
+
 
 
 def resolve_offer_approval_status(approvals, expected_roles):
@@ -712,6 +1007,10 @@ class OfferApprovalStatusView(APIView):
                     approver = approval.approver
                     if approver:
                         final_data.append({
+                            "Req ID": requisition.RequisitionID,
+                            "Candidate ID": candidate.CandidateID ,
+                            "Candidate First Name": offer.first_name,
+                            "Candidate Last Name": offer.last_name,
                             "req_id": requisition.RequisitionID,
                             "client_id": requisition.client_id,
                             "client_name": offer.client_name,
@@ -783,9 +1082,29 @@ class OfferNegotiationViewSet(viewsets.ModelViewSet):
         try:
             queryset = self.filter_queryset(self.get_queryset())
             serializer = self.get_serializer(queryset, many=True)
+            enriched_data = []
+
+            for obj, item in zip(queryset, serializer.data):
+                # Defensive fetch to avoid AttributeError
+                candidate = getattr(obj, "candidate", None)
+                requisition = getattr(obj, "requisition", None)
+
+                item["Req ID"] = getattr(requisition, "RequisitionID", "") if requisition else "N/A"
+                item["Candidate ID"] = getattr(candidate, "CandidateID", "") if candidate else "N/A"
+                item["Candidate First Name"] = getattr(candidate, "candidate_first_name", "") if candidate else "N/A"
+                item["Candidate Last Name"] = getattr(candidate, "candidate_last_name", "") if candidate else "N/A"
+
+                enriched_data.append(item)
+
             return Response(api_json_response_format(
-                True, "Job requisitions retrieved successfully!", 200, serializer.data
+                True, "Job requisitions retrieved successfully!", 200, enriched_data
             ), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(
+                False, f"Error retrieving job requisitions. {str(e)}", 500, {}
+            ), status=500)  # Make sure status reflects the actual error
+
         except Exception as e:
             return Response(api_json_response_format(
                 False, f"Error retrieving job requisitions. {str(e)}", 500, {}
@@ -2622,48 +2941,91 @@ class BulkUploadResumeView(APIView):
 #                 False, "Error while processing resumes. " + str(e), 500, {}
 #             ), status=200)
 
+@api_view(['POST'])
+def send_form_invite(request):
+    candidate_id = request.data.get("candidate_id")
+    candidate = get_object_or_404(Candidate, CandidateID=candidate_id)
+
+    invite = CandidateFormInvite.objects.create(candidate=candidate)
+    form_link = f"https://hiring.pixeladvant.com/recruiter/personal_details_form?token={invite.token}"
+
+    # Send the email
+    send_mail(
+        subject="Complete Your Personal Details",
+        message=f"Hi {candidate.candidate_first_name+" "+candidate.candidate_last_name},\n\nPlease complete your personal details form using the secure link below. This link will expire on {invite.expires_at.strftime('%Y-%m-%d %H:%M')}.\n\n{form_link}\n\nThank you!",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[candidate.Email],
+        fail_silently=False
+    )
+
+    # Serialize the invite object if needed
+    serialized_invite = CandidateFormInviteSerializer(invite).data
+    serialized_invite["link"] = form_link
+    return Response(api_json_response_format(
+        True,
+        "Form invite sent successfully.",
+        200,
+        serialized_invite  # This will include link, expiry, etc.
+    ), status=200)
+
+
+
+
 class CandidateSubmissionViewSet(viewsets.ModelViewSet):
     queryset = CandidateSubmission.objects.all()
     serializer_class = CandidateSubmissionSerializer
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        token = request.data.get("token")
+        if not token:
+            return Response(api_json_response_format(False, "Token missing.", 400, {}), status=200)
 
+        try:
+            invite = CandidateFormInvite.objects.get(token=token)
+        except CandidateFormInvite.DoesNotExist:
+            return Response(api_json_response_format(False, "Invalid token.", 404, {}), status=200)
+
+        if invite.is_expired():
+            return Response(api_json_response_format(False, "Token expired.", 403, {}), status=200)
+
+        payload = request.data.copy()
+        payload['candidate'] = invite.candidate.CandidateID
+
+        serializer = CandidateSubmissionSerializer(data=payload)
         if serializer.is_valid():
-            submission = serializer.save()
+            validated_data = serializer.validated_data
+
+            # Handle nested data manually
+            personal_data = validated_data.pop('personal_detail', {})
+            education_data = validated_data.pop('education_details', [])
+            employment_data = validated_data.pop('employment_details', [])
+            reference_data = validated_data.pop('references', [])
+
+            # Save submission
+            submission = CandidateSubmission.objects.create(**validated_data)
+
+            if personal_data:
+                CandidatePersonal.objects.create(submission=submission, **personal_data)
+
+            for edu in education_data:
+                CandidateEducation.objects.create(submission=submission, **edu)
+
+            for emp in employment_data:
+                CandidateEmployment.objects.create(submission=submission, **emp)
+
+            for ref in reference_data:
+                CandidateReference.objects.create(candidate_submission=submission, **ref)
+
             return Response(api_json_response_format(
                 True,
-                "Candidate submission saved successfully.",
+                "Form submitted successfully.",
                 200,
-                self.get_serializer(submission).data
+                CandidateSubmissionSerializer(submission).data
             ), status=200)
 
-        return Response(api_json_response_format(
-            False,
-            "Validation error.",
-            400,
-            serializer.errors
-        ), status=200)
+        return Response(api_json_response_format(False, "Validation error.", 400, serializer.errors), status=200)
 
 
-    @action(detail=False, methods=["POST"],url_path="get-submissions-by-candidate-id")
-    def get_submissions_by_candidate_id(self, request):
-        candidate_id = request.data.get("candidate_id")
-        if not candidate_id:
-            return Response(api_json_response_format(
-                False, "Candidate ID is required.", 400, {}
-            ), status=200)
-
-        submissions = CandidateSubmission.objects.filter(candidate_id=candidate_id)
-        if not submissions.exists():
-            return Response(api_json_response_format(
-                False, "No submissions found for this candidate.", 404, {}
-            ), status=200)
-
-        serializer = self.get_serializer(submissions, many=True)
-        return Response(api_json_response_format(
-            True, "Submissions retrieved successfully.", 200, serializer.data
-        ), status=200)
 
 class CandidateDetailView(APIView):
     def post(self, request):
@@ -3138,6 +3500,10 @@ class OfferDetailsViewSet(APIView):
                     })
 
                 data.append({
+                    "Req ID": requisition.RequisitionID,
+                    "Candidate ID": candidate.CandidateID if candidate else "",
+                    "Candidate First Name": candidate.candidate_first_name if candidate else "",
+                    "Candidate Last Name": candidate.candidate_last_name if candidate else "",
                     "Req_ID": requisition.RequisitionID,
                     "Client_Id": requisition.client_id,
                     "Client_Name": offer.client_name,
@@ -3262,6 +3628,15 @@ class GenerateOfferView(APIView):
                         name=item["name"],
                         value=item["value"]
                     )
+            CandidateProfile.objects.update_or_create(
+            candidate_id=candidate.CandidateID,
+            defaults={
+                "candidate_id": candidate.CandidateID,
+                "first_name": candidate.candidate_first_name,
+                "last_name": candidate.candidate_last_name,
+                "date_of_joining": data.get("estimated_start_date")
+                }
+            )
 
             message = "Offer updated successfully" if not created else "Offer generated successfully"
             return Response(api_json_response_format(True, message, 200, {
@@ -3295,6 +3670,10 @@ class OfferRetrievalView(APIView):
                     "offer_id": offer.id,
                     "req_id": offer.requisition.RequisitionID,
                     "candidate_id": offer.candidate.CandidateID,
+                    "Req ID": offer.requisition.RequisitionID,
+                    "Candidate ID": offer.candidate.CandidateID ,
+                    "Candidate First Name": offer.candidate.candidate_first_name,
+                    "Candidate Last Name": offer.candidate.candidate_last_name,
                     "candidate_name": f"{offer.candidate.candidate_first_name} {offer.candidate.candidate_last_name}",
                     "job_title": offer.job_title,
                     "job_city": offer.job_city,
@@ -5194,6 +5573,11 @@ class CandidateInterviewStagesView(APIView):
                         current_stage = s
 
                 enriched_data.append({
+                    "Req ID":  requisition.RequisitionID if requisition else "",
+                    "Candidate ID": candidate.CandidateID if candidate else "",
+                    "Candidate First Name": candidate.candidate_first_name if candidate else "",
+                    "Candidate Last Name": candidate.candidate_last_name if candidate else "",
+                        
                     "Req_ID": requisition.RequisitionID if requisition else "",
                     "Client": requisition.company_client_name if requisition else "",
                     "Candidate_ID": candidate.CandidateID if candidate else "",
@@ -5218,6 +5602,7 @@ class CandidateInterviewStagesView(APIView):
                     }
 
                     OfferNegotiation.objects.update_or_create(
+                        candidate=candidate,
                         requisition=requisition,
                         first_name=offer_data["first_name"],
                         last_name=offer_data["last_name"],
@@ -5280,6 +5665,24 @@ class InterviewJourneyView(APIView):
 
             journey.append(screening_stage)
 
+            approval_decisions = CandidateApproval.objects.filter(candidate_id=candidate_id).order_by("reviewed_at")
+
+            for approval in approval_decisions:
+                approver = approval.approver  # Assuming FK to UserDetails or similar
+                approver_name = approver.first_name+" "+approver.last_name if approver and approver.first_name else "N/A"
+
+                approval_stage = {
+                    "Stage": f"Approval by {approver_name}",
+                    "Date": approval.reviewed_at.strftime("%Y-%m-%d") if approval.reviewed_at else "Pending",
+                    "Mode": "System",
+                    "Interviewer": approver_name,
+                    "Feedback": approval.comment if approval.comment else "",  # Optional
+                    "Status": approval.decision or "Pending"
+                }
+                journey.append(approval_stage)
+
+
+
             for stage in stages:
                 # Find corresponding InterviewSchedule
                 interview_schedule = InterviewSchedule.objects.filter(
@@ -5308,6 +5711,59 @@ class InterviewJourneyView(APIView):
 
                 })
                
+            interview_completed = stages.filter(status__iexact="Completed").exists()
+
+            if interview_completed:
+                # Attach Negotiation Stage
+                negotiation = OfferNegotiation.objects.filter(candidate__CandidateID=candidate.CandidateID).first()
+                if negotiation:
+                    negotiation_stage = {
+                        "Stage": "Recruiter Negotiation",
+                        "Date": negotiation.created_at.strftime("%Y-%m-%d"),
+                        "Mode": "Negotiation Portal",
+                        "Interviewer": recruiter_name,  # same recruiter from earlier
+                        "Feedback": negotiation.comments or "N/A",
+                        "Status": negotiation.negotiation_status
+                    }
+                    journey.append(negotiation_stage)
+
+                    # If negotiation is successful, include approvals
+                    if negotiation.negotiation_status == "Successful":
+                        approvals = ApprovalStatus.objects.filter(offer_negotiation=negotiation)
+
+                        for approval in approvals:
+                            approver = approval.approver
+                            approver_name = f"{approver.first_name} {approver.last_name}" if approver else "N/A"
+
+                            approval_stage = {
+                                "Stage": f"Approval by {approver_name}",
+                                "Date": approval.updated_at.strftime("%Y-%m-%d"),
+                                "Mode": "System",
+                                "Interviewer": approver_name,
+                                "Feedback": "",  # Add remarks if available in model
+                                "Status": approval.status
+                            }
+                            journey.append(approval_stage)
+
+                        # If all approvals passed, show generated offer
+                        if approvals.exists() and approvals.filter(status="Pending").count() == 0 and \
+                        approvals.filter(status="Rejected").count() == 0:
+
+                            generated_offer = GeneratedOffer.objects.filter(
+                                candidate=candidate,
+                                requisition=candidate.Req_id_fk
+                            ).first()
+
+                            if generated_offer:
+                                offer_stage = {
+                                    "Stage": "Offer Generated",
+                                    "Date": generated_offer.created_at.strftime("%Y-%m-%d"),
+                                    "Mode": "System",
+                                    "Interviewer": recruiter_name,
+                                    "Feedback": f"Job Title: {generated_offer.job_title}, Location: {generated_offer.job_city}, {generated_offer.job_country}",
+                                    "Status": generated_offer.negotiation_status
+                                }
+                                journey.append(offer_stage)
 
 
 
@@ -5867,4 +6323,110 @@ def job_metadata_lookup(request):
             False, f"Error retrieving job metadata: {str(e)}", 500, {}
         ), status=200)
 
-    
+@api_view(['POST'])
+def submit_pre_onboarding_form(request):
+    serializer = CandidatePreOnboardingSerializer(data=request.data)
+    print("FILES RECEIVED:", request.FILES.keys())
+    print("DATA RECEIVED:", request.data.keys())
+    if serializer.is_valid():
+        validated = serializer.validated_data
+        
+
+        # Candidate Profile
+        candidate_obj, _ = CandidateProfile.objects.update_or_create(
+            candidate_id=validated["candidate_id"],
+            defaults={
+                "first_name": validated.get("first_name", ""),
+                "last_name": validated.get("last_name", ""),
+                "date_of_joining": validated["date_of_joining"]
+            }
+        )
+
+        # Personal Details
+        PersonalDetails.objects.update_or_create(
+            candidate=candidate_obj,
+            defaults=validated["personal_details"]
+        )
+
+        # References
+        ReferenceCheck.objects.filter(candidate=candidate_obj).delete()
+        ReferenceCheck.objects.bulk_create([
+            ReferenceCheck(candidate=candidate_obj, **ref)
+            for ref in validated["references"]
+        ])
+
+        # Banking Details
+        BankingDetails.objects.update_or_create(
+            candidate=candidate_obj,
+            defaults=validated["banking_details"]
+        )
+
+        # Financial Documents
+        FinancialDocuments.objects.update_or_create(
+            candidate=candidate_obj,
+            defaults=validated["financial_documents"]
+        )
+
+        # Nominees
+        Nominee.objects.filter(candidate=candidate_obj).delete()
+        Nominee.objects.bulk_create([
+            Nominee(candidate=candidate_obj, **nom)
+            for nom in validated["nominee_details"]
+        ])
+
+        # Insurance Details
+        InsuranceDetail.objects.filter(candidate=candidate_obj).delete()
+        InsuranceDetail.objects.bulk_create([
+            InsuranceDetail(candidate=candidate_obj, **ins)
+            for ins in validated["insurance_details"]
+        ])
+
+        # Uploaded Documents
+        DocumentItem.objects.filter(candidate=candidate_obj).delete()
+        for category, items in validated["uploaded_documents"].items():
+            DocumentItem.objects.bulk_create([
+                DocumentItem(candidate=candidate_obj, category=category, **item)
+                for item in items
+            ])
+
+        return Response(api_json_response_format(
+            True,
+            "Pre-onboarding form submitted successfully.",
+            200,
+            validated
+        ))
+
+
+    # If invalid
+    return Response(api_json_response_format(
+        False,
+        "Validation error.",
+        400,
+        serializer.errors
+    ))
+
+@api_view(['GET'])
+def get_all_pre_onboarding_forms(request):
+    candidates = CandidateProfile.objects.all()
+    all_data = []
+
+    for candidate_obj in candidates:
+        entry = {
+            "candidate_id": candidate_obj.candidate_id,
+            "first_name": candidate_obj.first_name,
+            "last_name": candidate_obj.last_name,
+            "date_of_joining": candidate_obj.date_of_joining,
+            "personal_details": PersonalDetails.objects.filter(candidate=candidate_obj).values().first(),
+            "references": list(ReferenceCheck.objects.filter(candidate=candidate_obj).values()),
+            "banking_details": BankingDetails.objects.filter(candidate=candidate_obj).values().first(),
+            "financial_documents": FinancialDocuments.objects.filter(candidate=candidate_obj).values().first(),
+            "nominee_details": list(Nominee.objects.filter(candidate=candidate_obj).values()),
+            "insurance_details": list(InsuranceDetail.objects.filter(candidate=candidate_obj).values()),
+            "uploaded_documents": {
+                category: list(DocumentItem.objects.filter(candidate=candidate_obj, category=category).values())
+                for category, _ in DocumentItem.CATEGORY_CHOICES
+            }
+        }
+        all_data.append(entry)
+
+    return Response(api_json_response_format(True, "All pre-onboarding forms retrieved.", 200, all_data))
