@@ -3111,7 +3111,7 @@ def send_form_invite(request):
     candidate = get_object_or_404(Candidate, CandidateID=candidate_id)
 
     invite = CandidateFormInvite.objects.create(candidate=candidate)
-    form_link = f"https://hiring.pixeladvant.com/recruiter/personal_details_form?token={invite.token}"
+    form_link = f"https://hiring.pixeladvant.com/candidate/personal_details_form?token={invite.token}"
 
     # Send the email
     send_mail(
@@ -3138,7 +3138,7 @@ def send_pre_onboarding_form_invite(request):
     candidate = get_object_or_404(Candidate, CandidateID=candidate_id)
 
     invite = CandidateFormInvite.objects.create(candidate=candidate)
-    form_link = f"https://hiring.pixeladvant.com/recruiter/pre_onboarding_form?token={invite.token}"
+    form_link = f"https://hiring.pixeladvant.com/candidate/pre_onboarding_form?token={invite.token}"
 
     # Send the email
     send_mail(
@@ -6560,11 +6560,22 @@ def parse_nested_form_data(flat_data):
 
 @api_view(['POST'])
 def submit_pre_onboarding_form(request):
-    # data = request.data
     flat_data = request.data
     data = parse_nested_form_data(flat_data)
 
     try:
+        token = data.get("token")
+        if not token:
+            return Response(api_json_response_format(False, "Token is required.", 400, {}))
+
+        invite = get_object_or_404(CandidateFormInvite, token=token)
+
+        if invite.expires_at < timezone.now():
+            return Response(api_json_response_format(False, "Token has expired.", 400, {}))
+
+        candidate = invite.candidate
+        candidate_id = candidate.CandidateID
+
         candidate_info = data.get("candidateInfo", {})
         personal_details = data.get("personalDetails", {})
         reference_check = data.get("referenceCheck", [])
@@ -6574,19 +6585,16 @@ def submit_pre_onboarding_form(request):
         insurance_details = data.get("insuranceDetails", [])
         uploaded_documents = data.get("uploadedDocuments", {})
 
-        candidate_id = candidate_info.get("id")
-        if not candidate_id:
-            return Response(api_json_response_format(False, "Candidate ID is required.", 400, {}))
-
         # Candidate Profile
         candidate_obj, _ = CandidateProfile.objects.update_or_create(
             candidate_id=candidate_id,
             defaults={
-                "first_name": candidate_info.get("firstName", ""),
-                "last_name": candidate_info.get("lastName", ""),
+                "first_name": candidate_info.get("firstName", candidate.candidate_first_name),
+                "last_name": candidate_info.get("lastName", candidate.candidate_last_name),
                 "date_of_joining": candidate_info.get("dateOfJoining") or None
             }
         )
+
         def normalize_personal_details(data):
             return {
                 "dob": data.get("dob"),
@@ -6595,18 +6603,18 @@ def submit_pre_onboarding_form(request):
                 "blood_group": data.get("bloodGroup"),
                 "permanent_address": data.get("permanentAddress"),
                 "present_address": data.get("presentAddress"),
-                "emergency_contact_name": data.get("emergencyPOCName"),  # ← match model
+                "emergency_contact_name": data.get("emergencyPOCName"),
                 "emergency_contact_number": data.get("emergencyContactNumber"),
                 "photograph": data.get("photographs")
             }
 
-        # Personal Details
-        normalized_details = normalize_personal_details(personal_details)
         PersonalDetails.objects.update_or_create(
             candidate=candidate_obj,
-            defaults=normalized_details
+            defaults=normalize_personal_details(personal_details)
         )
+
         flat_references = [list(ref.values())[0] for ref in reference_check]
+
         def normalize_reference(ref):
             return {
                 "first_name": ref.get("firstName"),
@@ -6617,14 +6625,10 @@ def submit_pre_onboarding_form(request):
                 "phone_number": ref.get("phoneNumber")
             }
 
-
-
-        # References
         ReferenceCheck.objects.bulk_create([
             ReferenceCheck(candidate=candidate_obj, **normalize_reference(ref))
             for ref in flat_references if ref.get("firstName") or ref.get("lastName")
         ])
-
 
         def normalize_banking_details(data):
             return {
@@ -6635,11 +6639,10 @@ def submit_pre_onboarding_form(request):
                 "bank_statement": data.get("bankStatement"),
                 "cancel_cheque": data.get("cancelCheque")
             }
-        # Banking Details
-        normalized_banking = normalize_banking_details(banking_details)
+
         BankingDetails.objects.update_or_create(
             candidate=candidate_obj,
-            defaults=normalized_banking
+            defaults=normalize_banking_details(banking_details)
         )
 
         def normalize_financial_documents(data):
@@ -6647,16 +6650,13 @@ def submit_pre_onboarding_form(request):
                 "pf_number": data.get("pfNumber"),
                 "uan_number": data.get("uanNumber"),
                 "pran_number": data.get("pranNumber"),
-                "form_16": data.get("form16"),  # ✅ corrected
+                "form_16": data.get("form16"),
                 "salary_slips": data.get("salarySlips")
             }
 
-
-        # Financial Documents
-        normalized_financials = normalize_financial_documents(financial_documents)
         FinancialDocuments.objects.update_or_create(
             candidate=candidate_obj,
-            defaults=normalized_financials
+            defaults=normalize_financial_documents(financial_documents)
         )
 
         flat_nominees = [list(nom.values())[0] for nom in nominee_details]
@@ -6665,7 +6665,7 @@ def submit_pre_onboarding_form(request):
             return {
                 "first_name": nom.get("firstName"),
                 "last_name": nom.get("lastName"),
-                "share_percentage": int(nom.get("share", 0)) 
+                "share_percentage": int(nom.get("share", 0))
             }
 
         Nominee.objects.bulk_create([
@@ -6679,7 +6679,7 @@ def submit_pre_onboarding_form(request):
             return {
                 "first_name": ins.get("firstName"),
                 "last_name": ins.get("lastName"),
-                "dob": ins.get("dob")  # Ensure this is a valid date string or object
+                "dob": ins.get("dob")
             }
 
         InsuranceDetail.objects.bulk_create([
@@ -6693,14 +6693,12 @@ def submit_pre_onboarding_form(request):
                 "employment": "Employment",
                 "mandatory": "Mandatory"
             }
-            return mapping.get(raw_category.lower(), "Mandatory")  # Default fallback
+            return mapping.get(raw_category.lower(), "Mandatory")
 
-        # Uploaded Documents
         DocumentItem.objects.filter(candidate=candidate_obj).delete()
 
         for raw_category, items in uploaded_documents.items():
-            category = normalize_category(raw_category)  # ✅ Normalize here
-
+            category = normalize_category(raw_category)
             DocumentItem.objects.bulk_create([
                 DocumentItem(
                     candidate=candidate_obj,
@@ -6714,6 +6712,8 @@ def submit_pre_onboarding_form(request):
                 for doc_type, file in items.items() if file
             ])
 
+        invite.completed = True
+        invite.save()
 
         return Response(api_json_response_format(
             True,
@@ -6729,6 +6729,7 @@ def submit_pre_onboarding_form(request):
             500,
             {}
         ))
+
 
 @api_view(['GET'])
 def get_all_pre_onboarding_forms(request):
