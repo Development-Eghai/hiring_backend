@@ -150,6 +150,11 @@ urlpatterns = [
     path("initiate-bg-check/", BgCheckRequestView.as_view(), name="initiate-bg-check"),
     # path("bg-check-request/", BgCheckRequestView.as_view(), name="bg-check-request"),
     path('api/bg-check/contextual-data/', BgCheckContextualDetailsView.as_view(), name='bg-check-contextual-data'),
+    path('bg/contextual/checks/', BgAddonChecksView.as_view(),name='bg-addon-checks'),
+    path('vendor-packages/', VendorPackageView.as_view(),name='vendor-packages'),
+
+
+    path('recruiter/send_pre_onboarding_form_invite/', send_pre_onboarding_form_invite, name='send_pre_onboarding_form_invite'),
 
 
 

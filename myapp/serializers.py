@@ -1,6 +1,6 @@
 from datetime import datetime
 from rest_framework import serializers
-from .models import Approver, AssetDetails, Benefit, BgCheckRequest, BgPackage, BgVendor, Candidate, CandidateEducation, CandidateEmployment, CandidateFormInvite, CandidateInterviewStages, CandidatePersonal, CandidateReference, CandidateReview, CandidateSubmission, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, InterviewReview, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
+from .models import Approver, AssetDetails, Benefit, BgCheckRequest, BgPackage, BgPackageDetail, BgVendor, Candidate, CandidateEducation, CandidateEmployment, CandidateFormInvite, CandidateInterviewStages, CandidatePersonal, CandidateReference, CandidateReview, CandidateSubmission, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, InterviewReview, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
 from .models import CommunicationSkills,InterviewRounds,HiringPlan
@@ -1027,14 +1027,18 @@ class BgVendorSerializer(serializers.ModelSerializer):
         model = BgVendor
         fields = ["id", "name", "contact_email", "created_at"]
 
-
+class BgPackageDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BgPackageDetail
+        fields = ["id", "title", "description", "rate", "created_at"]
+        
 class BgPackageSerializer(serializers.ModelSerializer):
     vendor = BgVendorSerializer(read_only=True)
+    details = BgPackageDetailSerializer(many=True, read_only=True)
 
     class Meta:
         model = BgPackage
-        fields = ["id", "name", "rate", "included_checks", "vendor", "created_at"]
-
+        fields = ["id", "name", "vendor", "created_at", "details"]
 
 class BgCheckRequestSerializer(serializers.ModelSerializer):
     candidate = serializers.StringRelatedField()

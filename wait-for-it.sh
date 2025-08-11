@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# wait-for-it.sh
-set -e
 
-TIMEOUT=60
-HOST="$1"
-PORT="$2"
+host="$1"
+port="$2"
 shift 2
-CMD="$@"
+cmd="$@"
 
-for ((i=0;i<TIMEOUT;i++)); do
-    nc -z "$HOST" "$PORT" && break
-    sleep 1
+echo "🔄 Waiting for $host:$port to be ready..."
+
+# Wait for DNS resolution and port availability
+until getent hosts "$host" && nc -z "$host" "$port"; do
+  echo "⏳ Still waiting for $host:$port..."
+  sleep 2
 done
 
-exec $CMD
+echo "✅ $host:$port is available — launching Django"
+exec $cmd

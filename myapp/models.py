@@ -1138,13 +1138,15 @@ class BgVendor(models.Model):
 
 
 class BgPackage(models.Model):
-    id = models.AutoField(primary_key=True)  
-    vendor = models.ForeignKey(BgVendor, on_delete=models.CASCADE, related_name='packages')
+    id = models.AutoField(primary_key=True)
+    vendor = models.ForeignKey(
+        'BgVendor',
+        on_delete=models.CASCADE,
+        related_name='packages'
+    )
     name = models.CharField(max_length=255)
-    title = models.CharField(max_length=255)  # Newly added
-    description = models.TextField()          # Newly added
     rate = models.DecimalField(max_digits=10, decimal_places=2)
-    included_checks = models.JSONField()
+    description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1152,6 +1154,25 @@ class BgPackage(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.vendor.name})"
+
+
+class BgPackageDetail(models.Model):
+    vendor = models.ForeignKey(  # Changed from 'package'
+        'BgVendor',
+        on_delete=models.CASCADE,
+        related_name='details'
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    rate = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "bg_package_detail"
+
+    def __str__(self):
+        return f"{self.title} ({self.vendor.name})"
+
 
 
 
