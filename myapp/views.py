@@ -3299,6 +3299,91 @@ class InterviewerListByRequisitionView(APIView):
         except Exception as e:
             return Response(api_json_response_format(False, str(e), 500, {}), status=200)
 
+
+class CandidateScreening(APIView):
+    def post(self, request):
+        req_id = request.data.get("req_id")
+        candidates = Candidate.objects.select_related("Req_id_fk__Planning_id")
+
+        if req_id:
+            candidates = candidates.filter(Req_id_fk__RequisitionID=req_id)
+
+        response_data = []
+
+        for candidate in candidates:
+            reviews = CandidateReview.objects.filter(CandidateID=candidate).values(
+                "ParameterDefined", "Guidelines", "MinimumQuestions", "ActualRating", "Feedback"
+            )
+
+            approvals = CandidateApproval.objects.filter(candidate=candidate).values(
+                "approver__email", "role", "decision"
+            )
+
+            resume_url = (
+                request.build_absolute_uri(settings.MEDIA_URL + "resumes/" + str(candidate.Resume))
+                if candidate.Resume else "N/A"
+            )
+            cover_url = (
+                request.build_absolute_uri(settings.MEDIA_URL + "resumes/" + str(candidate.CoverLetter))
+                if candidate.CoverLetter else "N/A"
+            )
+
+            jd_url = "N/A"
+            jd_html_content = "N/A"
+            if candidate.Req_id_fk and hasattr(candidate.Req_id_fk, "posting_details"):
+                jd_html = candidate.Req_id_fk.posting_details.internal_job_description
+                if jd_html:
+                    jd_filename = f"jd_candidate_{candidate.pk}.html"
+                    jd_dir = os.path.join(settings.MEDIA_ROOT, "jd_descriptions")
+                    os.makedirs(jd_dir, exist_ok=True)
+                    jd_path = os.path.join(jd_dir, jd_filename)
+
+                    with open(jd_path, "w", encoding="utf-8") as jd_file:
+                        jd_file.write(jd_html)
+
+                    jd_url = request.build_absolute_uri(settings.MEDIA_URL + "jd_descriptions/" + jd_filename)
+                    jd_html_content = jd_html
+
+            stage = CandidateInterviewStages.objects.filter(candidate_id=candidate.CandidateID).order_by('-interview_date').first()
+            time_in_stage = f"{(datetime.now().date() - stage.interview_date).days} days" if stage and stage.interview_date else "N/A"
+            current_stage = stage.interview_stage if stage else "N/A"
+
+            applied_position = (
+                candidate.Req_id_fk.position_information.job_position
+                if candidate.Req_id_fk and hasattr(candidate.Req_id_fk, "position_information")
+                else "N/A"
+            )
+
+            candidate_info = {
+                "candidate_id": candidate.pk,
+                "req_id": candidate.Req_id_fk.RequisitionID if candidate.Req_id_fk else None,
+                "planning_id": candidate.Req_id_fk.Planning_id.hiring_plan_id if candidate.Req_id_fk and candidate.Req_id_fk.Planning_id else None,
+                "client_name": candidate.Req_id_fk.company_client_name if candidate.Req_id_fk else None,
+                "final_rating": candidate.Final_rating,
+                "final_feedback": candidate.Feedback,
+                "result": candidate.Result,
+                "score": candidate.Score,
+                "applied_position": applied_position,
+                "current_stage": current_stage,
+                "time_in_stage": time_in_stage,
+                "reviews": list(reviews),
+                "approvals": list(approvals),
+                "resume_url": resume_url,
+                "cover_letter_url": cover_url,
+                "JD_url": jd_url,
+                "JD": jd_html_content
+            }
+
+            response_data.append(candidate_info)
+
+        return Response(api_json_response_format(
+            True,
+            "Candidate screening data retrieved successfully",
+            200,
+            response_data
+        ), status=200)
+
+
 class CandidateScreeningView(APIView):
     def get(self, request):
         candidates = Candidate.objects.select_related("Req_id_fk__Planning_id").all()

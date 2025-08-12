@@ -77,6 +77,7 @@ urlpatterns = [
 
     path("candidates/detail/", CandidateDetailView.as_view(), name="candidate-detail"),
     path("candidates/screening/", CandidateScreeningView.as_view(), name="candidate-screening"),#TODO screen to develop and integrated
+    path("candidates/screening/view/", CandidateScreening.as_view(), name="candidate-screening-view"),#TODO screen to develop and integrated
     path('api/approve-decision', CandidateApprovalDecisionView.as_view(), name='candidate_approval_decision'),
 
     path("candidates/schedule-meet/", ScheduleMeetView.as_view(), name="schedule-meet"),# TODO testing in process
