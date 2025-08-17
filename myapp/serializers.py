@@ -9,6 +9,8 @@ from .models import Interviewer, InterviewSlot
 from django.db.models.functions import Substr, Cast
 from django.db.models import Max, IntegerField
 from django.core.mail import send_mail
+from django.utils.html import strip_tags
+
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,16 @@ class HiringPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = HiringPlan
         fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        # 🧼 Clean HTML from jd_details
+        jd = data.get("jd_details")
+        if jd:
+            data["jd_details"] = strip_tags(jd)
+
+        return data
 
     def to_internal_value(self, data):
         remap_fields = {
@@ -124,11 +136,6 @@ class HiringPlanSerializer(serializers.ModelSerializer):
                 data[key] = str(val["value"])
             elif isinstance(val, (str, int, float)):
                 data[key] = str(val)
-
-        print("🧪 visa_requirements:", data.get("visa_requirements"))
-        print("🧪 background_verification:", data.get("background_verification"))
-
-
         return super().to_internal_value(data)
 
     def validate(self, attrs):
@@ -718,7 +725,9 @@ class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
 
     def get_JD_From_applied_Position(self, obj):
         posting = getattr(obj.Req_id_fk, "posting_details", None)
-        return posting.internal_job_description if posting and posting.internal_job_description else "N/A"
+        jd = posting.internal_job_description if posting and posting.internal_job_description else "N/A"
+        return strip_tags(jd)
+
 
     def get_CV_Resume(self, obj):
         return obj.Resume or "N/A"
@@ -774,7 +783,17 @@ class CandidateDetailWithInterviewSerializer(serializers.ModelSerializer):
         return obj.Result or "N/A"
 
     def get_Final_stage(self, obj):
-        return obj.Final_rating if obj.Final_rating is not None else "N/A"
+        """
+        Return the final interview stage based on the latest scheduled interview.
+        """
+        final_stage = (
+            CandidateInterviewStages.objects
+            .filter(candidate_id=obj.CandidateID)
+            .order_by('-interview_date')
+            .first()
+        )
+        return final_stage.interview_stage if final_stage else "N/A"
+
 
     def get_Cover_Letter(self, obj):
         return obj.CoverLetter or "N/A"
@@ -924,6 +943,32 @@ class OfferNegotiationSerializer(serializers.ModelSerializer):
 
         return instance
     
+# ApproverSerializer: Plain serializer for nested approver details
+class ApproverSerializer1(serializers.Serializer):
+    role = serializers.CharField()
+    name = serializers.CharField()
+    email = serializers.EmailField()
+    contact_number = serializers.CharField()
+    job_title = serializers.CharField()
+    status = serializers.CharField()
+    decision = serializers.CharField()
+    comment = serializers.CharField()
+
+
+# ApproverDetailSerializer: Groups approvers under each candidate
+class ApproverDetailSerializer1(serializers.Serializer):
+    req_id = serializers.CharField()
+    client_id = serializers.CharField(allow_blank=True)
+    client_name = serializers.CharField()
+    candidate_id = serializers.CharField()
+    candidate_first_name = serializers.CharField()
+    candidate_last_name = serializers.CharField()
+    screening_status = serializers.CharField()
+    approvers = ApproverSerializer1(many=True)
+    overall_status = serializers.CharField()
+    no_of_approvers = serializers.IntegerField()
+
+
 class ApproverSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         if 'role' in data:
@@ -952,6 +997,9 @@ class ApproverDetailSerializer(serializers.Serializer):
     candidate_first_name = serializers.CharField()
     candidate_last_name = serializers.CharField()
     screening_status = serializers.CharField()
+   
+
+
     # recruiter_name = serializers.CharField()
 
 

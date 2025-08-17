@@ -70,6 +70,11 @@ class HiringPlan(models.Model):
     citizen_describe = models.CharField(max_length=255, blank=True, null=True)
     health_describe = models.CharField(max_length=255, blank=True, null=True)
     social_media_data = models.TextField(blank=True, null=True)
+    currency_type = models.CharField(max_length=50, blank=True, null=True)
+    relocation_currency_type = models.CharField(max_length=50, blank=True, null=True)
+    sub_domain_name = models.CharField(max_length=255, blank=True, null=True)
+    citizen_countries = models.CharField(max_length=255, blank=True, null=True)
+
 
 
 
