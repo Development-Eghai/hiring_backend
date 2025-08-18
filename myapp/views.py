@@ -4311,6 +4311,19 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             posting_block["qualification"] = normalize_to_string(posting_block.get("qualification"))
 
             fixed_payload["posting_details"] = posting_block
+            position_block = fixed_payload.get("position_information", {})
+            location_obj = position_block.get("location")
+
+            if isinstance(location_obj, list):
+                position_block["location"] = ", ".join([loc.get("value", "") for loc in location_obj if isinstance(loc, dict)])
+            elif isinstance(location_obj, dict):
+                position_block["location"] = location_obj.get("value", "")
+            elif isinstance(location_obj, str):
+                position_block["location"] = location_obj
+            else:
+                position_block["location"] = ""
+
+            fixed_payload["position_information"] = position_block
 
             serializer = self.get_serializer(instance, data=fixed_payload, partial=True)
             serializer.is_valid(raise_exception=True)
@@ -4539,6 +4552,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             billing = getattr(instance, "billing_details", None)
             posting = getattr(instance, "posting_details", None)
             asset = getattr(instance, "asset_details", None)
+            plan = instance.Planning_id if instance.Planning_id else None
 
             response_payload = {
                 # "user_role": request.data.get("user_role", "Not Provided"),  # ⬅️ added fallback
@@ -4556,17 +4570,23 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                     "business_line": getattr(details, "business_line", ""),
                     "division": getattr(details, "division", ""),
                     "department": getattr(details, "department", ""),
-                    "location": getattr(details, "location", ""),
+                    "location": [
+                        {"label": loc.strip(), "value": loc.strip()}
+                        for loc in (
+                            getattr(details, "location", "") or (getattr(plan, "location", "") if plan else "")
+                        ).split(",") if loc.strip()
+                    ],
+
                     "geo_zone": getattr(details, "geo_zone", ""),
                     "career_level": getattr(details, "career_level", ""),
                     "band": getattr(details, "band", ""),
                     "sub_band": getattr(details, "sub_band", ""),
-                    "working_model": getattr(details, "working_model", ""),
+                    "working_model": getattr(details, "working_model", "") or (getattr(plan, "working_model", "") if plan else ""),
                     "client_interview": "Yes" if getattr(details, "client_interview", "") == "Yes" else "No",
                     "requisition_type": getattr(details, "requisition_type", ""),
                     "date_of_requisition": instance.requisition_date,
                     "due_date_of_requisition": instance.due_requisition_date
-                },
+                 },
 
                 "skills_required": {
                     "primary_skills": [s.strip() for s in getattr(details, "primary_skills", "").split(",")] if getattr(details, "primary_skills", "") else [],
@@ -4593,11 +4613,12 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                     "Competencies": []  # Stub for future use
                 },
 
-                "asset_deatils": {  # matches incoming payload key
+                "asset_details": {
                     "laptop_type": getattr(asset, "laptop_type", ""),
                     "laptop_needed": "Yes" if getattr(asset, "laptop_needed", "") == "Yes" else "No",
                     "comments": getattr(asset, "comments", "")
                 }
+
             }
 
 
@@ -5204,6 +5225,11 @@ def normalize_hiring_plan_payload(raw):
     return raw
 
 
+@api_view(["GET"])
+def get_bg_package_dropdown(request):
+    packages = BgPackage.objects.all().order_by("name")
+    data = [{"label": p.name, "value": p.name} for p in packages]
+    return Response(api_json_response_format(True, "Packages retrieved.", 200, data))
 
 
 # @parser_classes([MultiPartParser, FormParser])

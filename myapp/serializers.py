@@ -299,6 +299,17 @@ class RequisitionDetailsSerializer(serializers.ModelSerializer):
     requisition_type = serializers.CharField(required=False, allow_blank=True)
     date_of_requisition = serializers.DateField(required=False, allow_null=True)
     due_date_of_requisition = serializers.DateField(required=False, allow_null=True)
+    location = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_location(self, value):
+        if isinstance(value, list):
+            return ", ".join([v.get("value", "") for v in value if isinstance(v, dict)])
+        elif isinstance(value, dict):
+            return value.get("value", "")
+        elif isinstance(value, str):
+            return value
+        return ""
+
 
     class Meta:
         model = RequisitionDetails
@@ -542,6 +553,17 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
             details_data.pop("due_date_of_requisition", None)
             details_data["primary_skills"] = ", ".join(skills_data.get("primary_skills", []))
             details_data["secondary_skills"] = ", ".join(skills_data.get("secondary_skills", []))
+            location_obj = details_data.get("location")
+            if isinstance(location_obj, list):
+                details_data["location"] = ", ".join([loc.get("value", "") for loc in location_obj if isinstance(loc, dict)])
+            elif isinstance(location_obj, dict):
+                details_data["location"] = location_obj.get("value", "")
+            elif isinstance(location_obj, str):
+                details_data["location"] = location_obj
+            else:
+                details_data["location"] = ""
+
+           
             if getattr(instance, "position_information", None):
                 for attr, val in details_data.items():
                     setattr(instance.position_information, attr, val)
