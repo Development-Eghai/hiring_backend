@@ -664,6 +664,7 @@ class InterviewDesignParameters(models.Model):
     mode = models.CharField(max_length=255,blank=True)
     Weightage = models.IntegerField(default=0)
     feedback = models.CharField(max_length=255,blank=True)
+    duration_metric = models.CharField(max_length=50, default="days", blank=True)
 
     class Meta:
         db_table = 'job_interview_design_parameters'
@@ -911,7 +912,13 @@ class Approver(models.Model):
         ('NA', 'Not Applicable'),
     ]
     id = models.AutoField(primary_key=True)  
-    hiring_plan = models.ForeignKey(HiringPlan, to_field='hiring_plan_id', on_delete=models.CASCADE)
+    hiring_plan = models.ForeignKey(
+        HiringPlan,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
     requisition = models.ForeignKey(JobRequisition, to_field='RequisitionID', on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     first_name = models.CharField(max_length=100)
@@ -1132,6 +1139,7 @@ class BgVendor(models.Model):
     name = models.CharField(max_length=255)
     contact_email = models.EmailField()
     address = models.CharField(max_length=255)  # Newly added
+    mobile_no = models.CharField(max_length=20, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1152,6 +1160,7 @@ class BgPackage(models.Model):
     name = models.CharField(max_length=255)
     rate = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField(blank=True, null=True)
+    verification_items = models.TextField(blank=True, null=True)  # Store as comma-separated string
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

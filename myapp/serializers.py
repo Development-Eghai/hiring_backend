@@ -862,7 +862,7 @@ class InterviewDesignParametersSerializer(serializers.ModelSerializer):
         fields = [
             'score_card_name','interview_design_id', 'options', 'guideline', 'min_questions',
             'screen_type', 'duration', 'Weightage', 'mode',
-            'feedback'
+            'feedback','duration_metric'
         ]
 
 class InterviewDesignScreenSerializer(serializers.ModelSerializer):

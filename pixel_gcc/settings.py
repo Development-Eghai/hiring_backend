@@ -25,10 +25,13 @@ from datetime import timedelta
 #     'BLACKLIST_AFTER_ROTATION': True,
 # }
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.zoho.in'
-EMAIL_PORT = 465
-EMAIL_USE_SSL = True
-EMAIL_USE_TLS = False
+# EMAIL_HOST = 'smtp.zoho.in'
+# EMAIL_PORT = 465
+EMAIL_PORT = 587
+EMAIL_USE_SSL = False
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtppro.zoho.in'
+
 
  # Use SSL for port 465
 EMAIL_HOST_USER = 'hiring@pixeladvant.com'

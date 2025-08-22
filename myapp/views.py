@@ -1,5 +1,6 @@
 # Import necessary modules and models
 import base64
+from decimal import Decimal, InvalidOperation
 from django.core.mail import EmailMessage
 from io import BytesIO
 import json
@@ -128,6 +129,19 @@ class ApproverCreateListView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         try:
             payload = request.data
+            planning_id_str = payload.get("planning_id")
+            hiring_plan_obj = None
+
+            if planning_id_str:
+                try:
+                    hiring_plan_obj = HiringPlan.objects.get(hiring_plan_id=planning_id_str)
+                except HiringPlan.DoesNotExist:
+                    return Response(api_json_response_format(
+                        False,
+                        f"HiringPlan with ID '{planning_id_str}' not found.",
+                        404,
+                        {}
+                    ), status=200)
             approver_list = payload.get("approvers", [])
 
             if not approver_list or not isinstance(approver_list, list):
@@ -137,11 +151,12 @@ class ApproverCreateListView(generics.ListCreateAPIView):
                     400,
                     {}
                 ), status=200)
+            
 
             # Shared metadata
             shared_fields = {
                 "requisition_id": payload.get("req_id"),
-                "hiring_plan": payload.get("planning_id"),  # ✅ Correct key
+                "hiring_plan": hiring_plan_obj.id if hiring_plan_obj else None,  # ✅ Correct key
                 "client_name": payload.get("client_name"),
                 "client_id": payload.get("client_id"),
                 "no_of_approvers": payload.get("no_of_approvers")
@@ -186,6 +201,19 @@ class ApproverCreateListView(generics.ListCreateAPIView):
     def put(self, request, *args, **kwargs):
         try:
             payload = request.data
+            planning_id_str = payload.get("planning_id")
+            hiring_plan_obj = None
+
+            if planning_id_str:
+                try:
+                    hiring_plan_obj = HiringPlan.objects.get(hiring_plan_id=planning_id_str)
+                except HiringPlan.DoesNotExist:
+                    return Response(api_json_response_format(
+                        False,
+                        f"HiringPlan with ID '{planning_id_str}' not found.",
+                        404,
+                        {}
+                    ), status=200)
             approver_list = payload.get("approvers", [])
 
             if not approver_list or not isinstance(approver_list, list):
@@ -199,7 +227,7 @@ class ApproverCreateListView(generics.ListCreateAPIView):
             # Shared metadata remap
             shared_fields = {
                 "requisition_id": payload.get("req_id"),
-                "hiring_plan": payload.get("planning_id"),
+                "hiring_plan":hiring_plan_obj.id if hiring_plan_obj else None,
                 "client_name": payload.get("client_name"),
                 "client_id": payload.get("client_id"),
                 "no_of_approvers": payload.get("no_of_approvers")
@@ -375,10 +403,13 @@ class BgPackageSetupView(APIView):
                 "vendor_name": vendor.name,
                 "vendor_email": vendor.contact_email,
                 "vendor_address": vendor.address,
+                "mobile_no": vendor.mobile_no,
                 "package_name": pkg.name,
                 "package_rate": str(pkg.rate),
-                "details": vendor_addons  # Now showing vendor-level add-ons
+                "package_verification": pkg.verification_items.split(",") if pkg.verification_items else [],
+                "details": vendor_addons
             }
+
 
             data.append(package_data)
 
@@ -410,7 +441,9 @@ class BgPackageSetupView(APIView):
                 name=vendor_name,
                 defaults={
                     "contact_email": vendor_email,
-                    "address": vendor_address
+                    "address": vendor_address,
+                    "mobile_no": request.data.get("mobile_no", "")
+
                 }
             )
 
@@ -424,12 +457,17 @@ class BgPackageSetupView(APIView):
                 if not pkg_name or pkg_rate is None:
                     continue
 
+                verification_list = pkg.get("package_verification", [])
+                verification_str = ", ".join(verification_list) if isinstance(verification_list, list) else ""
+
                 bg_package = BgPackage.objects.create(
                     vendor=vendor,
                     name=pkg_name,
                     rate=pkg_rate,
-                    description=pkg_desc
+                    description=pkg_desc,
+                    verification_items=verification_str
                 )
+
 
                 saved.append(BgPackageSerializer(bg_package).data)
 
@@ -437,17 +475,21 @@ class BgPackageSetupView(APIView):
             for detail in details:
                 title = detail.get("add_on_check_title")
                 description = detail.get("add_on_check_desc", "")
-                rate = detail.get("add_on_check_rate")
+                rate_raw = detail.get("add_on_check_rate")
 
-                if not title or rate is None:
-                    continue
+                try:
+                    rate = Decimal(rate_raw)
+                except (TypeError, InvalidOperation):
+                    continue  # skip invalid rate
 
-                BgPackageDetail.objects.create(
-                    vendor=vendor,
-                    title=title,
-                    description=description,
-                    rate=rate
-                )
+                if title:
+                    BgPackageDetail.objects.create(
+                        vendor=vendor,
+                        title=title,
+                        description=description,
+                        rate=rate
+                    )
+
 
             return Response(api_json_response_format(
                 True,
@@ -504,6 +546,7 @@ class BgPackageSetupView(APIView):
             vendor.name = vendor_name
             vendor.contact_email = vendor_email
             vendor.address = vendor_address
+            vendor.mobile_no = request.data.get("mobile_no", vendor.mobile_no)
             vendor.save()
 
             updated_packages = []
@@ -515,17 +558,23 @@ class BgPackageSetupView(APIView):
 
                 bg_package = BgPackage.objects.filter(vendor=vendor, name=pkg_name).first()
 
+                verification_list = pkg_data.get("package_verification", [])
+                verification_str = ", ".join(verification_list) if isinstance(verification_list, list) else ""
+
                 if bg_package:
                     bg_package.rate = pkg_rate or bg_package.rate
                     bg_package.description = pkg_desc or bg_package.description
+                    bg_package.verification_items = verification_str or bg_package.verification_items
                     bg_package.save()
                 else:
                     bg_package = BgPackage.objects.create(
                         vendor=vendor,
                         name=pkg_name,
                         rate=pkg_rate,
-                        description=pkg_desc
+                        description=pkg_desc,
+                        verification_items=verification_str
                     )
+
 
                 updated_packages.append(BgPackageSerializer(bg_package).data)
 
@@ -637,7 +686,8 @@ class VendorPackageView(APIView):
             {
                 "package_name": pkg.name,
                 "package_description": pkg.description,
-                "package_rate": float(pkg.rate)
+                "package_rate": float(pkg.rate),
+                "package_verification": pkg.verification_items.split(",") if pkg.verification_items else []
             }
             for pkg in packages
         ]
@@ -659,6 +709,7 @@ class VendorPackageView(APIView):
             "vendor_name": vendor.name,
             "vendor_address": vendor.address,
             "vendor_email": vendor.contact_email,
+            "mobile_no": vendor.mobile_no,
             "packages": package_data,
             "details": detail_data
         }
