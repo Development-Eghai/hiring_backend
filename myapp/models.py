@@ -74,6 +74,9 @@ class HiringPlan(models.Model):
     relocation_currency_type = models.CharField(max_length=50, blank=True, null=True)
     sub_domain_name = models.CharField(max_length=255, blank=True, null=True)
     citizen_countries = models.CharField(max_length=255, blank=True, null=True)
+    job_role = models.CharField(max_length=255, blank=True, null=True)
+    domain_details = models.JSONField(blank=True, null=True)
+    visa_details = models.JSONField(blank=True, null=True)
 
 
 

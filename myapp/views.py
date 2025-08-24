@@ -13,6 +13,7 @@ from django.utils.html import strip_tags
 import PyPDF2 as pdf
 import jwt
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 # from django.contrib import messages
 from django.contrib.auth import get_user_model
 # from django.contrib.auth.models import Us
@@ -2283,6 +2284,44 @@ class ScheduleMeetView(APIView):
                 status="Stage Scheduled",
                 feedback=""
             )
+            subject = f"{summary} - Scheduled on {start.strftime('%d %b %Y at %I:%M %p')}"
+            plain_message = (
+                f"Dear Participant,\n\n"
+                f"You have a scheduled meeting:\n"
+                f"Topic: {summary}\n"
+                f"Date: {start.strftime('%Y-%m-%d')}\n"
+                f"Time: {start.strftime('%I:%M %p')} IST\n"
+                f"Duration: {duration_mins} minutes\n"
+                f"Join Link: {join_url}\n\n"
+                f"Please be ready at the scheduled time.\n\nBest regards."
+            )
+
+            html_message = f"""
+            <p>Dear Participant,</p>
+            <p>You have a scheduled meeting:</p>
+            <ul>
+            <li><strong>Topic:</strong> {summary}</li>
+            <li><strong>Date:</strong> {start.strftime('%Y-%m-%d')}</li>
+            <li><strong>Time:</strong> {start.strftime('%I:%M %p')} IST</li>
+            <li><strong>Duration:</strong> {duration_mins} minutes</li>
+            <li><strong>Join Link:</strong> <a href="{join_url}">{join_url}</a></li>
+            </ul>
+            <p>Please be ready at the scheduled time.</p>
+            <p>Best regards,<br>Your Hiring Team</p>
+            """
+
+            # Collect all recipients
+            recipients = list(set([candidate.Email, interviewer.email] + guest_emails))
+
+            # Send email
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=recipients
+            )
+            email.attach_alternative(html_message, "text/html")
+            email.send(fail_silently=False)
 
 
 
@@ -3501,6 +3540,8 @@ class CandidateScreening(APIView):
 
             candidate_info = {
                 "candidate_id": candidate.pk,
+                "candidate_first_name": candidate.candidate_first_name or "N/A",
+                "candidate_last_name": candidate.candidate_last_name or "N/A",
                 "req_id": candidate.Req_id_fk.RequisitionID if candidate.Req_id_fk else None,
                 "planning_id": candidate.Req_id_fk.Planning_id.hiring_plan_id if candidate.Req_id_fk and candidate.Req_id_fk.Planning_id else None,
                 "client_name": candidate.Req_id_fk.company_client_name if candidate.Req_id_fk else None,
@@ -4521,7 +4562,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                 subject=f"Requisition '{requisition.RequisitionID}' {decision.capitalize()}",
                 message=email_body,
                 from_email='hiring@pixeladvant.com',
-                recipient_list=['anand040593@gmail.com'],  # 🔄 Use requisition owner’s email if dynamic
+                recipient_list=['anand40593@outlook.com'],  # 🔄 Use requisition owner’s email if dynamic
                 fail_silently=False,
             )
 
@@ -5529,8 +5570,8 @@ def get_hiring_plan_details(request):
             "relocation_amount": str(plan.relocation_amount) if plan.relocation_amount else "",
             "relocation_currency_type": plan.relocation_currency_type or "",
             "has_domain": plan.domain_yn or "No",
-            "domain_name": plan.domain_name or "",
-            "sub_domain_name": plan.sub_domain_name or "",
+            "doamin_details": plan.domain_details if isinstance(plan.domain_details, list) else [],
+            "visa_details": plan.visa_details if isinstance(plan.visa_details, list) else [],
             "shift_timings": format_label_value(plan.shift_timings),
             "education_qualification": format_label_value(plan.education_qualification),
             "travel_opportunities": plan.travel_opportunities or 0,
@@ -5541,11 +5582,12 @@ def get_hiring_plan_details(request):
             "bg_verification_type": format_list_label_value(plan.bg_verification_type),
             "communication_language": parse_communication_language(plan.communication_language),
             "citizen_requirement": plan.citizen_requirement or "No",
-            "citizen_countries": format_list_label_value(plan.citizen_countries),
+            "citizen_countries": safe_split(plan.citizen_countries),
             "career_gap": plan.career_gap or "No",
             "social_media_link": "Yes" if plan.social_media_links else "No",
-            "social_media_data": parse_social_media(plan.social_media_data) if plan.social_media_data else [],
-            "jd_details": plan.jd_details or ""
+            "social_media_data": plan.social_media_data if isinstance(plan.social_media_data, list) else [],
+            "jd_details": plan.jd_details or "",
+            "hiring_plan_id": plan.hiring_plan_id
         }
 
         return Response(api_json_response_format(
