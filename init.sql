@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Aug 11, 2025 at 07:40 AM
+-- Generation Time: Aug 24, 2025 at 08:00 AM
 -- Server version: 9.1.0
 -- PHP Version: 8.3.14
 
@@ -76,7 +76,7 @@ INSERT INTO `approval_status` (`id`, `offer_negotiation_id`, `approver_id`, `sta
 DROP TABLE IF EXISTS `approver`;
 CREATE TABLE IF NOT EXISTS `approver` (
   `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
-  `hiring_plan_id` varchar(50) NOT NULL,
+  `hiring_plan_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `role` varchar(20) NOT NULL,
   `first_name` varchar(100) NOT NULL,
   `last_name` varchar(100) NOT NULL,
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS `approver` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`),
   KEY `fk_requisition` (`requisition_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `approver`
@@ -97,7 +97,12 @@ CREATE TABLE IF NOT EXISTS `approver` (
 
 INSERT INTO `approver` (`id`, `hiring_plan_id`, `role`, `first_name`, `last_name`, `email`, `contact_number`, `job_title`, `created_at`, `set_as_approver`, `requisition_id`) VALUES
 (1, 'PL0001', 'MANAGER', 'Anand', 'Sivakumar', 'anand040593@gmail.com', '09994551690', 'Software Engineer', '2025-08-05 10:16:58', 'Yes', 'RQ0001'),
-(2, 'PL0001', 'HR', 'Rajkumar', 'R', 'anandsivakumar27@gmail.com', '8667735882', 'Principal Backend Architect', '2025-08-05 10:16:58', 'Yes', 'RQ0001');
+(2, 'PL0001', 'HR', 'Rajkumar', 'R', 'anandsivakumar27@gmail.com', '8667735882', 'Principal Backend Architect', '2025-08-05 10:16:58', 'Yes', 'RQ0001'),
+(3, '', 'HR', 'Test', 'Test', 'marshalmiller143@gmail.com', 'test', 'Test', '2025-08-18 12:26:31', 'Yes', 'RQ0002'),
+(4, '', 'HR', 'Test', 'Test', 'marshalmiller143@gmail.com', 'Test', 'Test', '2025-08-18 12:26:31', 'Yes', 'RQ0002'),
+(5, NULL, 'MANAGER', 'Aravind', 'Kumar', 'engineering@gmail.com', '567890098765', 'Senior Software engineer', '2025-08-18 12:37:21', 'Yes', 'RQ0002'),
+(6, '1', 'HR', 'Anand1', 'Sivakumar', 'anand040593@gmail.com', '09994551690', 'Principal Backend Architect', '2025-08-18 23:21:57', 'Yes', 'RQ0001'),
+(7, '1', 'MANAGER', 'Anand2', 'Sivakumar', 'anandsivakumar27@gmail.com', '09994551690', 'Software Engineer', '2025-08-18 23:21:57', 'Yes', 'RQ0001');
 
 -- --------------------------------------------------------
 
@@ -117,7 +122,14 @@ CREATE TABLE IF NOT EXISTS `asset_details` (
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `requisition_id` (`requisition_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `asset_details`
+--
+
+INSERT INTO `asset_details` (`id`, `requisition_id`, `laptop_type`, `laptop_needed`, `additional_questions`, `comments`, `created_at`, `updated_at`) VALUES
+(1, 'RQ0002', 'Windows', 'Yes', 'No', 'needed', '2025-08-18 04:29:52', '2025-08-18 04:29:52');
 
 -- --------------------------------------------------------
 
@@ -397,17 +409,20 @@ CREATE TABLE IF NOT EXISTS `bg_package` (
   `rate` decimal(10,2) NOT NULL,
   `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `verification_items` text,
   PRIMARY KEY (`id`),
   KEY `fk_vendor` (`vendor_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `bg_package`
 --
 
-INSERT INTO `bg_package` (`id`, `vendor_id`, `name`, `rate`, `description`, `created_at`) VALUES
-(14, 6, 'Royal Wedding', 49999.00, 'Full-day coverage with cinematic highlights and drone shots.', '2025-08-07 08:05:19'),
-(15, 6, 'Classic Wedding ', 29999.00, 'Traditional photography and video coverage with 2 photographers.', '2025-08-07 08:05:19');
+INSERT INTO `bg_package` (`id`, `vendor_id`, `name`, `rate`, `description`, `created_at`, `verification_items`) VALUES
+(14, 6, 'Royal Wedding', 49999.00, 'Full-day coverage with cinematic highlights and drone shots.', '2025-08-07 08:05:19', NULL),
+(15, 6, 'Classic Wedding ', 29999.00, 'Traditional photography and video coverage with 2 photographers.', '2025-08-07 08:05:19', NULL),
+(16, 7, 'Advances', 2500.00, 'all checks', '2025-08-19 05:04:29', 'Email, ID Proof, Phone'),
+(17, 7, 'Advances', 2500.00, 'all checks', '2025-08-21 14:47:06', 'Email, ID Proof, Phone');
 
 -- --------------------------------------------------------
 
@@ -425,7 +440,7 @@ CREATE TABLE IF NOT EXISTS `bg_package_detail` (
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
   KEY `bg_package_detail_vendor_id_fk` (`vendor_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `bg_package_detail`
@@ -434,7 +449,8 @@ CREATE TABLE IF NOT EXISTS `bg_package_detail` (
 INSERT INTO `bg_package_detail` (`id`, `vendor_id`, `title`, `description`, `rate`, `created_at`) VALUES
 (7, 6, 'Live Streaming', 'Stream your wedding live on YouTube and Facebook.', 4999.00, '2025-08-07 08:05:18.902524'),
 (8, 6, 'Photo Booth Setup', 'Interactive photo booth with instant prints and props.', 3499.00, '2025-08-07 08:05:18.906402'),
-(9, 6, 'Wedding Album', 'Premium leather-bound album with 100 curated photos.', 5999.00, '2025-08-07 08:05:18.908908');
+(9, 6, 'Wedding Album', 'Premium leather-bound album with 100 curated photos.', 5999.00, '2025-08-07 08:05:18.908908'),
+(11, 7, 'employement check', 'good', 1000.00, '2025-08-21 14:48:18.650532');
 
 -- --------------------------------------------------------
 
@@ -449,15 +465,17 @@ CREATE TABLE IF NOT EXISTS `bg_vendor` (
   `contact_email` varchar(254) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `address` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `mobile_no` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `bg_vendor`
 --
 
-INSERT INTO `bg_vendor` (`id`, `name`, `contact_email`, `address`, `created_at`) VALUES
-(6, 'Elite Weddings Co', 'contact@eliteweddings.in', '124 Celebration Avenue, Chennai', '2025-08-07 08:05:19');
+INSERT INTO `bg_vendor` (`id`, `name`, `contact_email`, `address`, `created_at`, `mobile_no`) VALUES
+(6, 'Elite Weddings Co', 'contact@eliteweddings.in', '124 Celebration Avenue, Chennai', '2025-08-07 08:05:19', NULL),
+(7, 'American adventage', 'hiring@pixeladvant.com', 'bangalore', '2025-08-19 05:04:29', '9994551690');
 
 -- --------------------------------------------------------
 
@@ -477,14 +495,19 @@ CREATE TABLE IF NOT EXISTS `billing_details` (
   `contract_start_date` date DEFAULT NULL,
   `contract_end_date` date DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `billing_details`
 --
 
 INSERT INTO `billing_details` (`id`, `requisition_id`, `billing_type`, `billing_start_date`, `created_at`, `updated_at`, `billing_end_date`, `contract_start_date`, `contract_end_date`) VALUES
-(1, 'RQ0001', 'Recrruing', '2025-08-05', '2025-08-05 10:14:14', '2025-08-05 10:14:14', '2026-01-05', '2025-08-05', '2026-01-05');
+(1, 'RQ0001', 'Recrruing', '2025-08-05', '2025-08-05 10:14:14', '2025-08-05 10:14:14', '2026-01-05', '2025-08-05', '2026-01-05'),
+(2, 'RQ0002', 'Recrruing', '2025-08-14', '2025-08-17 22:58:54', '2025-08-17 23:14:41', '2025-09-14', '2025-08-14', '2025-09-14'),
+(3, 'RQ0003', 'Recrruing', '2025-07-25', '2025-08-22 05:51:48', '2025-08-22 05:51:48', '2025-08-26', '2025-07-25', '2025-08-26'),
+(4, 'RQ0004', 'Recrruing', '2025-07-25', '2025-08-22 05:59:31', '2025-08-22 05:59:31', '2025-08-26', '2025-07-25', '2025-08-26'),
+(5, 'RQ0005', 'Recrruing', '2025-07-25', '2025-08-22 06:03:14', '2025-08-22 06:03:14', '2025-08-26', '2025-07-25', '2025-08-26'),
+(6, 'RQ0006', 'Recrruing', '2025-07-25', '2025-08-22 06:20:05', '2025-08-22 06:20:05', '2025-08-26', '2025-07-25', '2025-08-26');
 
 -- --------------------------------------------------------
 
@@ -613,14 +636,15 @@ CREATE TABLE IF NOT EXISTS `candidate_form_invite` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `token` (`token`),
   KEY `candidate_id` (`candidate_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `candidate_form_invite`
 --
 
 INSERT INTO `candidate_form_invite` (`id`, `candidate_id`, `token`, `created_at`, `expires_at`) VALUES
-(1, 1, '62a07b0354ed4740b75a440777ddb1d7', '2025-08-11 07:30:41', '2025-08-16 07:30:41');
+(1, 1, '62a07b0354ed4740b75a440777ddb1d7', '2025-08-11 07:30:41', '2025-08-16 07:30:41'),
+(2, 1, '77ec1658839b4e7cb042f3e3e3993d06', '2025-08-11 15:27:20', '2025-08-16 15:27:20');
 
 -- --------------------------------------------------------
 
@@ -641,7 +665,7 @@ CREATE TABLE IF NOT EXISTS `candidate_interview_stages` (
   `result` varchar(100) DEFAULT NULL,
   `status` varchar(100) NOT NULL DEFAULT '',
   PRIMARY KEY (`interview_stage_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `candidate_interview_stages`
@@ -649,7 +673,9 @@ CREATE TABLE IF NOT EXISTS `candidate_interview_stages` (
 
 INSERT INTO `candidate_interview_stages` (`interview_stage_id`, `candidate_id`, `Req_id`, `interview_stage`, `interview_date`, `mode_of_interview`, `feedback`, `final_rating`, `result`, `status`) VALUES
 (1, 1, 'RQ0001', 'Technical', '2025-08-04', 'online', 'good', 5, 'Selected', 'Completed'),
-(2, 1, 'RQ0001', 'Communication', '2025-08-05', 'online', 'good', 5, 'Selected', 'Completed');
+(2, 1, 'RQ0001', 'Communication', '2025-08-05', 'online', 'good', 5, 'Selected', 'Completed'),
+(3, 1, 'RQ0001', 'Technical', '2025-07-25', 'zoom', '', 0, '', 'Stage Scheduled'),
+(4, 1, 'RQ0001', 'Technical', '2025-07-25', 'zoom', '', 0, '', 'Stage Scheduled');
 
 -- --------------------------------------------------------
 
@@ -691,7 +717,7 @@ CREATE TABLE IF NOT EXISTS `candidate_profile` (
 --
 
 INSERT INTO `candidate_profile` (`id`, `candidate_id`, `first_name`, `last_name`, `date_of_joining`) VALUES
-(1, '1', 'Aravind', 'Kumar', '2025-08-10');
+(1, '1', 'Pankaj', 'Pundir', '2025-08-10');
 
 -- --------------------------------------------------------
 
@@ -1039,16 +1065,16 @@ CREATE TABLE IF NOT EXISTS `document_item` (
   `uploaded_file` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `candidate_id` (`candidate_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `document_item`
 --
 
 INSERT INTO `document_item` (`id`, `candidate_id`, `category`, `type`, `institution_name`, `document_name`, `document_status`, `comment`, `uploaded_file`) VALUES
-(7, 1, 'Education', '10th', 'N/A', '10th Document', 'Submitted', '', 'documents/Tushar__Bhatnagar_Resume_H4CWXPR.pdf'),
-(8, 1, 'Employment', 'Offer Letter', 'N/A', 'Offer Letter Document', 'Submitted', '', 'documents/RitikaDogra_14Years_yqYTf4f.pdf'),
-(9, 1, '', 'PanCard', 'N/A', 'PanCard Document', 'Submitted', '', 'documents/Priyank20Sinha20Resume20May202024_P0EeQl8.pdf');
+(10, 1, 'Education', '10th', 'N/A', '10th Document', 'Submitted', '', 'documents/Tushar__Bhatnagar_Resume_6DIu0go.pdf'),
+(11, 1, 'Employment', 'Offer Letter', 'N/A', 'Offer Letter Document', 'Submitted', '', 'documents/RitikaDogra_14Years_DDP5432.pdf'),
+(12, 1, 'Mandatory', 'PanCard', 'N/A', 'PanCard Document', 'Submitted', '', 'documents/Priyank20Sinha20Resume20May202024_52KLb4A.pdf');
 
 -- --------------------------------------------------------
 
@@ -1123,7 +1149,7 @@ CREATE TABLE IF NOT EXISTS `insurance_detail` (
   `dob` date DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `candidate_id` (`candidate_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `insurance_detail`
@@ -1133,7 +1159,8 @@ INSERT INTO `insurance_detail` (`id`, `candidate_id`, `first_name`, `last_name`,
 (1, 1, 'Asha', 'Pundir', '1965-05-10'),
 (2, 1, 'Asha', 'Pundir', '1965-05-10'),
 (3, 1, 'Asha', 'Pundir', '1965-05-10'),
-(4, 1, 'Asha', 'Pundir', '1965-05-10');
+(4, 1, 'Asha', 'Pundir', '1965-05-10'),
+(5, 1, 'Asha', 'Pundir', '1965-05-10');
 
 -- --------------------------------------------------------
 
@@ -1246,7 +1273,7 @@ CREATE TABLE IF NOT EXISTS `interview_schedule` (
   PRIMARY KEY (`id`),
   KEY `fk_candidate` (`candidate_id`),
   KEY `fk_interviewer` (`interviewer_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `interview_schedule`
@@ -1254,7 +1281,9 @@ CREATE TABLE IF NOT EXISTS `interview_schedule` (
 
 INSERT INTO `interview_schedule` (`id`, `candidate_id`, `interviewer_id`, `round_name`, `date`, `start_time`, `end_time`, `meet_link`, `created_at`, `location`, `time_zone`, `purpose`, `mode`, `guests`, `durations`) VALUES
 (1, 1, 1, 'Technical', '2025-08-04', '15:00:00', '15:30:00', 'https://us05web.zoom.us/j/84636259845?pwd=41g5dCoVmdWvao7EyH2y2TybpFtbRL.1', '2025-08-05 10:24:12', 'Zoom', 'IST', 'Technical', 'online', '[]', '30 mins'),
-(2, 1, 2, 'Communication', '2025-08-05', '14:30:00', '15:00:00', 'https://us05web.zoom.us/j/84593624190?pwd=Ds8lJO7SOsveed2DKyC132vQKP245e.1', '2025-08-05 10:24:29', 'Zoom', 'IST', 'Communication', 'online', '[]', '30 mins');
+(2, 1, 2, 'Communication', '2025-08-05', '14:30:00', '15:00:00', 'https://us05web.zoom.us/j/84593624190?pwd=Ds8lJO7SOsveed2DKyC132vQKP245e.1', '2025-08-05 10:24:29', 'Zoom', 'IST', 'Communication', 'online', '[]', '30 mins'),
+(3, 1, 1, 'Technical', '2025-07-25', '11:30:00', '12:00:00', 'https://us05web.zoom.us/j/87199267376?pwd=Vh8Sho5CGg49uJTRAGs6Rs0387Nhp7.1', '2025-08-23 04:13:17', 'Zoom', 'IST', 'Technical', 'zoom', '[{\"name\": \"asdasd\", \"email\": \"marshalmiller143@gmail.com\"}]', '30 mins'),
+(4, 1, 1, 'Technical', '2025-07-25', '11:30:00', '12:00:00', 'https://us05web.zoom.us/j/84486405394?pwd=BniJFb9mJIimkbSuxwkU3bo61MZhC0.1', '2025-08-23 04:14:11', 'Zoom', 'IST', 'Technical', 'zoom', '[{\"name\": \"asdasd\", \"email\": \"marshalmiller143@gmail.com\"}]', '30 mins');
 
 -- --------------------------------------------------------
 
@@ -1330,14 +1359,19 @@ CREATE TABLE IF NOT EXISTS `jobrequisition` (
   UNIQUE KEY `RequisitionID` (`RequisitionID`),
   KEY `fk_hiring_manager` (`HiringManagerID`),
   KEY `plan_id_fk` (`Planning_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `jobrequisition`
 --
 
 INSERT INTO `jobrequisition` (`id`, `RequisitionID`, `Planning_id`, `PositionTitle`, `HiringManagerID`, `Recruiter`, `No_of_positions`, `LegalEntityID`, `QualificationID`, `CommentFromBusinessOps`, `company_client_name`, `client_id`, `Status`, `CreatedDate`, `UpdatedDate`, `requisition_date`, `due_requisition_date`) VALUES
-(1, 'RQ0001', '1', 'Software Engineer', 1, 'Not Assigned', 25, '0', 'B.Tech', 'good', 'Accenture', 'CL0001', 'Approved', '2025-08-05 10:12:44', '2025-08-05 10:18:43', '2025-08-05', '2025-09-05');
+(1, 'RQ0001', '1', 'Software Engineer', 1, 'Not Assigned', 25, '0', 'B.Tech', 'good', 'Accenture', 'CL0001', 'Approved', '2025-08-05 10:12:44', '2025-08-05 10:18:43', '2025-08-05', '2025-09-05'),
+(2, 'RQ0002', NULL, 'Software Engineer', 1, 'Not Assigned', 25, '0', 'B.Tech', '', 'CloudNexa', 'CL0002', 'Pending Approval', '2025-08-17 02:53:13', '2025-08-17 23:14:41', '2025-08-15', '2025-08-16'),
+(3, 'RQ0003', NULL, 'Software Engineer', 1, 'Not Assigned', 25, '0', 'B.Tech', '', 'HCL', 'CL0003', 'Pending Approval', '2025-08-22 05:49:56', '2025-08-22 05:51:48', '2025-07-26', '2025-08-09'),
+(4, 'RQ0004', NULL, 'Software Engineer', 1, 'Not Assigned', 25, '0', 'B.Tech', '', 'HCL', 'CL0004', 'Pending Approval', '2025-08-22 05:59:22', '2025-08-22 05:59:31', '2025-07-26', '2025-08-09'),
+(5, 'RQ0005', NULL, 'Software Engineer', 1, 'Not Assigned', 25, '0', 'B.Tech', '', 'HCL', 'CL0005', 'Pending Approval', '2025-08-22 06:03:05', '2025-08-22 06:03:14', '2025-07-26', '2025-08-09'),
+(6, 'RQ0006', NULL, 'Software Engineer', 1, 'Not Assigned', 25, '0', 'B.Tech', '', 'HCL', 'CL0006', 'Pending Approval', '2025-08-22 06:18:25', '2025-08-22 06:20:05', '2025-07-26', '2025-08-09');
 
 -- --------------------------------------------------------
 
@@ -1410,15 +1444,25 @@ CREATE TABLE IF NOT EXISTS `job_hiring_overview` (
   `visa_country` varchar(255) DEFAULT NULL,
   `visa_type` varchar(255) DEFAULT NULL,
   `github_link` varchar(255) DEFAULT NULL,
+  `currency_type` varchar(50) DEFAULT NULL,
+  `relocation_currency_type` varchar(50) DEFAULT NULL,
+  `sub_domain_name` varchar(255) DEFAULT NULL,
+  `citizen_countries` varchar(255) DEFAULT NULL,
+  `job_role` varchar(255) DEFAULT NULL,
+  `domain_details` json DEFAULT NULL,
+  `visa_details` json DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `job_hiring_overview`
 --
 
-INSERT INTO `job_hiring_overview` (`id`, `hiring_plan_id`, `job_position`, `tech_stacks`, `jd_details`, `designation`, `experience_range`, `target_companies`, `compensation`, `working_model`, `interview_status`, `location`, `education_decision`, `relocation`, `travel_opportunities`, `domain_knowledge`, `visa_requirements`, `background_verification`, `bg_verification_type`, `shift_timings`, `role_type`, `job_type`, `communication_language`, `notice_period`, `additional_comp`, `citizen_requirement`, `career_gap`, `sabbatical`, `screening_questions`, `job_health_requirement`, `social_media_links`, `social_media_data`, `compensation_range`, `language_proficiency`, `requisition_template`, `no_of_openings`, `Created_at`, `mode_of_working`, `relocation_amount`, `domain_yn`, `domain_name`, `citizen_describe`, `health_describe`, `education_qualification`, `visa_country`, `visa_type`, `github_link`) VALUES
-(1, 'PL0001', 'Python developer', 'Python, AWS', '<p>sample</p>', 'Software Engineer I', '5-10', 'Accenture', NULL, 'Hybrid', NULL, 'Coimbatore', NULL, 'Yes', '55', NULL, 'Yes', 'Yes', 'Basic', 'Day Shift', 'Full Time', 'Permanant', 'English', NULL, NULL, 'Yes', 'Yes', NULL, NULL, 'Yes', ':', '[{\'media_type\': \'\', \'media_link\': \'\'}]', '0-5', 'Advanced', NULL, 25, '2025-08-05 10:12:13', NULL, '2000', 'Yes', 'Finance', 'indian', 'good', 'B Tech', 'USA', 'H1B', NULL);
+INSERT INTO `job_hiring_overview` (`id`, `hiring_plan_id`, `job_position`, `tech_stacks`, `jd_details`, `designation`, `experience_range`, `target_companies`, `compensation`, `working_model`, `interview_status`, `location`, `education_decision`, `relocation`, `travel_opportunities`, `domain_knowledge`, `visa_requirements`, `background_verification`, `bg_verification_type`, `shift_timings`, `role_type`, `job_type`, `communication_language`, `notice_period`, `additional_comp`, `citizen_requirement`, `career_gap`, `sabbatical`, `screening_questions`, `job_health_requirement`, `social_media_links`, `social_media_data`, `compensation_range`, `language_proficiency`, `requisition_template`, `no_of_openings`, `Created_at`, `mode_of_working`, `relocation_amount`, `domain_yn`, `domain_name`, `citizen_describe`, `health_describe`, `education_qualification`, `visa_country`, `visa_type`, `github_link`, `currency_type`, `relocation_currency_type`, `sub_domain_name`, `citizen_countries`, `job_role`, `domain_details`, `visa_details`) VALUES
+(1, 'PL0001', 'Python developer', 'Python, AWS', '<p>sample</p>', 'Software Engineer I', '5-10', 'Accenture', NULL, 'Hybrid', NULL, 'Coimbatore', NULL, 'Yes', '55', NULL, 'Yes', 'Yes', 'Basic', 'Day Shift', 'Full Time', 'Permanant', 'English', NULL, NULL, 'Yes', 'Yes', NULL, NULL, 'Yes', ':', '[{\'media_type\': \'\', \'media_link\': \'\'}]', '0-5', 'Advanced', NULL, 25, '2025-08-05 10:12:13', NULL, '2000', 'Yes', 'Finance', 'indian', 'good', 'B Tech', 'USA', 'H1B', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(2, 'PL0002', 'Software Engineer I - Python developer', 'Python, AWS', '<p>adfaddddddddddddddddddddddddddddddddddddddddddddddddddddddddddvvvvvvvvvvvcsssssaddddddddddddddddddddddddddd</p>', 'Software Engineer I', '5-10', 'HCL', NULL, 'Onsite', NULL, 'San Francisco', NULL, 'Yes', '55', NULL, 'Yes', 'Yes', 'Aadhar', 'Day Shift', 'Full Time', 'Permanant', '', NULL, NULL, 'Yes', 'Yes', NULL, NULL, NULL, NULL, 'linkedin: ', '0-5', NULL, NULL, 25, '2025-08-17 00:15:31', NULL, '25000', 'Yes', 'Finance', NULL, NULL, 'BE', 'USA', 'h1', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(3, 'PL0003', 'Senior Developer - Project Manager', 'Python', '<p>fwefewfdwe</p>', 'Senior Developer', '3', 'HCL', NULL, 'Onsite', NULL, 'New York', NULL, 'Yes', '20', NULL, 'Yes', 'Yes', 'dsfas', 'Day Shift', 'Full Time', 'Permanant', 'Hindi:Intermediate, English:Beginner', NULL, NULL, 'Yes', 'Yes', NULL, NULL, NULL, NULL, 'dsadsa: ', '0-4', NULL, NULL, 4, '2025-08-17 01:55:31', NULL, '1000', 'Yes', '43rew', NULL, NULL, 'BE', 'dasdas', 'dasdsa', NULL, 'INR', 'USA', 'efwfwe', 'dasd, dasdas', NULL, NULL, NULL),
+(4, 'PL0004', 'Senior Developer - Senior Developer - Senior Developer - Python developer', 'Python', '<p>cdscds</p>', 'Senior Developer', '0-5', 'HCL', NULL, 'Onsite', NULL, 'Bangalore', NULL, 'Yes', '20', NULL, 'Yes', 'Yes', 'Advances, Credit Check', 'Day Shift', 'Full Time', 'Contract', 'English:Beginner, Hindi:Beginner', NULL, NULL, 'Yes', 'Yes', NULL, NULL, NULL, NULL, 'dsadas: \ndas: ', '', NULL, NULL, 2, '2025-08-23 23:04:09', NULL, '1000', 'Yes', '', NULL, NULL, 'BE', '', '', NULL, 'INR', 'INR', '', 'dasdasd, dasdas', 'Senior Developer - Senior Developer - Python developer', '[{\"domain_name\": \"fdsf\", \"sub_domain_name\": \"fsdfd\"}, {\"domain_name\": \"fsdf\", \"sub_domain_name\": \"fsdf\"}]', '[{\"visa_type\": \"fdfsdf\", \"visa_country\": \"fdfds\"}, {\"visa_type\": \"fdsfds\", \"visa_country\": \"fdsf\"}]');
 
 -- --------------------------------------------------------
 
@@ -1440,16 +1484,18 @@ CREATE TABLE IF NOT EXISTS `job_interview_design_parameters` (
   `Weightage` int NOT NULL DEFAULT '0',
   `mode` varchar(1000) NOT NULL DEFAULT '',
   `feedback` varchar(500) NOT NULL DEFAULT '',
+  `duration_metric` varchar(50) DEFAULT 'days',
   PRIMARY KEY (`interview_desing_params_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `job_interview_design_parameters`
 --
 
-INSERT INTO `job_interview_design_parameters` (`interview_desing_params_id`, `hiring_plan_id`, `interview_design_id`, `score_card`, `options`, `guideline`, `min_questions`, `screen_type`, `duration`, `Weightage`, `mode`, `feedback`) VALUES
-(1, '', 1, 'Technical', 'Required', 'Good', 5, 'online', 60, 50, 'online', 'Good'),
-(2, '', 1, 'Communication', 'Required', 'Good', 5, 'online', 60, 50, 'online', 'Good');
+INSERT INTO `job_interview_design_parameters` (`interview_desing_params_id`, `hiring_plan_id`, `interview_design_id`, `score_card`, `options`, `guideline`, `min_questions`, `screen_type`, `duration`, `Weightage`, `mode`, `feedback`, `duration_metric`) VALUES
+(1, '', 1, 'Technical', 'Required', 'Good', 5, 'online', 60, 50, 'online', 'Good', 'days'),
+(2, '', 1, 'Communication', 'Required', 'Good', 5, 'online', 60, 50, 'online', 'Good', 'days'),
+(3, '', 2, 'Technical', '21', '12', 12, '12', 21, 12, '', '12', 'days');
 
 -- --------------------------------------------------------
 
@@ -1470,14 +1516,15 @@ CREATE TABLE IF NOT EXISTS `job_interview_design_screen` (
   `status` varchar(800) NOT NULL,
   `feedback` varchar(1000) NOT NULL,
   PRIMARY KEY (`interview_design_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `job_interview_design_screen`
 --
 
 INSERT INTO `job_interview_design_screen` (`interview_design_id`, `hiring_plan_id`, `req_id`, `position_role`, `tech_stacks`, `screening_type`, `no_of_interview_round`, `final_rating`, `status`, `feedback`) VALUES
-(1, 'PL0001', 'RQ0001', '', 'Python, AWS', 'Online Test', 2, 0, '', '');
+(1, 'PL0001', 'RQ0001', '', 'Python, AWS', 'Online Test', 2, 0, '', ''),
+(2, 'PL0001', 'RQ0001', '', 'Python, AWS', '', 1, 0, '', '');
 
 -- --------------------------------------------------------
 
@@ -1576,7 +1623,7 @@ CREATE TABLE IF NOT EXISTS `nominee` (
   `share_percentage` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `candidate_id` (`candidate_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `nominee`
@@ -1586,7 +1633,8 @@ INSERT INTO `nominee` (`id`, `candidate_id`, `first_name`, `last_name`, `share_p
 (1, 1, 'Asha', 'Pundir', 50),
 (2, 1, 'Asha', 'Pundir', 50),
 (3, 1, 'Asha', 'Pundir', 50),
-(4, 1, 'Asha', 'Pundir', 50);
+(4, 1, 'Asha', 'Pundir', 50),
+(5, 1, 'Asha', 'Pundir', 50);
 
 -- --------------------------------------------------------
 
@@ -1733,7 +1781,7 @@ CREATE TABLE IF NOT EXISTS `personal_details` (
 --
 
 INSERT INTO `personal_details` (`id`, `candidate_id`, `dob`, `marital_status`, `gender`, `permanent_address`, `present_address`, `blood_group`, `emergency_contact_name`, `emergency_contact_number`, `photograph`) VALUES
-(1, 1, '1990-01-01', 'Single', 'Male', '123 Main St', '456 Elm St', 'O+', 'Raj', '9876543210', 'photographs/Anand_520qBVa.JPG');
+(1, 1, '1990-01-01', 'Single', 'Male', '123 Main St', '456 Elm St', 'O+', 'Raj', '9876543210', 'photographs/Anand_zLeShDD.JPG');
 
 -- --------------------------------------------------------
 
@@ -1755,14 +1803,19 @@ CREATE TABLE IF NOT EXISTS `posting_details` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `posting_details`
 --
 
 INSERT INTO `posting_details` (`id`, `requisition_id`, `experience`, `designation`, `job_category`, `job_region`, `internal_job_description`, `external_job_description`, `qualification`, `created_at`, `updated_at`) VALUES
-(1, 'RQ0001', '2-5 years', 'senior_developer', '', 'Asia', '<p>Sample</p>', '<p>sample</p>', 'mtech', '2025-08-05 10:14:14', '2025-08-05 10:14:14');
+(1, 'RQ0001', '2-5 years', 'senior_developer', '', 'Asia', '<p>Sample</p>', '<p>sample</p>', 'mtech', '2025-08-05 10:14:14', '2025-08-05 10:14:14'),
+(2, 'RQ0002', '2-5 years', 'team_lead', '', 'Asia', '<p>sample</p>', '<p>sample</p>', 'mtech', '2025-08-17 22:58:54', '2025-08-17 23:14:41'),
+(3, 'RQ0003', '2-5 years', 'software_engineer', '', 'north_america', '<p class=\"ql-align-center\"><br></p><p> <strong>Software Application Developer</strong></p><p>   </p><p class=\"ql-align-center\"><strong>Responsibilities</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop and implement new software programs.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maintain and improve the performance of existing software.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Clearly and regularly communicate with management and technical support colleagues</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Design and update software database</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Test and maintain software products to ensure strong functionality and optimization</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Recommend improvements to existing software programs as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Update existing applications to meet the security and functionality standards</p><p>as outlined in the company’s website policies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Troubleshoot and debug applications</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Evaluate existing applications to reprogram, update and add new features</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop technical documents and handbooks to accurately represent application design and code</p><p class=\"ql-align-center\">   <strong>Qualification</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Bachelor’s Degree in Computer Science or relevant.</p><p>   </p><p><br></p><p><br></p><p class=\"ql-align-center\"><strong>Experience</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Overall 5-7 years’ experience in web and software development</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated knowledge of web technologies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ability to work independently and multi-task effectively</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated understanding of projects from the perspective of business stakeholders and end users.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Flexible and willing to accept a change in priorities as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Strong attention to detail</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Proven knowledge of the most current security and web development programming languages</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Excellent understanding of software design and programming principles.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Certified application developer is a plus</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>   </p><p class=\"ql-align-center\"><strong>Skill Set</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Web application development Including C#, ASP.NET (Web Forms and MVC), ASP.NET Web APIs, HTML, JavaScript, Angular 2+, SharePoint (2013, 2016, Online), jQuery, Object Oriented Programming and Design, Design Patterns, Web Services</p><p>&nbsp;</p>', '<p> <strong>Software Application Developer</strong></p><p>   </p><p class=\"ql-align-center\"><strong>Responsibilities</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop and implement new software programs.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maintain and improve the performance of existing software.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Clearly and regularly communicate with management and technical support colleagues</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Design and update software database</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Test and maintain software products to ensure strong functionality and optimization</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Recommend improvements to existing software programs as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Update existing applications to meet the security and functionality standards</p><p>as outlined in the company’s website policies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Troubleshoot and debug applications</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Evaluate existing applications to reprogram, update and add new features</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop technical documents and handbooks to accurately represent application design and code</p><p class=\"ql-align-center\">   <strong>Qualification</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Bachelor’s Degree in Computer Science or relevant.</p><p>   </p><p><br></p><p><br></p><p class=\"ql-align-center\"><strong>Experience</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Overall 5-7 years’ experience in web and software development</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated knowledge of web technologies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ability to work independently and multi-task effectively</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated understanding of projects from the perspective of business stakeholders and end users.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Flexible and willing to accept a change in priorities as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Strong attention to detail</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Proven knowledge of the most current security and web development programming languages</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Excellent understanding of software design and programming principles.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Certified application developer is a plus</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>   </p><p class=\"ql-align-center\"><strong>Skill Set</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Web application development Including C#, ASP.NET (Web Forms and MVC), ASP.NET Web APIs, HTML, JavaScript, Angular 2+, SharePoint (2013, 2016, Online), jQuery, Object Oriented Programming and Design, Design Patterns, Web Services</p>', 'mtech', '2025-08-22 05:51:48', '2025-08-22 05:51:48'),
+(4, 'RQ0004', '2-5 years', 'software_engineer', '', 'north_america', '<p class=\"ql-align-center\"><br></p><p> <strong>Software Application Developer</strong></p><p>   </p><p class=\"ql-align-center\"><strong>Responsibilities</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop and implement new software programs.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maintain and improve the performance of existing software.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Clearly and regularly communicate with management and technical support colleagues</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Design and update software database</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Test and maintain software products to ensure strong functionality and optimization</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Recommend improvements to existing software programs as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Update existing applications to meet the security and functionality standards</p><p>as outlined in the company’s website policies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Troubleshoot and debug applications</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Evaluate existing applications to reprogram, update and add new features</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop technical documents and handbooks to accurately represent application design and code</p><p class=\"ql-align-center\">   <strong>Qualification</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Bachelor’s Degree in Computer Science or relevant.</p><p>   </p><p><br></p><p><br></p><p class=\"ql-align-center\"><strong>Experience</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Overall 5-7 years’ experience in web and software development</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated knowledge of web technologies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ability to work independently and multi-task effectively</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated understanding of projects from the perspective of business stakeholders and end users.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Flexible and willing to accept a change in priorities as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Strong attention to detail</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Proven knowledge of the most current security and web development programming languages</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Excellent understanding of software design and programming principles.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Certified application developer is a plus</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>   </p><p class=\"ql-align-center\"><strong>Skill Set</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Web application development Including C#, ASP.NET (Web Forms and MVC), ASP.NET Web APIs, HTML, JavaScript, Angular 2+, SharePoint (2013, 2016, Online), jQuery, Object Oriented Programming and Design, Design Patterns, Web Services</p><p>&nbsp;</p>', '<p> <strong>Software Application Developer</strong></p><p>   </p><p class=\"ql-align-center\"><strong>Responsibilities</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop and implement new software programs.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maintain and improve the performance of existing software.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Clearly and regularly communicate with management and technical support colleagues</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Design and update software database</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Test and maintain software products to ensure strong functionality and optimization</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Recommend improvements to existing software programs as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Update existing applications to meet the security and functionality standards</p><p>as outlined in the company’s website policies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Troubleshoot and debug applications</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Evaluate existing applications to reprogram, update and add new features</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop technical documents and handbooks to accurately represent application design and code</p><p class=\"ql-align-center\">   <strong>Qualification</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Bachelor’s Degree in Computer Science or relevant.</p><p>   </p><p><br></p><p><br></p><p class=\"ql-align-center\"><strong>Experience</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Overall 5-7 years’ experience in web and software development</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated knowledge of web technologies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ability to work independently and multi-task effectively</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated understanding of projects from the perspective of business stakeholders and end users.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Flexible and willing to accept a change in priorities as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Strong attention to detail</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Proven knowledge of the most current security and web development programming languages</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Excellent understanding of software design and programming principles.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Certified application developer is a plus</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>   </p><p class=\"ql-align-center\"><strong>Skill Set</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Web application development Including C#, ASP.NET (Web Forms and MVC), ASP.NET Web APIs, HTML, JavaScript, Angular 2+, SharePoint (2013, 2016, Online), jQuery, Object Oriented Programming and Design, Design Patterns, Web Services</p>', 'mtech', '2025-08-22 05:59:31', '2025-08-22 05:59:31'),
+(5, 'RQ0005', '2-5 years', 'software_engineer', '', 'north_america', '<p class=\"ql-align-center\"><br></p><p> <strong>Software Application Developer</strong></p><p>   </p><p class=\"ql-align-center\"><strong>Responsibilities</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop and implement new software programs.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maintain and improve the performance of existing software.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Clearly and regularly communicate with management and technical support colleagues</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Design and update software database</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Test and maintain software products to ensure strong functionality and optimization</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Recommend improvements to existing software programs as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Update existing applications to meet the security and functionality standards</p><p>as outlined in the company’s website policies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Troubleshoot and debug applications</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Evaluate existing applications to reprogram, update and add new features</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop technical documents and handbooks to accurately represent application design and code</p><p class=\"ql-align-center\">   <strong>Qualification</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Bachelor’s Degree in Computer Science or relevant.</p><p>   </p><p><br></p><p><br></p><p class=\"ql-align-center\"><strong>Experience</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Overall 5-7 years’ experience in web and software development</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated knowledge of web technologies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ability to work independently and multi-task effectively</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated understanding of projects from the perspective of business stakeholders and end users.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Flexible and willing to accept a change in priorities as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Strong attention to detail</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Proven knowledge of the most current security and web development programming languages</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Excellent understanding of software design and programming principles.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Certified application developer is a plus</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>   </p><p class=\"ql-align-center\"><strong>Skill Set</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Web application development Including C#, ASP.NET (Web Forms and MVC), ASP.NET Web APIs, HTML, JavaScript, Angular 2+, SharePoint (2013, 2016, Online), jQuery, Object Oriented Programming and Design, Design Patterns, Web Services</p><p>&nbsp;</p>', '<p> <strong>Software Application Developer</strong></p><p>   </p><p class=\"ql-align-center\"><strong>Responsibilities</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop and implement new software programs.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maintain and improve the performance of existing software.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Clearly and regularly communicate with management and technical support colleagues</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Design and update software database</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Test and maintain software products to ensure strong functionality and optimization</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Recommend improvements to existing software programs as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Update existing applications to meet the security and functionality standards</p><p>as outlined in the company’s website policies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Troubleshoot and debug applications</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Evaluate existing applications to reprogram, update and add new features</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop technical documents and handbooks to accurately represent application design and code</p><p class=\"ql-align-center\">   <strong>Qualification</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Bachelor’s Degree in Computer Science or relevant.</p><p>   </p><p><br></p><p><br></p><p class=\"ql-align-center\"><strong>Experience</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Overall 5-7 years’ experience in web and software development</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated knowledge of web technologies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ability to work independently and multi-task effectively</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated understanding of projects from the perspective of business stakeholders and end users.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Flexible and willing to accept a change in priorities as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Strong attention to detail</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Proven knowledge of the most current security and web development programming languages</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Excellent understanding of software design and programming principles.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Certified application developer is a plus</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>   </p><p class=\"ql-align-center\"><strong>Skill Set</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Web application development Including C#, ASP.NET (Web Forms and MVC), ASP.NET Web APIs, HTML, JavaScript, Angular 2+, SharePoint (2013, 2016, Online), jQuery, Object Oriented Programming and Design, Design Patterns, Web Services</p>', 'mtech', '2025-08-22 06:03:14', '2025-08-22 06:03:14'),
+(6, 'RQ0006', '2-5 years', 'software_engineer', '', 'north_america', '<p class=\"ql-align-center\"><br></p><p> <strong>Software Application Developer</strong></p><p>   </p><p class=\"ql-align-center\"><strong>Responsibilities</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop and implement new software programs.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maintain and improve the performance of existing software.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Clearly and regularly communicate with management and technical support colleagues</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Design and update software database</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Test and maintain software products to ensure strong functionality and optimization</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Recommend improvements to existing software programs as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Update existing applications to meet the security and functionality standards</p><p>as outlined in the company’s website policies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Troubleshoot and debug applications</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Evaluate existing applications to reprogram, update and add new features</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop technical documents and handbooks to accurately represent application design and code</p><p class=\"ql-align-center\">   <strong>Qualification</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Bachelor’s Degree in Computer Science or relevant.</p><p>   </p><p><br></p><p><br></p><p class=\"ql-align-center\"><strong>Experience</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Overall 5-7 years’ experience in web and software development</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated knowledge of web technologies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ability to work independently and multi-task effectively</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated understanding of projects from the perspective of business stakeholders and end users.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Flexible and willing to accept a change in priorities as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Strong attention to detail</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Proven knowledge of the most current security and web development programming languages</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Excellent understanding of software design and programming principles.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Certified application developer is a plus</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>   </p><p class=\"ql-align-center\"><strong>Skill Set</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Web application development Including C#, ASP.NET (Web Forms and MVC), ASP.NET Web APIs, HTML, JavaScript, Angular 2+, SharePoint (2013, 2016, Online), jQuery, Object Oriented Programming and Design, Design Patterns, Web Services</p><p>&nbsp;</p>', '<p> <strong>Software Application Developer</strong></p><p>   </p><p class=\"ql-align-center\"><strong>Responsibilities</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop and implement new software programs.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maintain and improve the performance of existing software.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Clearly and regularly communicate with management and technical support colleagues</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Design and update software database</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Test and maintain software products to ensure strong functionality and optimization</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Recommend improvements to existing software programs as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Update existing applications to meet the security and functionality standards</p><p>as outlined in the company’s website policies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Troubleshoot and debug applications</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Evaluate existing applications to reprogram, update and add new features</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Develop technical documents and handbooks to accurately represent application design and code</p><p class=\"ql-align-center\">   <strong>Qualification</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Bachelor’s Degree in Computer Science or relevant.</p><p>   </p><p><br></p><p><br></p><p class=\"ql-align-center\"><strong>Experience</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Overall 5-7 years’ experience in web and software development</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated knowledge of web technologies</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ability to work independently and multi-task effectively</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Demonstrated understanding of projects from the perspective of business stakeholders and end users.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Flexible and willing to accept a change in priorities as necessary</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Strong attention to detail</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Proven knowledge of the most current security and web development programming languages</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Excellent understanding of software design and programming principles.</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Certified application developer is a plus</p><p>·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In-depth knowledge of programming for diverse operating systems and platforms using development tools</p><p>   </p><p class=\"ql-align-center\"><strong>Skill Set</strong></p><p> ·&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Web application development Including C#, ASP.NET (Web Forms and MVC), ASP.NET Web APIs, HTML, JavaScript, Angular 2+, SharePoint (2013, 2016, Online), jQuery, Object Oriented Programming and Design, Design Patterns, Web Services</p>', 'mtech', '2025-08-22 06:20:05', '2025-08-22 06:20:05');
 
 -- --------------------------------------------------------
 
@@ -1803,7 +1856,7 @@ CREATE TABLE IF NOT EXISTS `reference_check` (
   `phone_number` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `candidate_id` (`candidate_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `reference_check`
@@ -1813,7 +1866,8 @@ INSERT INTO `reference_check` (`id`, `candidate_id`, `first_name`, `last_name`, 
 (1, 1, 'Amit', 'Verma', 'Manager', 'Suresh', 'amit@example.com', '9998887771'),
 (2, 1, 'Amit', 'Verma', 'Manager', 'Suresh', 'amit@example.com', '9998887771'),
 (3, 1, 'Amit', 'Verma', 'Manager', 'Suresh', 'amit@example.com', '9998887771'),
-(4, 1, 'Amit', 'Verma', 'Manager', 'Suresh', 'amit@example.com', '9998887771');
+(4, 1, 'Amit', 'Verma', 'Manager', 'Suresh', 'amit@example.com', '9998887771'),
+(5, 1, 'Amit', 'Verma', 'Manager', 'Suresh', 'amit@example.com', '9998887771');
 
 -- --------------------------------------------------------
 
@@ -1878,14 +1932,19 @@ CREATE TABLE IF NOT EXISTS `requisition_details` (
   `requisition_date` date DEFAULT NULL,
   `due_requisition_date` date DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `requisition_details`
 --
 
 INSERT INTO `requisition_details` (`id`, `requisition_id`, `internal_title`, `external_title`, `job_position`, `business_line`, `business_unit`, `division`, `department`, `location`, `geo_zone`, `employee_group`, `employee_sub_group`, `contract_start_date`, `contract_end_date`, `career_level`, `company_client_name`, `client_id`, `band`, `sub_band`, `primary_skills`, `secondary_skills`, `working_model`, `requisition_type`, `client_interview`, `required_score`, `onb_coordinator`, `onb_coordinator_team`, `isg_team`, `interviewer_teammate_employee_id`, `created_at`, `updated_at`, `requisition_date`, `due_requisition_date`) VALUES
-(1, 'RQ0001', 'Software Engineer I', 'Software Engineer I', 'Software Engineer', 'Finance', 'Banking', 'Banking', 'Banking', 'Bangalore', 'ASIA', 'General Employee Group', 'General Sub Group', NULL, NULL, 'L4', 'Accenture', '', 'P4', 'P4.2', 'Design, java, QA', 'aws, graphql, jenkins', 'hybrid', 'Full Time', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-08-05 10:14:14', '2025-08-05 10:14:14', NULL, NULL);
+(1, 'RQ0001', 'Software Engineer I', 'Software Engineer I', 'Software Engineer', 'Finance', 'Banking', 'Banking', 'Banking', 'Bangalore', 'ASIA', 'General Employee Group', 'General Sub Group', NULL, NULL, 'L4', 'Accenture', '', 'P4', 'P4.2', 'Design, java, QA', 'aws, graphql, jenkins', 'hybrid', 'Full Time', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-08-05 10:14:14', '2025-08-05 10:14:14', NULL, NULL),
+(2, 'RQ0002', 'Software Engineer I', 'Software Engineer II', 'Software Engineer', 'Finance', 'Banking', 'Banking', 'Banking', 'San Francisco, Bangalore', 'ASIA', 'General Employee Group', 'General Sub Group', NULL, NULL, 'L4', 'CloudNexa', '', 'P4', 'P4.2', 'Golang', 'aws', 'hybrid', 'Full Time', 'No', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-08-17 22:58:54', '2025-08-17 23:14:41', NULL, NULL),
+(3, 'RQ0003', 'Product Owner I', 'Product Owner I', 'Software Engineer', 'Finance', 'Banking', 'Banking', 'Banking', 'New York', 'EAST', 'General Employee Group', 'General Sub Group', NULL, NULL, 'senior', 'HCL', '', 'P3', 'P3.1', 'Design, java, Golang', 'aws, graphql, jenkins, docker', 'Remote', 'Full Time', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-08-22 05:51:48', '2025-08-22 05:51:48', NULL, NULL),
+(4, 'RQ0004', 'Product Owner I', 'Product Owner I', 'Software Engineer', 'Finance', 'Banking', 'Banking', 'Banking', 'New York', 'EAST', 'General Employee Group', 'General Sub Group', NULL, NULL, 'senior', 'HCL', '', 'P3', 'P3.1', 'Design, java, Golang', 'aws, graphql, jenkins, docker', 'Remote', 'Full Time', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-08-22 05:59:31', '2025-08-22 05:59:31', NULL, NULL),
+(5, 'RQ0005', 'Product Owner I', 'Product Owner I', 'Software Engineer', 'Finance', 'Banking', 'Banking', 'Banking', 'New York', 'EAST', 'General Employee Group', 'General Sub Group', NULL, NULL, 'senior', 'HCL', '', 'P3', 'P3.1', 'Design, java, Golang', 'aws, graphql, jenkins, docker', 'Remote', 'Full Time', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-08-22 06:03:14', '2025-08-22 06:03:14', NULL, NULL),
+(6, 'RQ0006', 'Product Owner I', 'Product Owner I', 'Software Engineer', 'Finance', 'Banking', 'Banking', 'Banking', 'New York', 'EAST', 'General Employee Group', 'General Sub Group', NULL, NULL, 'senior', 'HCL', '', 'P3', 'P3.1', 'Design, java, Golang', 'aws, graphql, jenkins, docker', 'Remote', 'Full Time', 'Yes', 0, 'Not Assigned', 'No Team Assigned', 'No ISG Team Assigned', 'Not Available', '2025-08-22 06:20:05', '2025-08-22 06:20:05', NULL, NULL);
 
 -- --------------------------------------------------------
 
