@@ -1,0 +1,203 @@
+{
+	"info": {
+		"_postman_id": "fe3d1f38-ff7f-4580-b510-28bce3481713",
+		"name": "live_api",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45536410",
+		"_collection_link": "https://anand-5055803.postman.co/workspace/Anand's-Workspace~6fc1d930-99bd-48fe-8909-8ecb6b6ffa0c/collection/45536410-fe3d1f38-ff7f-4580-b510-28bce3481713?action=share&source=collection_link&creator=45536410"
+	},
+	"item": [
+		{
+			"name": "login",
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "username",
+							"value": "pixelhr@gmail.com",
+							"type": "string"
+						},
+						{
+							"key": "password",
+							"value": "Admin@123",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "https://api.pixeladvant.com/login/",
+					"protocol": "https",
+					"host": [
+						"api",
+						"pixeladvant",
+						"com"
+					],
+					"path": [
+						"login",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "create requsition",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    // \"RequisitionID\": 1,\r\n    \"user_role\": 1,\r\n    \"PositionTitle\": \"Software Engineer1\",\r\n    \"Recruiter\": \"John Doe\",\r\n    \"HiringManager\": 1,\r\n    \"No_of_positions\": 2,\r\n    \"Status\": \"Pending Approval\",\r\n    \"details\": {\r\n        \"internal_title\": \"Senior Software Engineer1\",\r\n        \"external_title\": \"Software Engineer1 I\",\r\n        \"position\": \"Software Engineer1\",\r\n        \"division\": \"Engineering\",\r\n        \"department\": \"Software Development\",\r\n        \"location\": \"New York\",\r\n        \"band\": \"B1\",\r\n        \"sub_band\": \"SB2\",\r\n        \"work_mode\": \"Hybrid\",\r\n        \"coordinator_name\": \"Alice Johnson\",\r\n        \"coordinator_team\": \"HR Onboarding\",\r\n        \"isg_team_name\": \"Infrastructure Team\",\r\n        \"interviewer_employee_id\": \"EMP456\",\r\n        \"geo_zone\": \"US-East\",\r\n        \"employee_group\": \"Software Engineers\",\r\n        \"employee_sub_group\": \"Backend Developers\",\r\n        \"contract_start_date\": \"2025-06-01\",\r\n        \"contract_end_date\": \"2026-06-01\",\r\n        \"career_level\": \"Senior\",\r\n        \"primary_skills\": \"Python, Django, REST APIs\",\r\n        \"secondary_skills\": \"Docker, Kubernetes\",\r\n        \"requisition_type\": \"Permanent\",\r\n        \"client_interview\": true,\r\n        \"required_score\": 85\r\n    },\r\n    \"billing_details\": {\r\n        \"billing_type\": \"Billable\",\r\n        \"billing_start_date\": \"2025-06-05\"\r\n    },\r\n    \"posting_details\": {\r\n        \"experience\": \"5+ years\",\r\n        \"designation\": \"Software Engineer I\",\r\n        \"job_category\": \"Development\",\r\n        \"job_region\": \"US\",\r\n        \"internal_job_description\": \"Backend development using Django.\",\r\n        \"external_job_description\": \"Looking for an experienced Software Engineer proficient in Python and Django.\"\r\n    },\r\n    \"interview_team\": [\r\n        {\r\n            \"employee_id\": \"EMP001\",\r\n            \"name\": \"Robert Smith\"\r\n        },\r\n        {\r\n            \"employee_id\": \"EMP002\",\r\n            \"name\": \"Emily White\"\r\n        }\r\n    ],\r\n    \"teams\": [\r\n        {\r\n            \"team_type\": \"ONB Coordinator\",\r\n            \"team_name\": \"HR Team\"\r\n        },\r\n        {\r\n            \"team_type\": \"ISG Team\",\r\n            \"team_name\": \"Infrastructure Team\"\r\n        }\r\n    ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://api.pixeladvant.com/api/jobrequisition/",
+					"protocol": "https",
+					"host": [
+						"api",
+						"pixeladvant",
+						"com"
+					],
+					"path": [
+						"api",
+						"jobrequisition",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "approve_requsistion",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"user_role\": 3,\r\n    \"req_id\": 41\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://api.pixeladvant.com/api/jobrequisition/approve_requisition/",
+					"protocol": "https",
+					"host": [
+						"api",
+						"pixeladvant",
+						"com"
+					],
+					"path": [
+						"api",
+						"jobrequisition",
+						"approve_requisition",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get requsition home page",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://api.pixeladvant.com/api/job-requisition/",
+					"protocol": "https",
+					"host": [
+						"api",
+						"pixeladvant",
+						"com"
+					],
+					"path": [
+						"api",
+						"job-requisition",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "recruiter_home",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"user_role\": 2\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://api.pixeladvant.com/api/jobrequisition/",
+					"protocol": "https",
+					"host": [
+						"api",
+						"pixeladvant",
+						"com"
+					],
+					"path": [
+						"api",
+						"jobrequisition",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "match-resumes",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": " job_description",
+							"value": "Responsibilities\t•\tDevelop and implement new software programs.\n•\tMaintain and improve the performance of existing software.\n•\tClearly and regularly communicate with management and technical support colleagues\n•\tDesign and update software database\n•\tTest and maintain software products to ensure strong functionality and optimization\n•\tRecommend improvements to existing software programs as necessary\n•\tUpdate existing applications to meet the security and functionality standards as outlined in the company’s website policies\n•\tDevelops software solutions by studying information needs, conferring with users, studying systems flow, data usage, and work processes; investigating problem areas; and following the software development lifecycle.\n•\tDetermines operational feasibility by evaluating analysis, problem definition, requirements, solution development, and proposed solutions.\n•\tDocuments and demonstrates solutions by developing documentation, flowcharts, layouts, diagrams, charts, code comments, and clear code.\n•\tPrepares and installs solutions by determining and designing system specifications, standards, and programming.\nQualification\t•\tBachelor’s Degree in Computer Science or relevant.\nExperience\t•\tOverall 10+ years’ experience in web and software development\n•\tDemonstrated knowledge of web technologies\n•\tAbility to work independently and multi-task effectively\n•\tDemonstrated understanding of projects from the perspective of business stakeholders and end users.\n•\tFlexible and willing to accept a change in priorities as necessary\n•\tStrong attention to detail\n•\tProven knowledge of the most current security and web development programming languages\nSkill Set\t•\tWeb application development Including C#, ASP.NET (Web Forms and MVC), ASP.NET Web APIs, HTML, JavaScript, Angular 2+, SharePoint (2013, 2016, Online), jQuery, Object Oriented Programming and Design, Design Patterns, Web Services\n•\tGeneral programming skills\n•\tSoftware development fundamentals\n•\tSoftware development process\n•\tSoftware requirements\n•\tSoftware architecture\n•\tCoaching and mentoring\n",
+							"type": "text"
+						},
+						{
+							"key": "resumes",
+							"type": "file",
+							"src": "postman-cloud:///1f044767-d575-4330-bbe8-15202a250d7a"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://api.pixeladvant.com/api/match-resumes/",
+					"protocol": "https",
+					"host": [
+						"api",
+						"pixeladvant",
+						"com"
+					],
+					"path": [
+						"api",
+						"match-resumes",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
