@@ -2602,7 +2602,8 @@ DISPLAY_TO_MODEL_FIELD = {
     "Client_name": "company_client_name",
     "Client_id": "client_id",
     "Requisition_date": "requisition_date",
-    "Due_requisition_date": "due_requisition_date"
+    "Due_requisition_date": "due_requisition_date",
+    "No_of_positions": "No_of_positions"
 
 }
 
@@ -5429,6 +5430,24 @@ class HiringPlanOverviewDetails(APIView):
             True, "Hiring plan deleted successfully.", 204, {}
         ), status=200)
  
+
+@api_view(['GET'])
+def get_all_compensation_ranges(request):
+    plans = HiringPlan.objects.exclude(compensation_range__isnull=True).exclude(compensation_range__exact='')
+
+    unique_ranges = set(plan.compensation_range.strip() for plan in plans if plan.compensation_range.strip())
+
+    formatted = [{"label": r, "value": r} for r in sorted(unique_ranges)]
+
+    return Response({
+        "success": True,
+        "message": "All compensation ranges retrieved successfully",
+        "error_code": 200,
+        "data": {
+            "compensation_range": formatted
+        }
+    }, status=200)
+
 
 @api_view(['GET'])
 def get_hiring_plans(request):

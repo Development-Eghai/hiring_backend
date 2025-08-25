@@ -51,6 +51,7 @@ urlpatterns = [
     
     #planning API
     path("bg-packages/dropdown/", get_bg_package_dropdown, name="bg-package-dropdown"),
+    path('api/hiring-plan/compensation-ranges/', get_all_compensation_ranges, name='get_all_compensation_ranges'),
     path('hiring_plan/', HiringPlanOverviewDetails.as_view(), name='hiring_plan_overview'), #TODO screen to develop and integrated
     path('hiring_interview_rounds/', HiringInterviewRounds.as_view(), name='hiring_interview_rounds'),#Django Flow is Done
     path('hiring_skills/', HiringInterviewSkills.as_view(), name='hiring_skills'),#TODO screen to develop and integrated
