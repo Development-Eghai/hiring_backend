@@ -4004,6 +4004,15 @@ class GenerateOfferPrefillView(APIView):
             requisition = JobRequisition.objects.filter(RequisitionID=req_id).first()
             candidate = Candidate.objects.filter(CandidateID=candidate_id).first()
             negotiation = OfferNegotiation.objects.filter(requisition=requisition).first()
+            # Get recruiter name from requisition
+            recruiter_name = requisition.Recruiter if requisition and requisition.Recruiter else None
+            if "," in recruiter_name:
+                recruiter_name = recruiter_name.split(",")[0].strip()
+
+            # Lookup recruiter email from UserDetails
+            recruiter = UserDetails.objects.filter(Name__icontains=recruiter_name).first()
+            recruiter_email = recruiter.Email if recruiter and recruiter.Email else "N/A"
+
 
             if not requisition or not candidate or not negotiation:
                 return Response(api_json_response_format(False, "Data not found for prefill", 404, {}), status=200)
@@ -4027,7 +4036,7 @@ class GenerateOfferPrefillView(APIView):
                 "first_name": negotiation.first_name,
                 "last_name": negotiation.last_name,
                 "candidate_email": candidate.Email,
-                "recruiter_email": "pixelreq@gmail.com",
+                "recruiter_email": recruiter_email,
                 "job_title": negotiation.offered_title or negotiation.expected_title,
                 "estimated_start_date": negotiation.offered_doj or negotiation.expected_doj,
                 "job_city": {
@@ -4454,17 +4463,22 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
     def list_requisitions(self, request):
         try:
             user_role = request.data.get("user_role")
+            username = request.data.get("username")
 
-            if user_role not in [1, 2, 3]:
+            if user_role not in [1, 2, 3, 5]:
                 return Response(api_json_response_format(False, "Unauthorized", 403, {}), status=200)
 
             # 🔍 Role-based filtering + ordering (latest first)
-            if user_role == 2:
-                queryset = JobRequisition.objects.filter(Status="Approved").order_by("-RequisitionID")
-            elif user_role == 3:
+            if user_role == 2:  # Recruiter
+                queryset = JobRequisition.objects.filter(Recruiter__icontains=username).order_by("-RequisitionID")
+
+            elif user_role == 3:  # Business Ops
                 queryset = JobRequisition.objects.all().order_by("-RequisitionID")
+            elif user_role == 5:  # vendor
+                queryset = JobRequisition.objects.filter(Recruiter__icontains=username).order_by("-RequisitionID")
             else:  # Hiring Manager
                 queryset = JobRequisition.objects.filter(HiringManager=request.user).order_by("-RequisitionID")
+
 
             current_date = datetime.now(dt_timezone.utc).date()
 
@@ -4487,6 +4501,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                     "ClientID": requisition.client_id or "Not Provided",
                     "JobTitle": requisition.PositionTitle,
                     "HiringManager": getattr(requisition.HiringManager, "Name", "Unknown"),
+                    "Recruiter": username,
                     "JobPosting": getattr(requisition, "PostingSource", "Not Specified"),
                     "StartDate": start_date,
                     "DueDate": end_date,
@@ -4719,6 +4734,55 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             return Response(api_json_response_format(False, f"Error retrieving requisition. {str(e)}", 500, {}), status=200)
+
+    @action(detail=False, methods=["get"], url_path="recruiter-vendor-dropdown")
+    def recruiter_vendor_dropdown(self, request):
+        users = UserDetails.objects.filter(RoleID__in=[2, 5])
+
+        recruiter_list = []
+        vendor_list = []
+
+        for user in users:
+            entry = {
+                "label": user.Name,
+                "value": user.Name,
+                "email": user.Email
+            }
+            if user.RoleID == 2:
+                recruiter_list.append(entry)
+            elif user.RoleID == 5:
+                vendor_list.append(entry)
+
+        response_data = {
+            "Recruiter": recruiter_list,
+            "Vendor": vendor_list
+        }
+
+        return Response(api_json_response_format(True, "Recruiter and Vendor list fetched", 200, response_data), status=200)
+
+
+@api_view(['POST'])
+def assign_recruiter_to_requisition(request):
+    requisition_id = request.data.get("requisition_id")
+    recruiter_name = request.data.get("recruiter_name")
+
+    if not requisition_id or not recruiter_name:
+        return Response(api_json_response_format(False, "Missing requisition_id or recruiter_name", 400, {}), status=200)
+
+    try:
+        requisition = JobRequisition.objects.get(RequisitionID=requisition_id)
+        requisition.Recruiter = recruiter_name
+        requisition.save()
+
+        return Response(api_json_response_format(True, "Recruiter name updated successfully", 200, {
+            "RequisitionID": requisition.RequisitionID,
+            "Recruiter": recruiter_name
+        }), status=200)
+
+    except JobRequisition.DoesNotExist:
+        return Response(api_json_response_format(False, "Requisition not found", 404, {}), status=200)
+    except Exception as e:
+        return Response(api_json_response_format(False, f"Error updating recruiter: {str(e)}", 500, {}), status=200)
 
 
 def get_matching_score(job_description, resume_text, resume_name):
@@ -6200,8 +6264,12 @@ class InterviewJourneyView(APIView):
 
             # Recruiter info from UserDetails via Candidate.created_by or custom mapping
             # Assuming Email is unique and maps to Candidate.created_by or inferred somehow
-            recruiter = UserDetails.objects.filter(Email="pixelreq@gmail.com").first()  # Adjust if recruiter email is stored differently
-            recruiter_name = recruiter.Name if recruiter else "N/A"
+            requisition = JobRequisition.objects.filter(RequisitionID=candidate.Req_id_fk.RequisitionID).first()
+            recruiter_name = requisition.Recruiter if requisition and requisition.Recruiter else "Not Assigned"
+            if "," in recruiter_name:
+                recruiter_name = recruiter_name.split(",")[0].strip()
+
+
 
             # Construct the screening stage
             screening_stage = {
