@@ -1,6 +1,6 @@
 from datetime import datetime
 from rest_framework import serializers
-from .models import Approver, AssetDetails, Benefit, BgCheckRequest, BgPackage, BgPackageDetail, BgVendor, Candidate, CandidateEducation, CandidateEmployment, CandidateFormInvite, CandidateInterviewStages, CandidatePersonal, CandidateReference, CandidateReview, CandidateSubmission, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, InterviewReview, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
+from .models import Approver, AssetDetails, Benefit, BgCheckRequest, BgPackage, BgPackageDetail, BgVendor, Candidate, CandidateEducation, CandidateEmployment, CandidateFeedback, CandidateFormInvite, CandidateInterviewStages, CandidatePersonal, CandidateReference, CandidateReview, CandidateSubmission, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, InterviewReview, InterviewSchedule, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
 from .models import CommunicationSkills,InterviewRounds,HiringPlan
@@ -135,9 +135,19 @@ class HiringPlanSerializer(serializers.ModelSerializer):
 
         # Auto-generate job_position
         if not data.get("job_position"):
-            role = flatten_single("job_role", "")
-            designation = flatten_single("designation", "")
-            data["job_position"] = f"{designation} - {role}".strip(" -")
+            role_raw = data.get("job_role", [])
+            roles = []
+
+            if isinstance(role_raw, list):
+                for item in role_raw:
+                    val = item.get("value") if isinstance(item, dict) else str(item)
+                    if val:
+                        roles.extend([r.strip() for r in val.split(",") if r.strip()])
+            elif isinstance(role_raw, str):
+                roles = [r.strip() for r in role_raw.split(",") if r.strip()]
+
+            unique_roles = list(dict.fromkeys(roles))  # Deduplicate while preserving order
+            data["job_position"] = ", ".join(unique_roles)
 
         # Passthrough fields
         passthrough_fields = [
@@ -176,6 +186,98 @@ class HiringPlanSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(errors)
 
         return attrs
+
+
+class CandidateOfferReportSerializer(serializers.ModelSerializer):
+    Client_Name = serializers.SerializerMethodField()
+    Candidate_Name = serializers.SerializerMethodField()
+    Position_Offered = serializers.SerializerMethodField()
+    Department = serializers.SerializerMethodField()
+    Recruiter_Name = serializers.SerializerMethodField()
+    Location = serializers.SerializerMethodField()
+    Offer_Date = serializers.SerializerMethodField()
+    Offered_Salary = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Candidate
+        fields = [
+            "Client_Name", "Candidate_Name", "Position_Offered", "Department",
+            "Recruiter_Name", "Location", "Offer_Date", "Offered_Salary"
+        ]
+
+    def get_offer_negotiation(self, obj):
+        return OfferNegotiation.objects.filter(candidate=obj).order_by('-created_at').first()
+
+    def get_Client_Name(self, obj):
+        return obj.Req_id_fk.company_client_name if obj.Req_id_fk else "N/A"
+
+    def get_Candidate_Name(self, obj):
+        return f"{obj.candidate_first_name} {obj.candidate_last_name}"
+
+    def get_Position_Offered(self, obj):
+        return obj.Req_id_fk.PositionTitle if obj.Req_id_fk else "N/A"
+
+    def get_Department(self, obj):
+        details = getattr(obj.Req_id_fk, "position_information", None)
+        return getattr(details, "department", "N/A") if details else "N/A"
+
+
+    def get_Recruiter_Name(self, obj):
+        return obj.Req_id_fk.Recruiter if obj.Req_id_fk else "N/A"
+
+    def get_Location(self, obj):
+        planning = getattr(obj.Req_id_fk, "Planning_id", None)
+        return getattr(planning, "location", "N/A") if planning else "N/A"
+
+    def get_Offer_Date(self, obj):
+        offer = self.get_offer_negotiation(obj)
+        return offer.offered_doj.strftime("%Y-%m-%d") if offer and offer.offered_doj else "N/A"
+
+    def get_Offered_Salary(self, obj):
+        offer = self.get_offer_negotiation(obj)
+        return str(offer.offered_salary) if offer and offer.offered_salary else "N/A"
+
+class CandidateFeedbackEnrichedSerializer(serializers.ModelSerializer):
+    Client_ID = serializers.SerializerMethodField()
+    Client_Name = serializers.SerializerMethodField()
+    Candidate_First_Name = serializers.SerializerMethodField()
+    Candidate_Last_Name = serializers.SerializerMethodField()
+    Position_Considered_For = serializers.SerializerMethodField()
+    Hiring_Manager = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CandidateFeedback
+        fields = [
+            field.name for field in CandidateFeedback._meta.fields
+        ] + [
+            'Client_ID',
+            'Client_Name',
+            'Candidate_First_Name',
+            'Candidate_Last_Name',
+            'Position_Considered_For',
+            'Hiring_Manager',
+        ]
+
+    def get_Client_ID(self, obj):
+        return getattr(obj.candidate.Req_id_fk, 'client_id', 'N/A') if obj.candidate and obj.candidate.Req_id_fk else 'N/A'
+
+    def get_Client_Name(self, obj):
+        return getattr(obj.candidate.Req_id_fk, 'company_client_name', 'N/A') if obj.candidate and obj.candidate.Req_id_fk else 'N/A'
+
+    def get_Candidate_First_Name(self, obj):
+        return getattr(obj.candidate, 'candidate_first_name', 'N/A') if obj.candidate else 'N/A'
+
+    def get_Candidate_Last_Name(self, obj):
+        return getattr(obj.candidate, 'candidate_last_name', 'N/A') if obj.candidate else 'N/A'
+
+    def get_Position_Considered_For(self, obj):
+        details = getattr(obj.candidate.Req_id_fk, 'position_information', None)
+        return getattr(details, 'job_position', 'N/A') if details else 'N/A'
+
+    def get_Hiring_Manager(self, obj):
+        manager = getattr(obj.candidate.Req_id_fk, 'HiringManager', None)
+        return getattr(manager, 'Name', 'N/A') if manager else 'N/A'
+
 
 
 
@@ -482,33 +584,46 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
 
         # 🔐 Assign Planning_id if missing
         user_role = self.initial_data.get("user_role")
-        if not validated_data.get("Planning_id") and str(user_role) == "1":
+        planning_id = self.initial_data.get("Planning_id")
+        client_name = self.initial_data.get("client_name", "").strip().title()
+
+        if not planning_id and str(user_role) == "1":
             validated_data["Planning_id"] = HiringPlan.objects.filter(hiring_plan_id="PL0001").first()
 
-        # ✅ Optional: Handle start/end dates & template if your model has those fields
-        validated_data["company_client_name"] = self.initial_data.get("client_name", "")
+        # 🧠 Handle client_id logic
+        if planning_id:
+            # If Planning_id is provided, fetch client_id from HiringPlan
+            plan = HiringPlan.objects.filter(hiring_plan_id=planning_id, client_name__iexact=client_name).first()
+            validated_data["client_id"] = plan.client_id if plan and plan.client_id else None
+        else:
+            # If Planning_id is missing, generate new client_id
+            if client_name:
+                existing = JobRequisition.objects.filter(company_client_name__iexact=client_name, client_id__isnull=False).first()
+                if existing:
+                    validated_data["client_id"] = existing.client_id
+                else:
+                    last = JobRequisition.objects.exclude(client_id__isnull=True).order_by("-id").first()
+                    if last and str(last.client_id).startswith("CL") and str(last.client_id).replace("CL", "").isdigit():
+                        next_client_id = f"CL{int(str(last.client_id).replace('CL', '')) + 1:04d}"
+                    else:
+                        next_client_id = "CL0001"
+                    validated_data["client_id"] = next_client_id
+            else:
+                validated_data["client_id"] = None
+
+        # 🧾 Assign other fields
+        validated_data["company_client_name"] = client_name
         validated_data["requisition_date"] = self.initial_data.get("requisition_date")
         validated_data["due_requisition_date"] = self.initial_data.get("due_requisition_date")
         validated_data["template"] = self.initial_data.get("template", "")
         validated_data["No_of_positions"] = self.initial_data.get("no_of_openings", 1)
 
-        # 🔧 Optional: If company_client_name is present and you want to generate a client_id
-        company_client_name = validated_data.get("company_client_name")
-        if company_client_name:
-            last = JobRequisition.objects.exclude(client_id__isnull=True).order_by("-id").first()
-            if last and str(last.client_id).startswith("CL") and str(last.client_id).replace("CL", "").isdigit():
-                next_client_id = f"CL{int(str(last.client_id).replace('CL', '')) + 1:04d}"
-            else:
-                next_client_id = "CL0001"
-            validated_data["client_id"] = next_client_id
-        else:
-            validated_data["client_id"] = None
-        
         validated_data.pop("template", None)
 
         # ✅ Create JobRequisition with cleaned data
         job_req = JobRequisition.objects.create(**validated_data)
         return job_req
+
 
 
     def update(self, instance, validated_data):

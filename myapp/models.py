@@ -77,6 +77,8 @@ class HiringPlan(models.Model):
     job_role = models.CharField(max_length=255, blank=True, null=True)
     domain_details = models.JSONField(blank=True, null=True)
     visa_details = models.JSONField(blank=True, null=True)
+    client_name = models.CharField(max_length=255, blank=True, null=True)
+    client_id = models.CharField(max_length=50, blank=True, null=True, db_index=True)
 
 
 
@@ -548,7 +550,32 @@ class Candidate(models.Model):
     def __str__(self):
         return f"{self.CandidateID} - {self.candidate_first_name} {self.candidate_last_name}"
 
+class CandidateFeedback(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    candidate = models.ForeignKey(
+        'Candidate',
+        to_field='CandidateID',
+        on_delete=models.CASCADE,
+        db_column='candidate_id',
+        related_name='feedbacks'
+    )
+    recruiter_name = models.CharField(max_length=191)
+    interview_date = models.DateField()
+    assessment_score = models.CharField(max_length=191, blank=True, null=True)
+    interviewer_feedback = models.TextField(blank=True, null=True)
+    recruiter_feedback = models.TextField(blank=True, null=True)
+    reason_not_selected = models.TextField(blank=True, null=True)
+    skills = models.CharField(max_length=512, blank=True, null=True)
+    current_employer = models.CharField(max_length=191, blank=True, null=True)
+    current_location = models.CharField(max_length=191, blank=True, null=True)
+    last_ctc = models.CharField(max_length=50, blank=True, null=True)
+    status = models.CharField(max_length=50, blank=True, null=True)
+    follow_up_date = models.DateField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table = 'CandidateFeedback'
 
 
 class CandidateReview(models.Model):
@@ -696,7 +723,7 @@ class InterviewSlot(models.Model):
 class CandidateInterviewStages(models.Model):
     interview_stage_id = models.AutoField(primary_key=True)
     # interview_plan_id = models.IntegerField(default=0)
-    candidate_id = models.IntegerField(default=0)
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE,db_column="candidate_id")
     Req_id = models.ForeignKey(
         JobRequisition,
         to_field='RequisitionID',

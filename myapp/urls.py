@@ -53,6 +53,9 @@ urlpatterns = [
     path("bg-packages/dropdown/", get_bg_package_dropdown, name="bg-package-dropdown"),
     path('api/requisition/assign-recruiter/', assign_recruiter_to_requisition, name='assign-recruiter'),
 
+    path('resend-approval-emails/', resend_approval_emails, name='resend_approval_emails'),
+
+
     path('api/hiring-plan/compensation-ranges/', get_all_compensation_ranges, name='get_all_compensation_ranges'),
     path('hiring_plan/', HiringPlanOverviewDetails.as_view(), name='hiring_plan_overview'), #TODO screen to develop and integrated
     path('hiring_interview_rounds/', HiringInterviewRounds.as_view(), name='hiring_interview_rounds'),#Django Flow is Done
@@ -169,6 +172,17 @@ urlpatterns = [
         submit_pre_onboarding_form,
         name="submit_pre_onboarding_form"
     ),
+
+    path('api/candidate-feedback/add/', views.add_candidate_feedback, name='add_candidate_feedback'),
+    path('api/candidate-feedback/export/', views.export_candidate_feedback_excel, name='export_candidate_feedback_excel'),
+    path('api/candidate-feedback/', get_all_candidate_feedback, name='get_all_candidate_feedback'),
+    path("api/offer-report/", get_candidate_offer_report, name="get_candidate_offer_report"),
+    path('api/declined-offer-report/', get_declined_offer_report, name='declined_offer_report'),
+    path('api/yet-to-join-report/', get_yet_to_join_offer_report, name='yet_to_join_report'),
+
+
+
+
 
 
 ]

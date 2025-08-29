@@ -3,6 +3,7 @@ import base64
 from decimal import Decimal, InvalidOperation
 from django.core.mail import EmailMessage
 from io import BytesIO
+from openpyxl.utils import get_column_letter
 import json
 import openpyxl
 from openpyxl.styles import Font
@@ -42,14 +43,14 @@ from django.core.files.storage import default_storage
 
 
 
-from .models import ApprovalStatus, Approver, BankingDetails, BgCheckRequest, BgPackage, BgPackageDetail, BgVendor, CandidateApproval, CandidateEducation, CandidateEmployment, CandidateFormInvite, CandidateInterviewStages, CandidatePersonal, CandidateProfile, CandidateReference, CandidateReview, CandidateSubmission, ConfigHiringData, \
+from .models import ApprovalStatus, Approver, BankingDetails, BgCheckRequest, BgPackage, BgPackageDetail, BgVendor, CandidateApproval, CandidateEducation, CandidateEmployment, CandidateFeedback, CandidateFormInvite, CandidateInterviewStages, CandidatePersonal, CandidateProfile, CandidateReference, CandidateReview, CandidateSubmission, ConfigHiringData, \
     ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, DocumentItem, FinancialDocuments, GeneratedOffer, InsuranceDetail, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, \
     InterviewReview, InterviewSchedule, InterviewSlot, Interviewer, Nominee, OfferNegotiation, OfferSalaryComponent, OfferVariablePayComponent, PersonalDetails, ReferenceCheck, RequisitionDetails, StageAlertResponsibility, \
     UserDetails, UserroleDetails
 from .models import Candidate
 from .models import InterviewRounds, HiringPlan
 from .models import JobRequisition
-from .serializers import ApproverDetailSerializer, ApproverDetailSerializer1, ApproverSerializer, BgCheckRequestSerializer, BgPackageSerializer, CandidateApprovalStatusSerializer, CandidateDetailWithInterviewSerializer, CandidateFormInviteSerializer, CandidateInterviewStagesSerializer, CandidatePreOnboardingSerializer, CandidateReviewSerializer, CandidateSerializer, \
+from .serializers import ApproverDetailSerializer, ApproverDetailSerializer1, ApproverSerializer, BgCheckRequestSerializer, BgPackageSerializer, CandidateApprovalStatusSerializer, CandidateDetailWithInterviewSerializer, CandidateFeedbackEnrichedSerializer, CandidateFormInviteSerializer, CandidateInterviewStagesSerializer, CandidateOfferReportSerializer, CandidatePreOnboardingSerializer, CandidateReviewSerializer, CandidateSerializer, \
     CandidateSubmissionSerializer, ConfigHiringDataSerializer, ConfigPositionRoleSerializer, ConfigScoreCardSerializer, \
     ConfigScreeningTypeSerializer, InterviewDesignParametersSerializer, InterviewDesignScreenSerializer, InterviewPlannerSerializer, InterviewReviewSerializer, \
     InterviewerSerializer, JobRequisitionSerializer, JobTemplateSerializer, OfferNegotiationSerializer, \
@@ -1031,11 +1032,15 @@ def resolve_offer_approval_status(approvals, expected_roles):
 
     decisions = [decision_map.get(role, "Awaiting") for role in expected_roles]
 
-    if any(d == "Awaiting" for d in decisions):
+    # Normalize statuses
+    normalized = [d if d != "Pending" else "Awaiting" for d in decisions]
+
+    if any(d == "Awaiting" for d in normalized):
         return "Awaiting Approval"
-    if all(d == "Approved" for d in decisions):
+    if all(d == "Approved" for d in normalized):
         return "Approved"
     return "Partially Approved"
+
 
 
 def compute_overall_status(approvals, expected_roles):
@@ -1405,7 +1410,7 @@ class OfferNegotiationViewSet(viewsets.ModelViewSet):
                 item["Candidate Last Name"] = getattr(candidate, "candidate_last_name", "") if candidate else "N/A"
 
                 enriched_data.append(item)
-
+            
             return Response(api_json_response_format(
                 True, "Job requisitions retrieved successfully!", 200, enriched_data
             ), status=200)
@@ -1465,10 +1470,37 @@ class OfferNegotiationViewSet(viewsets.ModelViewSet):
 
             # Step 5: Serialize and respond
             serializer = self.get_serializer(offer)
+            
+            # Step 6: Auto-create ApprovalStatus records if status is 'Successful'
+            if offer.negotiation_status == "Successful":
+                approvers = Approver.objects.filter(
+                    requisition__RequisitionID=requisition_id,
+                    set_as_approver__in=["Yes", "Maybe"]
+                )
+
+                approval_instances = [
+                    ApprovalStatus(
+                        offer_negotiation=offer,
+                        approver=approver,
+                        status="Pending"
+                    )
+                    for approver in approvers
+                    if not ApprovalStatus.objects.filter(offer_negotiation=offer, approver=approver).exists()
+                ]
+
+                ApprovalStatus.objects.bulk_create(approval_instances)
+                offer.notify_pending_approvers()
+
+
+            # Step 7: Serialize and respond
+            serializer = self.get_serializer(offer)
+            return Response(api_json_response_format(True, "Offer negotiation updated successfully!", 200, serializer.data), status=200)
+
             return Response(api_json_response_format(True, "Offer negotiation updated successfully!", 200, serializer.data), status=200)
 
         except Exception as e:
             return Response(api_json_response_format(False, f"Error updating offer negotiation. {str(e)}", 500, {}), status=200)
+
 
 
     @action(detail=False, methods=['get'], url_path='pending-approvals')
@@ -1550,6 +1582,24 @@ class OfferNegotiationViewSet(viewsets.ModelViewSet):
                 False, f"Error fetching offer negotiation. {str(e)}", 500, {}
             ), status=200)
 
+
+
+    @action(detail=False, methods=['post'], url_path='resend-approval-emails')
+    def resend_approval_emails(self, request):
+        offer_id = request.data.get("offer_id")
+        if not offer_id:
+            return Response(api_json_response_format(False, "Missing offer_id", 400, {}), status=200)
+
+        try:
+            offer = OfferNegotiation.objects.get(id=offer_id)
+            offer.notify_pending_approvers()
+            return Response(api_json_response_format(True, "Approval emails resent successfully.", 200, {}), status=200)
+
+        except OfferNegotiation.DoesNotExist:
+            return Response(api_json_response_format(False, "Offer negotiation not found.", 404, {}), status=200)
+
+        except Exception as e:
+            return Response(api_json_response_format(False, f"Error resending emails: {str(e)}", 500, {}), status=200)
 
 
 def approve_offer(request, negotiation_id):
@@ -2313,15 +2363,17 @@ class ScheduleMeetView(APIView):
             # Collect all recipients
             recipients = list(set([candidate.Email, interviewer.email] + guest_emails))
 
+
             # Send email
             email = EmailMultiAlternatives(
                 subject=subject,
                 body=plain_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email='hiring@pixeladvant.com',
                 to=recipients
             )
             email.attach_alternative(html_message, "text/html")
-            email.send(fail_silently=False)
+            email.send(fail_silently=True)
+
 
 
 
@@ -2343,6 +2395,375 @@ class ScheduleMeetView(APIView):
 
 
 
+@api_view(['POST'])
+def add_candidate_feedback(request):
+    base_data = request.data.copy()
+    candidate_id = base_data.get('candidate')
+
+    # 🔍 Validate candidate existence
+    try:
+        candidate = Candidate.objects.get(CandidateID=candidate_id)
+    except Candidate.DoesNotExist:
+        return Response(api_json_response_format(False, "Candidate not found", 400, {}), status=200)
+
+    # 🔄 Fetch all interviews for candidate
+    interviews = InterviewSchedule.objects.filter(candidate=candidate).order_by('date')
+    if not interviews.exists():
+        return Response(api_json_response_format(False, "No interviews found for candidate", 400, {}), status=200)
+
+    feedback_records = []
+
+    for interview in interviews:
+        data = base_data.copy()
+
+        # 🎯 Recruiter name
+        interviewer = interview.interviewer
+        first = interviewer.first_name if interviewer and interviewer.first_name else ""
+        last = interviewer.last_name if interviewer and interviewer.last_name else ""
+        full_name = f"{first} {last}".strip()
+        data['recruiter_name'] = full_name if full_name else "Unknown Interviewer"
+
+        # 📅 Interview date
+        data['interview_date'] = interview.date
+
+        # 🧠 Pull InterviewReview for this schedule
+        review = InterviewReview.objects.filter(schedule=interview, candidate=candidate).order_by('-created_at').first()
+        if review:
+            data['assessment_score'] = str(review.ActualRating) if review.ActualRating is not None else ""
+            data['interviewer_feedback'] = review.Feedback_param or ""
+        else:
+            data['assessment_score'] = ""
+            data['interviewer_feedback'] = ""
+
+        # 📝 Recruiter feedback from Candidate
+        data['recruiter_feedback'] = candidate.Result or ""
+
+        # 🚀 Validate and save each feedback record
+        serializer = CandidateFeedbackEnrichedSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            feedback_records.append(serializer.data)
+        else:
+            return Response(api_json_response_format(False, "Validation error", 400, {"errors": serializer.errors}), status=200)
+
+    return Response(api_json_response_format(True, "Feedback saved", 200, feedback_records), status=200)
+
+@api_view(['POST'])
+def get_all_candidate_feedback(request):
+    data = request.data
+    client_name = data.get("client_name")
+    position = data.get("position_considered_for")
+    recruiter = data.get("recruiter_name")
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+    skills = data.get("skills_expertise")  # Expecting comma-separated string or list
+
+    feedbacks = CandidateFeedback.objects.select_related(
+        'candidate',
+        'candidate__Req_id_fk'
+    ).order_by('-created_at')
+
+    # Apply filters
+    if client_name:
+        feedbacks.filter(candidate__Req_id_fk__company_client_name__icontains=client_name)
+
+
+    if position:
+        feedbacks = feedbacks.filter(
+            candidate__Req_id_fk__position_information__job_position__icontains=position
+        )
+
+    if recruiter:
+        feedbacks = feedbacks.filter(
+            recruiter_name__icontains=recruiter
+        )
+
+    if start_date and end_date:
+        feedbacks = feedbacks.filter(interview_date__range=[start_date, end_date])
+    elif start_date:
+        feedbacks = feedbacks.filter(interview_date__gte=start_date)
+    elif end_date:
+        feedbacks = feedbacks.filter(interview_date__lte=end_date)
+
+    if skills:
+        if isinstance(skills, str):
+            skills = [s.strip() for s in skills.split(",")]
+        for skill in skills:
+            feedbacks = feedbacks.filter(skills__icontains=skill)
+
+    if not feedbacks.exists():
+        return Response(api_json_response_format(False, "No feedback records found", 404, {}), status=200)
+
+    serializer = CandidateFeedbackEnrichedSerializer(feedbacks, many=True)
+    return Response(api_json_response_format(True, "Filtered feedback retrieved", 200, serializer.data), status=200)
+
+@api_view(['GET'])
+def get_declined_offer_report(request):
+    client = request.GET.get('client_name')
+    recruiter = request.GET.get('recruiter_name')
+    position = request.GET.get('position_offered')
+    location = request.GET.get('location')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    feedbacks = CandidateFeedback.objects.filter(status='Declined')
+
+    if client:
+        feedbacks = feedbacks.filter(candidate__Req_id_fk__company_client_name__icontains=client)
+    if recruiter:
+        feedbacks = feedbacks.filter(recruiter_name__icontains=recruiter)
+    if position:
+        feedbacks = feedbacks.filter(candidate__Req_id_fk__PositionTitle__icontains=position)
+    if location:
+        feedbacks = feedbacks.filter(current_location__icontains=location)
+    if start_date and end_date:
+        feedbacks = feedbacks.filter(candidate__offernegotiation__offered_doj__range=[start_date, end_date])
+    elif start_date:
+        feedbacks = feedbacks.filter(candidate__offernegotiation__offered_doj__gte=start_date)
+    elif end_date:
+        feedbacks = feedbacks.filter(candidate__offernegotiation__offered_doj__lte=end_date)
+
+    feedbacks = feedbacks.select_related(
+        'candidate',
+        'candidate__Req_id_fk',
+        'candidate__Req_id_fk__Planning_id'
+    ).prefetch_related(
+        'candidate__offer_negotiations','candidate__generated_offers'  # 👈 This is the correct way
+    )
+
+    def get_offer_negotiation(candidate):
+        return candidate.offer_negotiations.first()
+
+    def get_department(candidate):
+        details = getattr(candidate.Req_id_fk, "position_information", None)
+        return getattr(details, "department", "N/A") if details else "N/A"
+
+    def get_recruiter_name(candidate):
+        return candidate.Req_id_fk.Recruiter if candidate.Req_id_fk else "N/A"
+
+    def get_location(candidate):
+        planning = getattr(candidate.Req_id_fk, "Planning_id", None)
+        return getattr(planning, "location", "N/A") if planning else "N/A"
+
+    def get_offer_date(candidate):
+        offer = candidate.generated_offers.first()  # Safely fetch first related offer
+        return offer.created_at.strftime("%Y-%m-%d") if offer and offer.created_at else None
+
+
+
+    def get_offered_salary(candidate):
+        offer = get_offer_negotiation(candidate)
+        return str(offer.offered_salary) if offer and offer.offered_salary else None
+
+
+
+    report_data = []
+    for fb in feedbacks:
+        candidate = fb.candidate
+        requisition = candidate.Req_id_fk
+
+        report_data.append({
+            "Client Name": requisition.company_client_name if requisition else "N/A",
+            "Candidate Name": candidate.candidate_first_name + " " + candidate.candidate_last_name,
+            "Position Offered": requisition.PositionTitle if requisition else "N/A",
+            "Department": get_department(candidate),
+            "Recruiter Name": get_recruiter_name(candidate),
+            "Offer Date": get_offer_date(candidate),
+            "Decline Date": fb.created_at.strftime("%Y-%m-%d") if fb.created_at else None,
+            "Assessment Score / Rating": fb.assessment_score,
+            "Interviewer Feedback": fb.interviewer_feedback,
+            "Reason for Decline": fb.reason_not_selected,
+            "Current Employer": fb.current_employer,
+            "Location": get_location(candidate),
+            "CTC Offered": get_offered_salary(candidate),
+        })
+
+    return Response(
+        api_json_response_format(True, "Filtered feedback retrieved", 200, report_data),status=200)
+
+
+@api_view(['GET'])
+def get_yet_to_join_offer_report(request):
+    today = timezone.now().date()
+
+    offers = GeneratedOffer.objects.filter(
+        estimated_start_date__gt=today
+    ).select_related(
+        'candidate',
+        'requisition',
+        'requisition__Planning_id'
+    ).prefetch_related(
+        'candidate__offer_negotiations'
+    )
+
+    def get_department(requisition):
+        details = getattr(requisition, "position_information", None)
+        return getattr(details, "department", "N/A") if details else "N/A"
+
+    def get_location(requisition):
+        planning = getattr(requisition, "Planning_id", None)
+        return getattr(planning, "location", "N/A") if planning else "N/A"
+
+    def get_offer_negotiation(candidate):
+        return candidate.offer_negotiations.first()
+
+    def get_offered_salary(candidate):
+        offer = get_offer_negotiation(candidate)
+        return str(offer.offered_salary) if offer and offer.offered_salary else None
+
+    report_data = []
+    for offer in offers:
+        candidate = offer.candidate
+        requisition = offer.requisition
+
+        # 🔍 Interview Review
+        review = InterviewReview.objects.filter(
+            schedule__candidate=candidate,
+            candidate=candidate
+        ).order_by('-created_at').first()
+
+        assessment_score = str(review.ActualRating) if review and review.ActualRating is not None else "N/A"
+        interviewer_feedback = review.Feedback_param if review and review.Feedback_param else "N/A"
+        recruiter_comments = candidate.Result if candidate.Result else "N/A"
+
+        report_data.append({
+            "Client Name": requisition.company_client_name if requisition else "N/A",
+            "Candidate Name": f"{candidate.candidate_first_name} {candidate.candidate_last_name}",
+            "Position Offered": requisition.PositionTitle if requisition else "N/A",
+            "Department": get_department(requisition),
+            "Recruiter Name": requisition.Recruiter if requisition else "N/A",
+            "Offer Date": offer.created_at.strftime("%Y-%m-%d") if offer.created_at else None,
+            "Expected Date Of Joining": offer.estimated_start_date.strftime("%d-%m-%Y") if offer.estimated_start_date else None,
+            "Current Employer": candidate.current_employer if hasattr(candidate, 'current_employer') else "N/A",
+            "Location": get_location(requisition),
+            "CTC Offered": get_offered_salary(candidate),
+            "Status": "Yet to join",
+            "Assessment Score / Rating": assessment_score,
+            "Interviewer Feedback": interviewer_feedback,
+            "Recruiter Comments": recruiter_comments,
+        })
+
+    return Response(
+        api_json_response_format(True, "Yet-to-join offers retrieved", 200, report_data),
+        status=200
+    )
+
+
+@api_view(['POST'])
+def get_candidate_offer_report(request):
+    data = request.data
+    client_name = data.get("client_name")
+    min_salary = data.get("min_salary")
+    max_salary = data.get("max_salary")
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+    location = data.get("location")
+
+    # Base queryset: candidates with at least one offer
+    candidates_with_offer = Candidate.objects.filter(
+        offer_negotiations__isnull=False
+    ).select_related(
+        "Req_id_fk",
+        "Req_id_fk__position_information"
+    ).prefetch_related("offer_negotiations").distinct()
+
+    # Apply filters on related OfferNegotiation fields
+    if client_name:
+        candidates_with_offer = candidates_with_offer.filter(
+            offer_negotiations__client_name__icontains=client_name
+        )
+
+    if location:
+        candidates_with_offer = candidates_with_offer.filter(
+            offer_negotiations__offered_location__icontains=location
+        )
+
+    if min_salary:
+        candidates_with_offer = candidates_with_offer.filter(
+            offer_negotiations__offered_salary__gte=min_salary
+        )
+
+    if max_salary:
+        candidates_with_offer = candidates_with_offer.filter(
+            offer_negotiations__offered_salary__lte=max_salary
+        )
+
+    if start_date and end_date:
+        candidates_with_offer = candidates_with_offer.filter(
+            offer_negotiations__offered_doj__range=[start_date, end_date]
+        )
+    elif start_date:
+        candidates_with_offer = candidates_with_offer.filter(
+            offer_negotiations__offered_doj__gte=start_date
+        )
+    elif end_date:
+        candidates_with_offer = candidates_with_offer.filter(
+            offer_negotiations__offered_doj__lte=end_date
+        )
+
+    serializer = CandidateOfferReportSerializer(candidates_with_offer, many=True)
+    return Response(api_json_response_format(True, "Filtered offer-generated candidates retrieved", 200, serializer.data), status=200)
+
+
+@api_view(['GET'])
+def export_candidate_feedback_excel(request):
+    feedbacks = CandidateFeedback.objects.select_related(
+        "candidate",
+        "candidate__Req_id_fk",
+        "candidate__Req_id_fk__position_information",
+        "candidate__Req_id_fk__HiringManager"
+    ).order_by("-created_at")
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Candidate Feedback"
+
+    headers = [
+        "Client ID", "Client Name", "Candidate First Name", "Candidate Last Name", "Position Considered For",
+        "Hiring Manager", "Recruiter Name", "Interview Date(s)", "Assessment Score / Rating",
+        "Interviewer Feedback Summary", "Recruiter Feedback Summary", "Reason Not Selected/Joined",
+        "Skills / Expertise", "Current Employer", "Current Location", "Last CTC", "Status",
+        "Follow-Up Date", "Notes"
+    ]
+    ws.append(headers)
+
+    for fb in feedbacks:
+        c = fb.candidate
+        req = getattr(c, "Req_id_fk", None)
+        position_info = getattr(req, "position_information", None)
+        manager = getattr(req, "HiringManager", None)
+
+        row = [
+            getattr(req, "client_id", "N/A"),
+            getattr(req, "company_client_name", "N/A"),
+            getattr(c, "candidate_first_name", "N/A"),
+            getattr(c, "candidate_last_name", "N/A"),
+            getattr(position_info, "job_position", "N/A") if position_info else "N/A",
+            getattr(manager, "Name", "N/A") if manager else "N/A",
+            fb.recruiter_name,
+            fb.interview_date.strftime("%Y-%m-%d") if fb.interview_date else "",
+            fb.assessment_score,
+            fb.interviewer_feedback,
+            fb.recruiter_feedback,
+            fb.reason_not_selected,
+            fb.skills,
+            fb.current_employer,
+            fb.current_location,
+            fb.last_ctc,
+            fb.status,
+            fb.follow_up_date.strftime("%Y-%m-%d") if fb.follow_up_date else "",
+            fb.notes
+        ]
+        ws.append(row)
+
+    for col in ws.columns:
+        max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
+        ws.column_dimensions[get_column_letter(col[0].column)].width = max_length + 2
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="candidate_feedback.xlsx"'
+    wb.save(response)
+    return response
 class ScheduleCandidateRecruiterMeetView(APIView):
     def post(self, request):
         try:
@@ -3820,6 +4241,68 @@ class CandidateScreeningView(APIView):
             return Response(api_json_response_format(
                 False, f"Error saving screening data: {e}", 500, {}
             ), status=200)
+        
+@api_view(['POST'])
+def resend_approval_emails(request):
+    try:
+        candidate_id = request.data.get("candidate_id")
+        candidate = Candidate.objects.select_related("Req_id_fk", "Req_id_fk__position_information").get(pk=candidate_id)
+        requisition_id = candidate.Req_id_fk.RequisitionID if candidate.Req_id_fk else None
+
+        if not requisition_id:
+            return Response(api_json_response_format(False, "Candidate not linked to requisition", 400, {}), status=200)
+
+        approvers = Approver.objects.filter(
+            requisition__RequisitionID=requisition_id,
+            set_as_approver__in=["Yes", "Maybe"]
+        )
+
+        for approver in approvers:
+            subject = f"🔁 Resend: Candidate Screening Decision Requested - {requisition_id}"
+            approve_url = f"https://api.pixeladvant.com/api/approve-decision?candidate_id={candidate.pk}&approver_id={approver.id}&decision=Approve"
+            reject_url = f"https://api.pixeladvant.com/api/approve-decision?candidate_id={candidate.pk}&approver_id={approver.id}&decision=Reject"
+
+            html_message = f"""
+                <html>
+                <body style="font-family: Arial, sans-serif;">
+                    <h2>Candidate Screening Decision Requested</h2>
+                    <p>Dear {approver.role},</p>
+                    <p>This is a reminder to review the candidate for requisition ID <strong>{requisition_id}</strong>.</p>
+
+                    <table style="border-collapse: collapse; width: 100%; margin-bottom: 20px;">
+                        <tr><td><strong>Candidate Name:</strong></td><td>{candidate.candidate_first_name + " " + candidate.candidate_last_name}</td></tr>
+                        <tr><td><strong>Email:</strong></td><td>{candidate.Email}</td></tr>
+                        <tr><td><strong>Applied Position:</strong></td><td>{candidate.Req_id_fk.position_information.job_position}</td></tr>
+                        <tr><td><strong>Rating:</strong></td><td>{candidate.Final_rating}</td></tr>
+                        <tr><td><strong>Feedback:</strong></td><td>{candidate.Feedback}</td></tr>
+                    </table>
+
+                    <p>
+                        <a href="{approve_url}" style="padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">✅ Approve</a>
+                        &nbsp;&nbsp;
+                        <a href="{reject_url}" style="padding: 10px 20px; background-color: #f44336; color: white; text-decoration: none; border-radius: 5px;">❌ Reject</a>
+                    </p>
+
+                    <p>Thank you,<br/>Hiring System</p>
+                </body>
+                </html>
+            """
+
+            send_mail(
+                subject=subject,
+                message="",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[approver.email],
+                html_message=html_message
+            )
+
+        return Response(api_json_response_format(True, "Emails resent successfully", 200, {}), status=200)
+
+    except Candidate.DoesNotExist:
+        return Response(api_json_response_format(False, "Candidate not found", 404, {}), status=200)
+    except Exception as e:
+        return Response(api_json_response_format(False, f"Error resending emails: {e}", 500, {}), status=200)
+
 
 class CandidateApprovalDecisionView(APIView):
     def get(self, request):
@@ -5366,11 +5849,22 @@ def normalize_hiring_plan_payload(raw):
             for item in sm if isinstance(item, dict)
         ])
 
-    # 🔹 job_position auto-fill
     if not raw.get("job_position"):
-        role = flatten_single(raw, "job_role")
-        designation = raw.get("designation", "")
-        raw["job_position"] = f"{designation} - {role}".strip(" -")
+        job_roles_raw = raw.get("job_role", [])
+        job_roles = []
+
+        for item in job_roles_raw:
+            val = item.get("value") if isinstance(item, dict) else str(item)
+            if val:
+                job_roles.extend([r.strip() for r in val.split(",") if r.strip()])
+
+        # Deduplicate while preserving order
+        unique_roles = list(dict.fromkeys(job_roles))
+        raw["job_position"] = ", ".join(unique_roles)
+
+
+
+
 
     # 🔹 Direct mappings
     raw["currency_type"] = raw.get("currency_type", "")
@@ -5433,10 +5927,40 @@ class HiringPlanOverviewDetails(APIView):
         raw = request.data.copy()
         raw["hiring_plan_id"] = next_id
         normalized = normalize_hiring_plan_payload(raw)
+        client_name = normalized.get("client_name")
+
+        if client_name:
+            cleaned_name = client_name.strip().title()
+            existing_client = HiringPlan.objects.filter(client_name=cleaned_name, client_id__isnull=False).first()
+
+            if existing_client:
+                # Reuse existing client_id
+                normalized["client_id"] = existing_client.client_id
+            else:
+                # Generate new client_id
+                last_client = HiringPlan.objects.exclude(client_id__isnull=True).order_by("-id").first()
+                if last_client and str(last_client.client_id).startswith("CL") and str(last_client.client_id).replace("CL", "").isdigit():
+                    next_client_id = f"CL{int(str(last_client.client_id).replace('CL', '')) + 1:04d}"
+                else:
+                    next_client_id = "CL0001"
+
+                normalized["client_id"] = next_client_id
+
+            normalized["client_name"] = cleaned_name
+        else:
+            normalized["client_id"] = None
+            normalized["client_name"] = None
+
 
         serializer = HiringPlanSerializer(data=normalized)
         if serializer.is_valid():
             instance = serializer.save()
+            
+            ConfigHiringData.objects.get_or_create(
+                category_name="planning_templates",
+                category_values=instance.hiring_plan_id
+            )
+
             return Response(api_json_response_format(
                 True, "Hiring plan created successfully.", 200, {
                     "hiring_plan_id": instance.hiring_plan_id,
@@ -5490,6 +6014,11 @@ class HiringPlanOverviewDetails(APIView):
 
         obj = get_object_or_404(HiringPlan, hiring_plan_id=hiring_plan_id)
         obj.delete()
+        ConfigHiringData.objects.filter(
+            category_name="planning_templates",
+            category_values=hiring_plan_id
+        ).delete()
+
         return Response(api_json_response_format(
             True, "Hiring plan deleted successfully.", 204, {}
         ), status=200)
@@ -5559,6 +6088,11 @@ def get_hiring_plans(request):
 
 
         result_data = extract_requested_fields(queryset, selected_fields, planning_fields_map)
+        for item in result_data:
+            if "job_position" in item and isinstance(item["job_position"], str):
+                item["job_position"] = item["job_position"].replace(" - ", ", ")
+
+
 
         return Response(api_json_response_format(
             True, "Filtered hiring plan data retrieved successfully!", 200, {
@@ -5670,7 +6204,8 @@ def get_hiring_plan_details(request):
             "social_media_link": "Yes" if plan.social_media_links else "No",
             "social_media_data": plan.social_media_data if isinstance(plan.social_media_data, list) else [],
             "jd_details": plan.jd_details or "",
-            "hiring_plan_id": plan.hiring_plan_id
+            "hiring_plan_id": plan.hiring_plan_id,
+            "client_name": plan.client_name or ""
         }
 
         return Response(api_json_response_format(
@@ -6205,14 +6740,13 @@ class CandidateInterviewStagesView(APIView):
                         "Feedback": current_stage.feedback if current_stage else ""
                     }
                 })
-                if current_stage and current_stage.status == "Completed":
-                # Candidate and requisition info already fetched earlier
+                if current_stage and current_stage.status == "Completed" and requisition:
                     offer_data = {
-                        "client_name": requisition.company_client_name if requisition else "",
-                        "client_id": requisition.client_id if requisition else "",
-                        "first_name": candidate.candidate_first_name if candidate else "",
-                        "last_name": candidate.candidate_last_name if candidate else "",
-                        "position_applied": requisition.PositionTitle if candidate else ""
+                        "client_name": requisition.company_client_name,
+                        "client_id": requisition.client_id,
+                        "first_name": candidate.candidate_first_name,
+                        "last_name": candidate.candidate_last_name,
+                        "position_applied": requisition.PositionTitle
                     }
 
                     OfferNegotiation.objects.update_or_create(
@@ -6224,6 +6758,7 @@ class CandidateInterviewStagesView(APIView):
                         client_id=offer_data["client_id"],
                         defaults={"position_applied": offer_data["position_applied"]}
                     )
+
 
 
 
