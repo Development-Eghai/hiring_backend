@@ -13,86 +13,80 @@ class HiringPlan(models.Model):
     id = models.AutoField(primary_key=True)
     hiring_plan_id = models.CharField(max_length=50, blank=True, unique=True, db_index=True)
 
+    client_name = models.CharField(max_length=255, blank=True, null=True)
+    client_id = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+
     job_position = models.CharField(max_length=255, blank=True, null=True)
-    tech_stacks = models.CharField(max_length=255, blank=True, null=True)
+    job_role = models.TextField(blank=True, null=True)
+    tech_stacks = models.TextField(blank=True, null=True)
     jd_details = models.TextField(blank=True, null=True)
 
-    designation = models.CharField(max_length=255, blank=True, null=True)
-    experience_range = models.CharField(max_length=255, blank=True, null=True)
-    target_companies = models.CharField(max_length=255, blank=True, null=True)
+    designation = models.TextField(blank=True, null=True)
+    experience_range = models.TextField(blank=True, null=True)
+    target_companies = models.TextField(blank=True, null=True)
     compensation = models.CharField(max_length=255, blank=True, null=True)
-    compensation_range = models.CharField(max_length=255, blank=True, null=True)
+    compensation_range = models.TextField(blank=True, null=True)
 
-    working_model = models.CharField(max_length=255, blank=True, null=True)
+    working_model = models.TextField(blank=True, null=True)
     interview_status = models.CharField(max_length=255, blank=True, null=True)
-    location = models.CharField(max_length=255, blank=True, null=True)
+    location = models.TextField(blank=True, null=True)
     education_decision = models.CharField(max_length=255, blank=True, null=True)
 
     relocation = models.CharField(max_length=255, blank=True, null=True)
     relocation_amount = models.CharField(max_length=255, blank=True, null=True)
+    relocation_currency_type = models.CharField(max_length=50, blank=True, null=True)
     travel_opportunities = models.CharField(max_length=255, blank=True, null=True)
-    domain_knowledge = models.CharField(max_length=255, blank=True, null=True)
 
     domain_yn = models.CharField(max_length=255, blank=True, null=True)
     domain_name = models.CharField(max_length=255, blank=True, null=True)
+    sub_domain_name = models.CharField(max_length=255, blank=True, null=True)
+    domain_knowledge = models.CharField(max_length=255, blank=True, null=True)
+    domain_details = models.JSONField(blank=True, null=True)
 
     visa_requirements = models.CharField(max_length=255, blank=True, null=True)
     visa_country = models.CharField(max_length=255, blank=True, null=True)
     visa_type = models.CharField(max_length=255, blank=True, null=True)
+    visa_details = models.JSONField(blank=True, null=True)
 
     background_verification = models.CharField(max_length=255, blank=True, null=True)
-    bg_verification_type = models.CharField(max_length=255, blank=True, null=True)
-    shift_timings = models.CharField(max_length=255, blank=True, null=True)
+    bg_verification_type = models.TextField(blank=True, null=True)
 
-    role_type = models.CharField(max_length=255, blank=True, null=True)
-    job_type = models.CharField(max_length=255, blank=True, null=True)
+    shift_timings = models.TextField(blank=True, null=True)
+    role_type = models.TextField(blank=True, null=True)
+    job_type = models.TextField(blank=True, null=True)
     mode_of_working = models.CharField(max_length=255, blank=True, null=True)
 
-    education_qualification = models.CharField(max_length=255, blank=True, null=True)
-
-    communication_language = models.CharField(max_length=255, blank=True, null=True)
-    language_proficiency = models.CharField(max_length=255, blank=True, null=True)
+    education_qualification = models.TextField(blank=True, null=True)
+    communication_language = models.TextField(blank=True, null=True)
+    language_proficiency = models.TextField(blank=True, null=True)
 
     citizen_requirement = models.CharField(max_length=255, blank=True, null=True)
+    citizen_countries = models.TextField(blank=True, null=True)
+    citizen_describe = models.CharField(max_length=255, blank=True, null=True)
+
     job_health_requirement = models.CharField(max_length=255, blank=True, null=True)
+    health_describe = models.CharField(max_length=255, blank=True, null=True)
+
     career_gap = models.CharField(max_length=255, blank=True, null=True)
     sabbatical = models.CharField(max_length=255, blank=True, null=True)
 
     screening_questions = models.CharField(max_length=255, blank=True, null=True)
-    social_media_links = models.CharField(max_length=255, blank=True, null=True)
+    social_media_link = models.CharField(max_length=10, blank=True, null=True)
+    social_media_links = models.TextField(blank=True, null=True)
+    social_media_data = models.JSONField(blank=True, null=True)
     github_link = models.CharField(max_length=255, blank=True, null=True)
 
     notice_period = models.CharField(max_length=255, blank=True, null=True)
     additional_comp = models.CharField(max_length=255, blank=True, null=True)
-
     requisition_template = models.CharField(max_length=255, blank=True, null=True)
     no_of_openings = models.IntegerField(default=0)
-    citizen_describe = models.CharField(max_length=255, blank=True, null=True)
-    health_describe = models.CharField(max_length=255, blank=True, null=True)
-    social_media_data = models.TextField(blank=True, null=True)
     currency_type = models.CharField(max_length=50, blank=True, null=True)
-    relocation_currency_type = models.CharField(max_length=50, blank=True, null=True)
-    sub_domain_name = models.CharField(max_length=255, blank=True, null=True)
-    citizen_countries = models.CharField(max_length=255, blank=True, null=True)
-    job_role = models.CharField(max_length=255, blank=True, null=True)
-    domain_details = models.JSONField(blank=True, null=True)
-    visa_details = models.JSONField(blank=True, null=True)
-    client_name = models.CharField(max_length=255, blank=True, null=True)
-    client_id = models.CharField(max_length=50, blank=True, null=True, db_index=True)
 
-
-
-
-    # Uncomment and set null=True when needed
-    # requisition_date = models.DateField(null=True, blank=True)
-    # due_requisition_date = models.DateField(null=True, blank=True)
-
-    Created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'job_hiring_overview'
         managed = False
-
 
 class InterviewRounds(models.Model):
     id = models.AutoField(primary_key=True)
@@ -1235,12 +1229,13 @@ class BgCheckRequest(models.Model):
         'BgVendor',
         on_delete=models.CASCADE
     )
-    selected_package = models.ForeignKey(
-        'BgPackage',
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL
-    )
+    # selected_package = models.ForeignKey(
+    #     'BgPackage',
+    #     null=True,
+    #     blank=True,
+    #     on_delete=models.SET_NULL
+    # )
+    selected_packages = models.ManyToManyField('BgPackage', blank=True)
     custom_checks = models.JSONField(default=list)
     status = models.CharField(max_length=50, default='Initiated')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1363,7 +1358,7 @@ class CandidateFormInvite(models.Model):
         db_table = 'candidate_form_invite'
 
 class CandidateProfile(models.Model):
-    candidate_id = models.CharField(max_length=20, unique=True)
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, db_column='candidate_id', related_name="profiles")
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     date_of_joining = models.DateField()

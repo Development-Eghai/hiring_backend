@@ -1,5 +1,7 @@
 from datetime import datetime
 from rest_framework import serializers
+
+from pixel_gcc import settings
 from .models import Approver, AssetDetails, Benefit, BgCheckRequest, BgPackage, BgPackageDetail, BgVendor, Candidate, CandidateEducation, CandidateEmployment, CandidateFeedback, CandidateFormInvite, CandidateInterviewStages, CandidatePersonal, CandidateReference, CandidateReview, CandidateSubmission, ConfigHiringData, ConfigPositionRole, ConfigScoreCard, ConfigScreeningType, InterviewDesignParameters, InterviewDesignScreen, InterviewPlanner, InterviewReview, InterviewSchedule, OfferNegotiation, OfferNegotiationBenefit, RequisitionCompetency, RequisitionQuestion, StageAlertResponsibility,UserDetails
 from .models import JobRequisition, RequisitionDetails, BillingDetails, PostingDetails, InterviewTeam, Teams
 import logging
@@ -16,28 +18,26 @@ logger = logging.getLogger(__name__)
 
 
 class HiringPlanSerializer(serializers.ModelSerializer):
-    # Flattened fields
-    compensation_range = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    designation = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    experience_range = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    target_companies = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    location = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    job_type = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    role_type = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    shift_timings = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    education_qualification = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    tech_stacks = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    bg_verification_type = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    jd_details = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    visa_requirements = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    background_verification = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    social_media_links = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    communication_language = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    language_proficiency = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    citizen_countries = serializers.CharField(allow_blank=True, allow_null=True, required=False)
-    job_role = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    job_role = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    # All other dropdowns as CharField — we'll normalize them too
+    tech_stacks = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    designation = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    experience_range = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    target_companies = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    compensation_range = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    location = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    job_type = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    role_type = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    shift_timings = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    education_qualification = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    bg_verification_type = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    citizen_countries = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    working_model = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    communication_language = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    language_proficiency = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    social_media_links = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
-    # JSON fields
+
     domain_details = serializers.JSONField(required=False)
     visa_details = serializers.JSONField(required=False)
     social_media_data = serializers.JSONField(required=False)
@@ -46,65 +46,38 @@ class HiringPlanSerializer(serializers.ModelSerializer):
         model = HiringPlan
         fields = '__all__'
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        jd = data.get("jd_details")
-        if jd:
-            data["jd_details"] = strip_tags(jd)
-        return data
-
     def to_internal_value(self, data):
-        remap_fields = {
-            "visa_required": "visa_requirements",
-            "background_verfication": "background_verification",
-            "has_domain": "domain_yn",
-            "social_media_links": "social_media_data"
-        }
-
-        for source_key, target_key in remap_fields.items():
-            if source_key in data and isinstance(data[source_key], str):
-                data[target_key] = data[source_key]
-
-        def flatten_list(key):
-            raw = data.get(key, [])
-            return ", ".join([
-                item.get("value") for item in raw
-                if isinstance(item, dict) and item.get("value")
-            ]) if isinstance(raw, list) else ""
-
-        def flatten_single(key, fallback=None):
-            val = data.get(key)
-            return val[0].get("value", fallback) if isinstance(val, list) and val else fallback
-
         data = data.copy()
 
-        # Multi-select fields
-        for field in ["tech_stacks", "target_companies", "bg_verification_type", "citizen_countries"]:
-            val = flatten_list(field)
-            if val:
-                data[field] = val
+        def flatten(field):
+            raw = data.get(field)
+            values = []
 
-        # Single-select fields
-        flatten_map = {
-            "designation": "designation",
-            "education_qualification": "education_qualification",
-            "shift_timings": "shift_timings",
-            "location": "location",
-            "job_type": "job_type",
-            "role_type": "role_type",
-            "experience_range": "experience_range",
-            "compensation_range": "compensation_range",
-            "job_role": "job_role"
-        }
-        for source, target in flatten_map.items():
-            val = flatten_single(source)
-            if val is not None:
-                data[target] = val
+            if isinstance(raw, list):
+                for item in raw:
+                    if isinstance(item, dict) and "value" in item:
+                        values.append(item["value"].strip())
+                    elif isinstance(item, str):
+                        values.append(item.strip())
+            elif isinstance(raw, str):
+                values = [v.strip() for v in raw.split(",") if v.strip()]
+            else:
+                values = []
 
-        # Working model
-        data["working_model"] = flatten_single("working_modal")
+            flattened = ", ".join(values)
+            data[field] = flattened
 
-        # Communication language
+        dropdown_fields = [
+            "tech_stacks", "job_role", "designation", "experience_range", "target_companies",
+            "compensation_range", "location", "job_type", "role_type", "shift_timings",
+            "education_qualification", "bg_verification_type", "citizen_countries",
+            "working_model", "communication_language"
+        ]
+        for field in dropdown_fields:
+            flatten(field)
+
+
+        # Normalize communication_language → language_proficiency
         cl_list = data.get("communication_language")
         if isinstance(cl_list, list):
             langs = []
@@ -112,80 +85,29 @@ class HiringPlanSerializer(serializers.ModelSerializer):
             for cl in cl_list:
                 lang = cl.get("language", {}).get("value")
                 prof = cl.get("proficiency", {}).get("value")
-                if lang: langs.append(lang)
-                if prof: profs.append(prof)
+                if lang and prof:
+                    langs.append(f"{lang}:{prof}")
+                    profs.append(prof)
             data["communication_language"] = ", ".join(langs)
             data["language_proficiency"] = ", ".join(profs)
 
-        # Social media links
+        # Normalize social_media_data → social_media_links
         sm_list = data.get("social_media_data")
         if isinstance(sm_list, list):
-            links = []
-            for sm in sm_list:
-                links.append(f"{sm.get('media_type', '')}: {sm.get('media_link', '')}")
+            links = [f"{sm.get('media_type', '')}: {sm.get('media_link', '')}" for sm in sm_list]
             data["social_media_links"] = "; ".join(links)
 
-        # Domain details
-        if isinstance(data.get("doamin_details"), list):
-            data["domain_details"] = data["doamin_details"]
+        # Fix typo: doamin_details → domain_details
+        if "doamin_details" in data:
+            data["domain_details"] = data.pop("doamin_details")
 
-        # Visa details
-        if isinstance(data.get("visa_details"), list):
-            data["visa_details"] = data["visa_details"]
-
-        # Auto-generate job_position
-        if not data.get("job_position"):
-            role_raw = data.get("job_role", [])
-            roles = []
-
-            if isinstance(role_raw, list):
-                for item in role_raw:
-                    val = item.get("value") if isinstance(item, dict) else str(item)
-                    if val:
-                        roles.extend([r.strip() for r in val.split(",") if r.strip()])
-            elif isinstance(role_raw, str):
-                roles = [r.strip() for r in role_raw.split(",") if r.strip()]
-
-            unique_roles = list(dict.fromkeys(roles))  # Deduplicate while preserving order
-            data["job_position"] = ", ".join(unique_roles)
-
-        # Passthrough fields
-        passthrough_fields = [
-            "jd_details", "compensation", "interview_status", "mode_of_working",
-            "education_decision", "domain_knowledge", "domain_yn", "domain_name",
-            "visa_requirements", "visa_country", "visa_type", "background_verification",
-            "social_media_link", "github_link", "notice_period", "additional_comp",
-            "requisition_template", "screening_questions", "hiring_plan_id"
-        ]
-        for key in passthrough_fields:
-            val = data.get(key)
-            if isinstance(val, dict) and "value" in val:
-                data[key] = str(val["value"])
-            elif isinstance(val, (str, int, float)):
-                data[key] = str(val)
+        # Strip HTML from JD
+        if "jd_details" in data and isinstance(data["jd_details"], str):
+            data["jd_details"] = strip_tags(data["jd_details"])
 
         return super().to_internal_value(data)
 
-    def validate(self, attrs):
-        errors = {}
 
-        for field in ["tech_stacks", "target_companies", "bg_verification_type", "citizen_countries"]:
-            if field in attrs and not isinstance(attrs[field], str):
-                errors[field] = "Must be a comma-separated string."
-
-        try:
-            if attrs.get("relocation_amount"):
-                float(attrs["relocation_amount"])
-        except ValueError:
-            errors["relocation_amount"] = "Relocation amount must be a number."
-
-        if "compensation_range" in attrs and not isinstance(attrs["compensation_range"], str):
-            errors["compensation_range"] = "Must be a string."
-
-        if errors:
-            raise serializers.ValidationError(errors)
-
-        return attrs
 
 
 class CandidateOfferReportSerializer(serializers.ModelSerializer):
@@ -667,8 +589,8 @@ class JobRequisitionSerializer(serializers.ModelSerializer):
             send_mail(
                 subject=f"Requisition '{instance.RequisitionID}' - Pending Approval",
                 message=email_body,
-                from_email='hiring@pixeladvant.com',
-                recipient_list=['anand040593@gmail.com'],
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=['anand40593@outlook.com'],
                 fail_silently=False,
             )
 
@@ -1244,7 +1166,10 @@ class BgCheckRequestSerializer(serializers.ModelSerializer):
     candidate = serializers.StringRelatedField()
     requisition = serializers.StringRelatedField()
     vendor = BgVendorSerializer(read_only=True)
-    selected_package = BgPackageSerializer(read_only=True)
+    selected_packages = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=BgPackage.objects.all()
+    )
+
 
     def create(self, validated_data):
         requisition_value = self.initial_data.get("requisition")
@@ -1257,7 +1182,7 @@ class BgCheckRequestSerializer(serializers.ModelSerializer):
         model = BgCheckRequest
         fields = [
             "id", "requisition", "candidate", "vendor",
-            "selected_package", "custom_checks", "status", "created_at"
+            "selected_packages", "custom_checks", "status", "created_at"
         ]
 
 

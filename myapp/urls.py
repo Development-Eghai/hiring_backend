@@ -160,6 +160,8 @@ urlpatterns = [
     path('api/bg-check/contextual-data/', BgCheckContextualDetailsView.as_view(), name='bg-check-contextual-data'),
     path('bg/contextual/checks/', BgAddonChecksView.as_view(),name='bg-addon-checks'),
     path('vendor-packages/', VendorPackageView.as_view(),name='vendor-packages'),
+    path("bg-check/packages-by-vendor/", BgPackageByVendorView.as_view(), name="bg-packages-by-vendor"),
+
 
 
     path('recruiter/send_pre_onboarding_form_invite/', send_pre_onboarding_form_invite, name='send_pre_onboarding_form_invite'),
@@ -179,11 +181,6 @@ urlpatterns = [
     path("api/offer-report/", get_candidate_offer_report, name="get_candidate_offer_report"),
     path('api/declined-offer-report/', get_declined_offer_report, name='declined_offer_report'),
     path('api/yet-to-join-report/', get_yet_to_join_offer_report, name='yet_to_join_report'),
-
-
-
-
-
 
 ]
 

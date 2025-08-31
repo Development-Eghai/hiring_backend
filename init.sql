@@ -25,19 +25,19 @@ DROP TABLE IF EXISTS `CandidateFeedback`;
 CREATE TABLE `CandidateFeedback` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `candidate_id` int NOT NULL,
-  `recruiter_name` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `recruiter_name` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `interview_date` date NOT NULL,
-  `assessment_score` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `interviewer_feedback` text COLLATE utf8mb4_unicode_ci,
-  `recruiter_feedback` text COLLATE utf8mb4_unicode_ci,
-  `reason_not_selected` text COLLATE utf8mb4_unicode_ci,
-  `skills` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `current_employer` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `current_location` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `last_ctc` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `assessment_score` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `interviewer_feedback` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `recruiter_feedback` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `reason_not_selected` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `skills` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `current_employer` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `current_location` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `last_ctc` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `follow_up_date` date DEFAULT NULL,
-  `notes` text COLLATE utf8mb4_unicode_ci,
+  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_candidate_feedback` (`candidate_id`),
@@ -98,7 +98,7 @@ CREATE TABLE `approval_status` (
   PRIMARY KEY (`id`),
   KEY `offer_negotiation_id` (`offer_negotiation_id`),
   KEY `approver_id` (`approver_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -107,7 +107,7 @@ CREATE TABLE `approval_status` (
 
 LOCK TABLES `approval_status` WRITE;
 /*!40000 ALTER TABLE `approval_status` DISABLE KEYS */;
-INSERT INTO `approval_status` VALUES (11,8,21,'Approved','2025-08-27 12:07:39'),(12,8,22,'Approved','2025-08-27 12:07:34');
+INSERT INTO `approval_status` VALUES (16,11,21,'Approved','2025-08-30 14:22:00'),(17,11,22,'Approved','2025-08-30 14:21:52');
 /*!40000 ALTER TABLE `approval_status` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -134,7 +134,7 @@ CREATE TABLE `approver` (
   UNIQUE KEY `id` (`id`),
   KEY `fk_requisition` (`requisition_id`),
   CONSTRAINT `fk_requisition` FOREIGN KEY (`requisition_id`) REFERENCES `jobrequisition` (`RequisitionID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -143,7 +143,7 @@ CREATE TABLE `approver` (
 
 LOCK TABLES `approver` WRITE;
 /*!40000 ALTER TABLE `approver` DISABLE KEYS */;
-INSERT INTO `approver` VALUES (21,'24','HR','Anand','Sivakumar','anandsivakumar27@gmail.com','09994551690','Software Engineer','2025-08-27 08:29:32','Yes','RQ0001'),(22,'24','HM','Anand','Sivakumar','anand040593@gmail.com','09994551690','Principal Backend Architect','2025-08-27 08:29:32','Yes','RQ0001');
+INSERT INTO `approver` VALUES (21,'24','HR','Anand','Sivakumar','anandsivakumar27@gmail.com','09994551690','Software Engineer','2025-08-27 08:29:32','Yes','RQ0001'),(22,'24','HM','Anand','Sivakumar','anand040593@gmail.com','09994551690','Principal Backend Architect','2025-08-27 08:29:32','Yes','RQ0001'),(25,'26','MANAGER','Bhula','Billu','pankaj.p@pixeladvant.com','9**********','VP Sales','2025-08-30 08:46:02','Yes','RQ0008'),(26,'26','HR','Gopi','Bhalla','abhik.paul@outlook.com','9**********','Director HR','2025-08-30 08:46:02','Yes','RQ0008');
 /*!40000 ALTER TABLE `approver` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -165,7 +165,7 @@ CREATE TABLE `asset_details` (
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `requisition_id` (`requisition_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -174,7 +174,7 @@ CREATE TABLE `asset_details` (
 
 LOCK TABLES `asset_details` WRITE;
 /*!40000 ALTER TABLE `asset_details` DISABLE KEYS */;
-INSERT INTO `asset_details` VALUES (2,'RQ0001','Windows','Yes','No','needed','2025-08-27 08:27:19','2025-08-27 08:27:19');
+INSERT INTO `asset_details` VALUES (2,'RQ0001','Windows','Yes','No','needed','2025-08-27 08:27:19','2025-08-30 06:17:21'),(3,'RQ0002','Windows','Yes','No','needed','2025-08-30 07:05:48','2025-08-30 07:08:40'),(4,'RQ0003','','No','No','','2025-08-30 07:07:52','2025-08-30 07:07:52'),(6,'RQ0008','Mac','Yes','No','Test','2025-08-30 08:27:43','2025-08-30 08:30:03');
 /*!40000 ALTER TABLE `asset_details` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -414,7 +414,6 @@ CREATE TABLE `bg_check_request` (
   `requisition_id` varchar(255) NOT NULL,
   `candidate_id` int NOT NULL,
   `vendor_id` int NOT NULL,
-  `selected_package_id` int DEFAULT NULL,
   `custom_checks` json DEFAULT NULL,
   `status` varchar(50) DEFAULT 'Initiated',
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -422,12 +421,10 @@ CREATE TABLE `bg_check_request` (
   KEY `requisition_id` (`requisition_id`),
   KEY `candidate_id` (`candidate_id`),
   KEY `vendor_id` (`vendor_id`),
-  KEY `selected_package_id` (`selected_package_id`),
   CONSTRAINT `bg_check_request_ibfk_1` FOREIGN KEY (`requisition_id`) REFERENCES `jobrequisition` (`RequisitionID`) ON DELETE CASCADE,
   CONSTRAINT `bg_check_request_ibfk_2` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE,
-  CONSTRAINT `bg_check_request_ibfk_3` FOREIGN KEY (`vendor_id`) REFERENCES `bg_vendor` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `bg_check_request_ibfk_4` FOREIGN KEY (`selected_package_id`) REFERENCES `bg_package` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  CONSTRAINT `bg_check_request_ibfk_3` FOREIGN KEY (`vendor_id`) REFERENCES `bg_vendor` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -437,6 +434,34 @@ CREATE TABLE `bg_check_request` (
 LOCK TABLES `bg_check_request` WRITE;
 /*!40000 ALTER TABLE `bg_check_request` DISABLE KEYS */;
 /*!40000 ALTER TABLE `bg_check_request` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `bg_check_request_selected_packages`
+--
+
+DROP TABLE IF EXISTS `bg_check_request_selected_packages`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `bg_check_request_selected_packages` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `bgcheckrequest_id` bigint NOT NULL,
+  `bgpackage_id` int NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `bgcheckrequest_id` (`bgcheckrequest_id`,`bgpackage_id`),
+  KEY `bgpackage_id` (`bgpackage_id`),
+  CONSTRAINT `bg_check_request_selected_packages_ibfk_1` FOREIGN KEY (`bgcheckrequest_id`) REFERENCES `bg_check_request` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `bg_check_request_selected_packages_ibfk_2` FOREIGN KEY (`bgpackage_id`) REFERENCES `bg_package` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `bg_check_request_selected_packages`
+--
+
+LOCK TABLES `bg_check_request_selected_packages` WRITE;
+/*!40000 ALTER TABLE `bg_check_request_selected_packages` DISABLE KEYS */;
+/*!40000 ALTER TABLE `bg_check_request_selected_packages` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -457,7 +482,7 @@ CREATE TABLE `bg_package` (
   PRIMARY KEY (`id`),
   KEY `fk_vendor` (`vendor_id`),
   CONSTRAINT `fk_vendor` FOREIGN KEY (`vendor_id`) REFERENCES `bg_vendor` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -466,7 +491,7 @@ CREATE TABLE `bg_package` (
 
 LOCK TABLES `bg_package` WRITE;
 /*!40000 ALTER TABLE `bg_package` DISABLE KEYS */;
-INSERT INTO `bg_package` VALUES (16,7,'Drug Check',4000.00,'NA','2025-08-15 07:27:28','Email'),(17,7,'Credit Check',2000.00,'NA','2025-08-15 07:27:28','Phone'),(30,7,'debit check',3000.00,'NA','2025-08-19 18:53:43','ID Proof'),(32,12,'Advances',2500.00,'all checks','2025-08-21 14:56:04','Phone,  ID Proof'),(33,12,'Basic',2500.00,'good','2025-08-21 14:56:31','Email, ID Proof'),(35,12,'Advances',2500.00,'all checks','2025-08-22 14:38:39','Address Proof, Phone'),(36,13,'Advances',2500.00,'all checks','2025-08-22 14:39:19','Email, Address Proof');
+INSERT INTO `bg_package` VALUES (16,7,'Drug Check',4000.00,'NA','2025-08-15 07:27:28','Email'),(17,7,'Credit Check',2000.00,'NA','2025-08-15 07:27:28','Phone'),(30,7,'debit check',3000.00,'NA','2025-08-19 18:53:43','ID Proof'),(32,12,'Advances',2500.00,'all checks','2025-08-21 14:56:04','Phone,  ID Proof'),(33,12,'Basic',2500.00,'good','2025-08-21 14:56:31','Email, ID Proof'),(35,12,'Advances',2500.00,'all checks','2025-08-22 14:38:39','Address Proof, Phone'),(36,13,'Advances',2500.00,'all checks','2025-08-22 14:39:19','Email, Address Proof'),(37,14,'Drug Check',7000.00,'NA','2025-08-30 08:40:40','ID Proof, Address Proof'),(38,14,'Education Check',2000.00,'NA','2025-08-30 08:40:40','Address Proof,  ID Proof'),(39,14,'BG Check',1000.00,'NA','2025-08-30 08:41:29','Email'),(40,7,'debit ',3000.00,'NA','2025-08-30 08:42:40','ID Proof');
 /*!40000 ALTER TABLE `bg_package` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -487,7 +512,7 @@ CREATE TABLE `bg_package_detail` (
   PRIMARY KEY (`id`),
   KEY `bg_package_detail_vendor_id_fk` (`vendor_id`),
   CONSTRAINT `bg_package_detail_vendor_id_fk` FOREIGN KEY (`vendor_id`) REFERENCES `bg_vendor` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -496,7 +521,7 @@ CREATE TABLE `bg_package_detail` (
 
 LOCK TABLES `bg_package_detail` WRITE;
 /*!40000 ALTER TABLE `bg_package_detail` DISABLE KEYS */;
-INSERT INTO `bg_package_detail` VALUES (17,7,'References','Check Referneces',1000.00,'2025-08-21 14:53:34.213664'),(26,12,'employement check','good',1000.00,'2025-08-21 14:56:30.536444'),(27,12,'employement check','good',1000.00,'2025-08-22 14:38:39.160560'),(28,13,'employement check','good',1000.00,'2025-08-22 14:39:19.379660');
+INSERT INTO `bg_package_detail` VALUES (26,12,'employement check','good',1000.00,'2025-08-21 14:56:30.536444'),(27,12,'employement check','good',1000.00,'2025-08-22 14:38:39.160560'),(28,13,'employement check','good',1000.00,'2025-08-22 14:39:19.379660'),(33,7,'References','Check Referneces',1000.00,'2025-08-30 13:28:35.051929'),(34,7,'new','new',1000.00,'2025-08-30 13:28:35.054230');
 /*!40000 ALTER TABLE `bg_package_detail` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -515,7 +540,7 @@ CREATE TABLE `bg_vendor` (
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `mobile_no` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -524,7 +549,7 @@ CREATE TABLE `bg_vendor` (
 
 LOCK TABLES `bg_vendor` WRITE;
 /*!40000 ALTER TABLE `bg_vendor` DISABLE KEYS */;
-INSERT INTO `bg_vendor` VALUES (7,'Springverify','hello@springverify.net','222, Bangalore','2025-08-15 07:27:28','09994551690'),(12,'American adventage','hiring@pixeladvant.com','bangalore','2025-08-21 14:56:04','09994551690'),(13,'Vendor2','anandsivakumar27@gmail.com','bangalore','2025-08-22 14:39:19','');
+INSERT INTO `bg_vendor` VALUES (7,'Springverify','hello@springverify.net','222, Bangalore','2025-08-15 07:27:28','09994551690'),(12,'American adventage','hiring@pixeladvant.com','bangalore','2025-08-21 14:56:04','09994551690'),(13,'Vendor2','anandsivakumar27@gmail.com','bangalore','2025-08-22 14:39:19',''),(14,'ABC Company','abc@xyz.com','Jhumritalaya, Lucknow','2025-08-30 08:40:40','9884477549');
 /*!40000 ALTER TABLE `bg_vendor` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -546,7 +571,7 @@ CREATE TABLE `billing_details` (
   `contract_start_date` date DEFAULT NULL,
   `contract_end_date` date DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -555,7 +580,7 @@ CREATE TABLE `billing_details` (
 
 LOCK TABLES `billing_details` WRITE;
 /*!40000 ALTER TABLE `billing_details` DISABLE KEYS */;
-INSERT INTO `billing_details` VALUES (5,'RQ0001','Recrruing','2025-08-27','2025-08-27 08:27:19','2025-08-27 08:27:19','2025-09-27','2025-08-28','2025-08-28');
+INSERT INTO `billing_details` VALUES (5,'RQ0001','Recrruing','2025-08-27','2025-08-27 08:27:19','2025-08-30 06:17:21','2025-09-27','2025-08-28','2025-08-28'),(6,'RQ0002','Recrruing','2025-08-30','2025-08-30 07:05:48','2025-08-30 07:08:40','2025-09-30','2025-08-30','2025-09-30'),(7,'RQ0003','',NULL,'2025-08-30 07:07:52','2025-08-30 07:07:52',NULL,NULL,NULL),(9,'RQ0008','Recrruing','2025-09-08','2025-08-30 08:27:43','2025-08-30 08:30:03','2025-12-31','2025-09-08','2025-12-31');
 /*!40000 ALTER TABLE `billing_details` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -580,7 +605,7 @@ CREATE TABLE `candidate_approval` (
   KEY `fk_candidate_approval_approver` (`approver_id`),
   CONSTRAINT `fk_candidate_approval_approver` FOREIGN KEY (`approver_id`) REFERENCES `approver` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_candidate_approval_candidate` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=46 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -589,7 +614,7 @@ CREATE TABLE `candidate_approval` (
 
 LOCK TABLES `candidate_approval` WRITE;
 /*!40000 ALTER TABLE `candidate_approval` DISABLE KEYS */;
-INSERT INTO `candidate_approval` VALUES (24,16,21,'HR','Approve',NULL,'2025-08-27 12:54:00','2025-08-27 11:41:37'),(25,16,22,'HM','Approve',NULL,'2025-08-27 12:04:30','2025-08-27 11:41:37'),(26,17,21,'HR','Approve',NULL,'2025-08-29 02:20:31','2025-08-29 02:19:55'),(27,17,22,'HM','Approve',NULL,'2025-08-29 02:20:19','2025-08-29 02:19:55');
+INSERT INTO `candidate_approval` VALUES (42,22,21,'HR','Approved',NULL,'2025-08-30 14:18:06','2025-08-30 14:17:29'),(43,22,22,'HM','Approved',NULL,'2025-08-30 14:17:58','2025-08-30 14:17:29');
 /*!40000 ALTER TABLE `candidate_approval` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -682,7 +707,7 @@ CREATE TABLE `candidate_form_invite` (
   UNIQUE KEY `token` (`token`),
   KEY `candidate_id` (`candidate_id`),
   CONSTRAINT `candidate_form_invite_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -713,7 +738,7 @@ CREATE TABLE `candidate_interview_stages` (
   `result` varchar(100) DEFAULT NULL,
   `status` varchar(100) NOT NULL DEFAULT '',
   PRIMARY KEY (`interview_stage_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -722,7 +747,7 @@ CREATE TABLE `candidate_interview_stages` (
 
 LOCK TABLES `candidate_interview_stages` WRITE;
 /*!40000 ALTER TABLE `candidate_interview_stages` DISABLE KEYS */;
-INSERT INTO `candidate_interview_stages` VALUES (15,16,'RQ0001','Technical Round 2','2025-08-29','online','good',5,'Selected','Completed'),(22,17,'RQ0001','Technical Round 1','2025-08-31','online','',0,'','Stage Scheduled');
+INSERT INTO `candidate_interview_stages` VALUES (32,22,'RQ0001','Technical Round 1','2025-08-27','online','good',5,'Selected','Completed'),(33,22,'RQ0001','Technical Round 2','2025-08-29','','good',5,'Selected','Completed');
 /*!40000 ALTER TABLE `candidate_interview_stages` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -770,7 +795,7 @@ CREATE TABLE `candidate_profile` (
   `date_of_joining` date DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `candidate_id` (`candidate_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -779,7 +804,7 @@ CREATE TABLE `candidate_profile` (
 
 LOCK TABLES `candidate_profile` WRITE;
 /*!40000 ALTER TABLE `candidate_profile` DISABLE KEYS */;
-INSERT INTO `candidate_profile` VALUES (1,'16','CandidateFirst7882','CandidateLast7882','2025-08-30');
+INSERT INTO `candidate_profile` VALUES (4,'22','Aravind','Kumar','2025-09-26');
 /*!40000 ALTER TABLE `candidate_profile` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -833,7 +858,7 @@ CREATE TABLE `candidate_reviews` (
   PRIMARY KEY (`ReviewID`),
   KEY `can_id_fk` (`CandidateID`),
   CONSTRAINT `can_id_fk` FOREIGN KEY (`CandidateID`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=66 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -842,7 +867,7 @@ CREATE TABLE `candidate_reviews` (
 
 LOCK TABLES `candidate_reviews` WRITE;
 /*!40000 ALTER TABLE `candidate_reviews` DISABLE KEYS */;
-INSERT INTO `candidate_reviews` VALUES (31,16,'Technical Round 1','good',10,5.0,'','2025-08-27 11:41:37'),(32,16,'Technical Round 2','good',10,5.0,'','2025-08-27 11:41:37'),(33,17,'Technical Round 1','good',10,5.0,'','2025-08-29 02:19:55'),(34,17,'Technical Round 2','good',10,5.0,'','2025-08-29 02:19:55');
+INSERT INTO `candidate_reviews` VALUES (62,22,'Technical Round 1','good',10,4.0,'','2025-08-30 14:17:29'),(63,22,'Technical Round 2','good',10,4.0,'','2025-08-30 14:17:29');
 /*!40000 ALTER TABLE `candidate_reviews` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -911,7 +936,7 @@ CREATE TABLE `candidates` (
   `candidate_first_name` varchar(100) DEFAULT NULL,
   `candidate_last_name` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`CandidateID`)
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -920,7 +945,7 @@ CREATE TABLE `candidates` (
 
 LOCK TABLES `candidates` WRITE;
 /*!40000 ALTER TABLE `candidates` DISABLE KEYS */;
-INSERT INTO `candidates` VALUES (16,'RQ0001','candidate7882@gmail.com','Anand_resume.pdf',5,'good','Recommended','2025-08-27 11:41:11','This is a sample cover letter for candidate7882.','Refferal',NULL,'9999999999','CandidateFirst7882','CandidateLast7882'),(17,'RQ0001','candidate6352@gmail.com','Naukri_AshpakPathan[10y_0m].pdf',5,'good','Recommended','2025-08-29 02:17:58','Naukri_AshpakPathan[10y_0m].pdf','Refferal',NULL,'9999999999','Ashpak','Pathan');
+INSERT INTO `candidates` VALUES (22,'RQ0001','candidate2279@gmail.com','Anand-Resume.pdf',4,'good','Recommended','2025-08-30 14:16:43','This is a sample cover letter for candidate2279.','LinkedIN',NULL,'9999999999','Aravind','Kumar');
 /*!40000 ALTER TABLE `candidates` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -965,7 +990,7 @@ CREATE TABLE `config_hiring_data` (
   `category_name` varchar(500) NOT NULL DEFAULT '',
   `category_values` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=95 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=107 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -974,7 +999,7 @@ CREATE TABLE `config_hiring_data` (
 
 LOCK TABLES `config_hiring_data` WRITE;
 /*!40000 ALTER TABLE `config_hiring_data` DISABLE KEYS */;
-INSERT INTO `config_hiring_data` VALUES (2,'Position Role','Project Manager'),(3,'Position Role','Python developer'),(4,'Screening Type','Online Test'),(5,'Screening Type','Telephonic interview'),(8,'Location','Bangalore'),(9,'Designation','Senior Developer'),(10,'Designation','Software Engineer I'),(11,'Designation','Software Engineer II'),(12,'Tech Stack','Python'),(13,'Tech Stack','Django'),(14,'Tech Stack','AWS'),(15,'Target Companies','HCL'),(16,'Target Companies','Accenture'),(17,'Working Model','Onsite'),(20,'Role Type','Full Time'),(21,'Role Type','Part Time'),(22,'Job Type','Contract'),(23,'Job Type','Permanant'),(24,'Mode of Working','Hybrid'),(25,'Mode of Working','Work from home'),(26,'Shift Timings','Day Shift'),(27,'Shift Timings','Night Shift'),(28,'Education Qualification','BE'),(29,'Education Qualification','B Tech'),(30,'Education Qualification','MBA'),(32,'Education Qualification','M Tech'),(33,'Communication Language','English'),(34,'Communication Language','Hindi'),(35,'Communication Language','Tamil'),(38,'Position Role','Product Manager'),(39,'Position Role','UX Designer'),(41,'Working Model','Remote'),(42,'Working Model','client site'),(43,'Location','New York'),(44,'Location','San Francisco'),(45,'Location','London'),(46,'Location','Berlin'),(47,'Location','Tokyo'),(48,'Location','Toronto'),(49,'Location','Sydney'),(50,'Location','Dubai'),(51,'Location','Singapore'),(52,'Working Model','Hybrid'),(53,'Position Role','Finance Manager'),(54,'Designation','Finance Manager'),(55,'Target Companies','Zendesk'),(56,'Target Companies','Zuora'),(57,'Target Companies','Freshworks'),(58,'Target Companies','Servicenow'),(59,'Tech Stack','SAP Concur'),(60,'Tech Stack','Tally'),(61,'Tech Stack','Oracle Netsuite'),(62,'Position Role','Financial Analyst'),(63,'Education Qualification','CA'),(64,'Education Qualification','CS'),(65,'Communication Language','German'),(66,'Score Card','Leadership'),(70,'Score Card','Product Management'),(76,'Score Card','Technical Round 1'),(77,'Score Card','Technical Round 2'),(79,'Score Card','Recruiter Screen'),(80,'Score Card','Written/Aptitude'),(81,'Score Card','Hiring Manager Screen'),(82,'Score Card','Coding/Whiteboard'),(83,'Score Card','Values/Personality'),(84,'Score Card','HR Round'),(85,'Score Card','Managerial Round'),(92,'planning_templates','PL0001'),(93,'planning_templates','PL0002'),(94,'Position Role','Software Engineer');
+INSERT INTO `config_hiring_data` VALUES (2,'Position Role','Project Manager'),(3,'Position Role','Python developer'),(4,'Screening Type','Online Test'),(5,'Screening Type','Telephonic interview'),(8,'Location','Bangalore'),(9,'Designation','Senior Developer'),(10,'Designation','Software Engineer I'),(11,'Designation','Software Engineer II'),(12,'Tech Stack','Python'),(13,'Tech Stack','Django'),(14,'Tech Stack','AWS'),(15,'Target Companies','HCL'),(16,'Target Companies','Accenture'),(17,'Working Model','Onsite'),(20,'Role Type','Full Time'),(21,'Role Type','Part Time'),(22,'Job Type','Contract'),(23,'Job Type','Permanant'),(24,'Mode of Working','Hybrid'),(25,'Mode of Working','Work from home'),(26,'Shift Timings','Day Shift'),(27,'Shift Timings','Night Shift'),(28,'Education Qualification','BE'),(29,'Education Qualification','B Tech'),(30,'Education Qualification','MBA'),(32,'Education Qualification','M Tech'),(33,'Communication Language','English'),(34,'Communication Language','Hindi'),(35,'Communication Language','Tamil'),(38,'Position Role','Product Manager'),(39,'Position Role','UX Designer'),(41,'Working Model','Remote'),(42,'Working Model','client site'),(43,'Location','New York'),(44,'Location','San Francisco'),(45,'Location','London'),(46,'Location','Berlin'),(47,'Location','Tokyo'),(48,'Location','Toronto'),(49,'Location','Sydney'),(50,'Location','Dubai'),(51,'Location','Singapore'),(52,'Working Model','Hybrid'),(53,'Position Role','Finance Manager'),(54,'Designation','Finance Manager'),(55,'Target Companies','Zendesk'),(56,'Target Companies','Zuora'),(57,'Target Companies','Freshworks'),(58,'Target Companies','Servicenow'),(59,'Tech Stack','SAP Concur'),(60,'Tech Stack','Tally'),(61,'Tech Stack','Oracle Netsuite'),(62,'Position Role','Financial Analyst'),(63,'Education Qualification','CA'),(64,'Education Qualification','CS'),(65,'Communication Language','German'),(66,'Score Card','Leadership'),(70,'Score Card','Product Management'),(76,'Score Card','Technical Round 1'),(77,'Score Card','Technical Round 2'),(79,'Score Card','Recruiter Screen'),(80,'Score Card','Written/Aptitude'),(81,'Score Card','Hiring Manager Screen'),(82,'Score Card','Coding/Whiteboard'),(83,'Score Card','Values/Personality'),(84,'Score Card','HR Round'),(85,'Score Card','Managerial Round'),(92,'planning_templates','PL0001'),(93,'planning_templates','PL0002'),(94,'Position Role','Software Engineer'),(95,'Primary Skills','Design thinking'),(96,'Secondary Skills','Azure'),(97,'Location','Pune'),(98,'Position Role','Sales Analyst'),(99,'Position Role','Sales Director'),(100,'Tech Stack','Salesforce'),(101,'Tech Stack','CRM'),(102,'Designation','Sales Analyst'),(103,'planning_templates','PL0003'),(104,'Internal Job Title','Sales Analyst'),(105,'Internal Job Title','Sales Director'),(106,'Business Line','Sales');
 /*!40000 ALTER TABLE `config_hiring_data` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1245,7 +1270,7 @@ CREATE TABLE `generated_offer` (
   KEY `candidate_id` (`candidate_id`),
   CONSTRAINT `generated_offer_ibfk_1` FOREIGN KEY (`requisition_id`) REFERENCES `jobrequisition` (`id`) ON DELETE CASCADE,
   CONSTRAINT `generated_offer_ibfk_2` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1254,7 +1279,7 @@ CREATE TABLE `generated_offer` (
 
 LOCK TABLES `generated_offer` WRITE;
 /*!40000 ALTER TABLE `generated_offer` DISABLE KEYS */;
-INSERT INTO `generated_offer` VALUES (3,15,16,'pixelreq@gmail.com','developer','chennai','India','INR','2025-08-30','Generated','2025-08-27 12:08:21','2025-08-27 12:08:21');
+INSERT INTO `generated_offer` VALUES (6,15,22,'pixelreq@gmail.com','Developer','Select city','India','INR','2025-09-26','Generated','2025-08-30 14:29:09','2025-08-30 14:29:09');
 /*!40000 ALTER TABLE `generated_offer` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1341,7 +1366,7 @@ CREATE TABLE `interview_review` (
   KEY `fk_candidate_review` (`candidate_id`),
   CONSTRAINT `fk_candidate_review` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE,
   CONSTRAINT `fk_schedule` FOREIGN KEY (`schedule_id`) REFERENCES `interview_schedule` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1350,7 +1375,6 @@ CREATE TABLE `interview_review` (
 
 LOCK TABLES `interview_review` WRITE;
 /*!40000 ALTER TABLE `interview_review` DISABLE KEYS */;
-INSERT INTO `interview_review` VALUES (12,14,'','','2025-08-27 12:05:47','\"Communication\"','\"good\"','5','4',50,'\"good\"','2025-08-27 12:05:47',16),(13,15,'','','2025-08-27 12:06:06','\"Communication\"','\"good\"','5','4',50,'\"good\"','2025-08-27 12:06:06',16);
 /*!40000 ALTER TABLE `interview_review` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1382,7 +1406,7 @@ CREATE TABLE `interview_schedule` (
   KEY `fk_interviewer` (`interviewer_id`),
   CONSTRAINT `fk_candidate` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_interviewer` FOREIGN KEY (`interviewer_id`) REFERENCES `interviewer` (`interviewer_id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1391,7 +1415,7 @@ CREATE TABLE `interview_schedule` (
 
 LOCK TABLES `interview_schedule` WRITE;
 /*!40000 ALTER TABLE `interview_schedule` DISABLE KEYS */;
-INSERT INTO `interview_schedule` VALUES (14,16,10,'Technical Round 1','2025-08-27','14:00:00','14:30:00','https://us05web.zoom.us/j/86347486354?pwd=IUK9GykjrztoDkFsOGoJf8Fn8U0tze.1','2025-08-27 12:04:54','Zoom','IST','Technical Round 1','online','[]','30 mins'),(15,16,11,'Technical Round 2','2025-08-29','14:30:00','15:00:00','https://us05web.zoom.us/j/83582361183?pwd=BdFmsMAzxFab7XUFH7soUH5rxUHRIQ.1','2025-08-27 12:05:24','Zoom','IST','Technical Round 2','online','[]','30 mins'),(22,17,10,'Technical Round 1','2025-08-31','14:00:00','15:00:00','https://us05web.zoom.us/j/86862124636?pwd=fRod0N8YhuFm29Ymdk6kgtLwSzvYo1.1','2025-08-29 03:10:36','Zoom','UTC','Technical Round 1','online','[]','60 mins');
+INSERT INTO `interview_schedule` VALUES (32,22,10,'Technical Round 1','2025-08-27','14:00:00','14:30:00','https://us05web.zoom.us/j/84823547418?pwd=rfKg9JfPL2TskSDuZ7F5i2Ildmufh6.1','2025-08-30 14:18:29','Zoom','IST','Technical Round 1','online','[]','30 mins'),(33,22,11,'Technical Round 2','2025-08-29','14:30:00','15:00:00','https://us05web.zoom.us/j/83209492085?pwd=TB7X2tKda3tqy9CqGOJUlXBuvatCAb.1','2025-08-30 14:18:52','Zoom','IST','Technical Round 2',NULL,'[]','30 mins');
 /*!40000 ALTER TABLE `interview_schedule` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1415,7 +1439,7 @@ CREATE TABLE `interview_slot` (
   KEY `fk_round_id` (`round_id`),
   CONSTRAINT `fk_round_id` FOREIGN KEY (`round_id`) REFERENCES `job_interview_design_parameters` (`interview_desing_params_id`),
   CONSTRAINT `int_fk_id` FOREIGN KEY (`interviewer_id`) REFERENCES `interviewer` (`interviewer_id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1424,7 +1448,7 @@ CREATE TABLE `interview_slot` (
 
 LOCK TABLES `interview_slot` WRITE;
 /*!40000 ALTER TABLE `interview_slot` DISABLE KEYS */;
-INSERT INTO `interview_slot` VALUES (36,10,'2025-08-27','14:00:00','14:30:00','2025-08-27 08:29:56',NULL),(37,11,'2025-08-29','14:30:00','15:30:00','2025-08-27 08:30:23',NULL);
+INSERT INTO `interview_slot` VALUES (36,10,'2025-08-27','14:00:00','14:30:00','2025-08-27 08:29:56',NULL),(37,11,'2025-08-29','14:30:00','15:30:00','2025-08-27 08:30:23',NULL),(46,16,'2025-09-09','14:00:00','18:30:00','2025-08-30 09:08:39',NULL),(47,16,'2025-09-09','12:30:00','17:00:00','2025-08-30 09:08:39',NULL),(49,17,'2025-09-01','15:00:00','15:00:00','2025-08-30 09:12:38',NULL);
 /*!40000 ALTER TABLE `interview_slot` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1478,7 +1502,7 @@ CREATE TABLE `interviewer` (
   PRIMARY KEY (`interviewer_id`) USING BTREE,
   UNIQUE KEY `user_id` (`user_id`),
   CONSTRAINT `fk_user_interviewer` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1487,7 +1511,7 @@ CREATE TABLE `interviewer` (
 
 LOCK TABLES `interviewer` WRITE;
 /*!40000 ALTER TABLE `interviewer` DISABLE KEYS */;
-INSERT INTO `interviewer` VALUES (10,'RQ0001','','Anand','Sivakumar','Software Engineer','online','Technical Round 1','anandsivakumar27@gmail.com',NULL,'2025-08-27 08:29:56',NULL),(11,'RQ0001','','Anand','Sivakumar','Software Engineer','online','Technical Round 2','anand040593@gmail.com',NULL,'2025-08-27 08:30:23',NULL);
+INSERT INTO `interviewer` VALUES (10,'RQ0001','','Anand','Sivakumar','Software Engineer','online','Technical Round 1','anandsivakumar27@gmail.com',NULL,'2025-08-27 08:29:56',NULL),(11,'RQ0001','','Anand','Sivakumar','Software Engineer','online','Technical Round 2','anand040593@gmail.com',NULL,'2025-08-27 08:30:23',NULL),(16,'RQ0008','','Abh','Paul','Sales Analyst','Online','Written/Aptitude','abhik.paul@outlook.com',NULL,'2025-08-30 08:49:20',NULL),(17,'RQ0008','','Abik','Paul','Sales Analyst','Online','Hiring Manager Screen','abhik.paul@outlook.com',NULL,'2025-08-30 09:12:20',NULL);
 /*!40000 ALTER TABLE `interviewer` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1528,26 +1552,26 @@ CREATE TABLE `job_hiring_overview` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `hiring_plan_id` varchar(50) NOT NULL DEFAULT '',
   `job_position` varchar(500) NOT NULL DEFAULT '',
-  `tech_stacks` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+  `tech_stacks` text,
   `jd_details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
-  `designation` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
-  `experience_range` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-  `target_companies` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `designation` text,
+  `experience_range` text,
+  `target_companies` text,
   `compensation` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-  `working_model` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `working_model` text,
   `interview_status` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-  `location` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `location` text,
   `education_decision` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `relocation` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `travel_opportunities` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `domain_knowledge` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `visa_requirements` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `background_verification` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-  `bg_verification_type` varchar(255) DEFAULT NULL,
-  `shift_timings` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-  `role_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-  `job_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-  `communication_language` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `bg_verification_type` text,
+  `shift_timings` text,
+  `role_type` text,
+  `job_type` text,
+  `communication_language` text,
   `notice_period` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `additional_comp` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `citizen_requirement` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
@@ -1555,35 +1579,36 @@ CREATE TABLE `job_hiring_overview` (
   `sabbatical` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `screening_questions` text,
   `job_health_requirement` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-  `social_media_links` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
-  `social_media_data` text,
-  `compensation_range` varchar(255) DEFAULT NULL,
-  `language_proficiency` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `social_media_links` text,
+  `social_media_data` json DEFAULT NULL,
+  `compensation_range` text,
+  `language_proficiency` text,
   `requisition_template` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `no_of_openings` int DEFAULT '0',
-  `Created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime DEFAULT NULL,
   `mode_of_working` varchar(255) DEFAULT NULL,
   `relocation_amount` varchar(255) DEFAULT NULL,
   `domain_yn` varchar(255) DEFAULT NULL,
   `domain_name` varchar(255) DEFAULT NULL,
   `citizen_describe` varchar(255) DEFAULT NULL,
   `health_describe` varchar(255) DEFAULT NULL,
-  `education_qualification` varchar(255) DEFAULT NULL,
+  `education_qualification` text,
   `visa_country` varchar(255) DEFAULT NULL,
   `visa_type` varchar(255) DEFAULT NULL,
   `github_link` varchar(255) DEFAULT NULL,
   `currency_type` varchar(50) DEFAULT NULL,
   `relocation_currency_type` varchar(50) DEFAULT NULL,
   `sub_domain_name` varchar(255) DEFAULT NULL,
-  `citizen_countries` varchar(255) DEFAULT NULL,
-  `job_role` varchar(255) DEFAULT NULL,
+  `citizen_countries` text,
+  `job_role` text,
   `domain_details` json DEFAULT NULL,
   `visa_details` json DEFAULT NULL,
   `client_name` varchar(255) DEFAULT NULL,
   `client_id` varchar(50) DEFAULT NULL,
+  `social_media_link` varchar(10) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_client_id` (`client_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1592,7 +1617,7 @@ CREATE TABLE `job_hiring_overview` (
 
 LOCK TABLES `job_hiring_overview` WRITE;
 /*!40000 ALTER TABLE `job_hiring_overview` DISABLE KEYS */;
-INSERT INTO `job_hiring_overview` VALUES (24,'PL0001','Project Manager, Python developer','Python, Django','<p>🧾 Job Title: Python Developer</p><p>🧠 Role Overview</p><p>We’re seeking a Python Developer who thrives on clean architecture, modular design, and scalable backend systems. You’ll be responsible for building and maintaining APIs, integrating with frontend components, and ensuring seamless data flow across CRM modules.</p><p>🔧 Key Responsibilities</p><ul><li>Design and develop RESTful APIs using <strong>FastAPI</strong> and <strong>Django</strong></li><li>Normalize schemas and build scalable models with <strong>SQLAlchemy</strong>, <strong>Alembic</strong>, and <strong>MySQL</strong></li><li>Integrate backend payloads with React-based frontend, ensuring dropdown-ready formatting</li><li>Implement multi-tenant logic and modular expansion for travel, blog, booking, and global settings</li><li>Automate environment setup and deployment pipelines using <strong>Docker</strong>, <strong>GitHub Actions</strong>, or <strong>CI/CD tools</strong></li><li>Rapidly diagnose and patch issues across Python, SQL, and API layers</li><li>Collaborate with frontend and product teams to align endpoints with business logic</li></ul><p>🧰 Required Skills</p><ul><li>Strong proficiency in <strong>Python 3.x</strong>, <strong>FastAPI</strong>, <strong>SQLAlchemy</strong>, and <strong>MySQL</strong></li><li>Experience with <strong>Django</strong>, <strong>Pydantic</strong>, and <strong>Alembic migrations</strong></li><li>Solid understanding of <strong>modular API design</strong>, <strong>schema normalization</strong>, and <strong>multi-tenant architecture</strong></li><li>Familiarity with <strong>Postman</strong>, <strong>Swagger</strong>, and iterative testing workflows</li><li>DevOps instincts: environment setup, interpreter management, reproducible builds</li><li>Bonus: Experience with <strong>n8n</strong>, <strong>OpenAI API</strong>, or workflow automation tools</li></ul><p>🎯 Preferred Traits</p><ul><li>Methodical and persistent in debugging and optimization</li><li>Passionate about clean, DRY, and production-grade code</li><li>Energized by rapid iteration and frontend-backend harmony</li><li>Strong communicator with a bias for clarity and precision</li></ul>','Senior Developer','5-10','Accenture',NULL,'Remote',NULL,'Bangalore',NULL,'Yes','55',NULL,'Yes','Yes','Advances','Day Shift','Full Time','Permanant','English:Advanced',NULL,NULL,'Yes','Yes',NULL,NULL,NULL,NULL,'','0-5',NULL,NULL,10,'2025-08-27 08:25:17',NULL,'25000','Yes','',NULL,NULL,'MBA','','',NULL,'INR','INR','','USA, India','Project Manager, Python developer','[{\"domain_name\": \"Finance\", \"sub_domain_name\": \"Finance\"}]','[{\"visa_type\": \"H1B\", \"visa_country\": \"India\"}]','','CL0001'),(25,'PL0002','UX Designer','Django, SAP Concur','<p>Sample_JD</p>','Senior Developer','5-10','Accenture',NULL,'Remote',NULL,'Bangalore',NULL,'No','10',NULL,'No','No','','Night Shift','Part Time','Contract','English:Beginner',NULL,NULL,'No','No',NULL,NULL,NULL,NULL,'','0-10',NULL,NULL,100,'2025-08-28 13:47:52',NULL,'','No','',NULL,NULL,'B Tech','','',NULL,'INR','','','','UX Designer','[{\"domain_name\": \"\", \"sub_domain_name\": \"\"}]','[{\"visa_type\": \"\", \"visa_country\": \"\"}]','Abc','CL0002');
+INSERT INTO `job_hiring_overview` VALUES (24,'PL0001','Project Manager, Python developer','Python, Django','<p>🧾 Job Title: Python Developer</p><p>🧠 Role Overview</p><p>We’re seeking a Python Developer who thrives on clean architecture, modular design, and scalable backend systems. You’ll be responsible for building and maintaining APIs, integrating with frontend components, and ensuring seamless data flow across CRM modules.</p><p>🔧 Key Responsibilities</p><ul><li>Design and develop RESTful APIs using <strong>FastAPI</strong> and <strong>Django</strong></li><li>Normalize schemas and build scalable models with <strong>SQLAlchemy</strong>, <strong>Alembic</strong>, and <strong>MySQL</strong></li><li>Integrate backend payloads with React-based frontend, ensuring dropdown-ready formatting</li><li>Implement multi-tenant logic and modular expansion for travel, blog, booking, and global settings</li><li>Automate environment setup and deployment pipelines using <strong>Docker</strong>, <strong>GitHub Actions</strong>, or <strong>CI/CD tools</strong></li><li>Rapidly diagnose and patch issues across Python, SQL, and API layers</li><li>Collaborate with frontend and product teams to align endpoints with business logic</li></ul><p>🧰 Required Skills</p><ul><li>Strong proficiency in <strong>Python 3.x</strong>, <strong>FastAPI</strong>, <strong>SQLAlchemy</strong>, and <strong>MySQL</strong></li><li>Experience with <strong>Django</strong>, <strong>Pydantic</strong>, and <strong>Alembic migrations</strong></li><li>Solid understanding of <strong>modular API design</strong>, <strong>schema normalization</strong>, and <strong>multi-tenant architecture</strong></li><li>Familiarity with <strong>Postman</strong>, <strong>Swagger</strong>, and iterative testing workflows</li><li>DevOps instincts: environment setup, interpreter management, reproducible builds</li><li>Bonus: Experience with <strong>n8n</strong>, <strong>OpenAI API</strong>, or workflow automation tools</li></ul><p>🎯 Preferred Traits</p><ul><li>Methodical and persistent in debugging and optimization</li><li>Passionate about clean, DRY, and production-grade code</li><li>Energized by rapid iteration and frontend-backend harmony</li><li>Strong communicator with a bias for clarity and precision</li></ul>','Senior Developer','5-10','Accenture',NULL,'Remote',NULL,'Bangalore',NULL,'Yes','55',NULL,'Yes','Yes','Advances','Day Shift','Full Time','Permanant','English:Advanced',NULL,NULL,'Yes','Yes',NULL,NULL,NULL,NULL,'[]','0-5',NULL,NULL,10,'2025-08-27 08:25:17',NULL,'25000','Yes','',NULL,NULL,'MBA','','',NULL,'INR','INR','','USA, India','Project Manager, Python developer','[{\"domain_name\": \"Finance\", \"sub_domain_name\": \"Finance\"}]','[{\"visa_type\": \"H1B\", \"visa_country\": \"India\"}]','','CL0001',NULL),(25,'PL0002','UX Designer','Django, SAP Concur','<p>Sample_JD</p>','Senior Developer','5-10','Accenture',NULL,'Remote',NULL,'Bangalore',NULL,'No','10',NULL,'No','No','','Night Shift','Part Time','Contract','English:Beginner',NULL,NULL,'No','No',NULL,NULL,NULL,NULL,'[]','0-10',NULL,NULL,100,'2025-08-28 13:47:52',NULL,'','No','',NULL,NULL,'B Tech','','',NULL,'INR','','','','UX Designer','[{\"domain_name\": \"\", \"sub_domain_name\": \"\"}]','[{\"visa_type\": \"\", \"visa_country\": \"\"}]','Abc','CL0002',NULL),(26,'PL0003','Sales Director, Sales Analyst','CRM, Salesforce','<ul><li>Test</li></ul>','Sales Analyst','5-10','Salesforce, Connective RX',NULL,'Remote',NULL,'Bangalore',NULL,'Yes','20',NULL,'No','Yes','Credit Check, debit check','Night Shift','Full Time','Contract','English:Advanced, Hindi:Intermediate',NULL,NULL,'Yes','No',NULL,NULL,NULL,NULL,'[]','0-5',NULL,NULL,6,'2025-08-30 08:11:09',NULL,'50000','No','',NULL,NULL,'B Tech','','',NULL,'INR','INR','','None','Sales Director, Sales Analyst','[{\"domain_name\": \"\", \"sub_domain_name\": \"\"}]','[{\"visa_type\": \"\", \"visa_country\": \"\"}]','Sales Inc','CL0003',NULL);
 /*!40000 ALTER TABLE `job_hiring_overview` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1618,7 +1643,7 @@ CREATE TABLE `job_interview_design_parameters` (
   `feedback` varchar(500) NOT NULL DEFAULT '',
   `duration_metric` varchar(50) DEFAULT 'days',
   PRIMARY KEY (`interview_desing_params_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1627,7 +1652,7 @@ CREATE TABLE `job_interview_design_parameters` (
 
 LOCK TABLES `job_interview_design_parameters` WRITE;
 /*!40000 ALTER TABLE `job_interview_design_parameters` DISABLE KEYS */;
-INSERT INTO `job_interview_design_parameters` VALUES (1,'',1,'Technical Round 1','Optional','good',10,'online',60,50,'','good','mins'),(2,'',1,'Technical Round 2','Optional','good',10,'online',60,50,'','good','mins');
+INSERT INTO `job_interview_design_parameters` VALUES (1,'',1,'Technical Round 1','Optional','good',10,'online',60,50,'','good','mins'),(2,'',1,'Technical Round 2','Optional','good',10,'online',60,50,'','good','mins'),(3,'',2,'Leadership','12','adfda',12,'2312',21,12,'','12323','hours'),(4,'',2,'Product Management','12','123',12312,'123213',24123,88,'','343','days'),(6,'',3,'Written/Aptitude','1','Test',2,'Online',60,20,'','Test','hours'),(7,'',3,'Hiring Manager Screen','1','NA',2,'Online',60,40,'','NA','mins');
 /*!40000 ALTER TABLE `job_interview_design_parameters` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1650,7 +1675,7 @@ CREATE TABLE `job_interview_design_screen` (
   `status` varchar(800) NOT NULL,
   `feedback` varchar(1000) NOT NULL,
   PRIMARY KEY (`interview_design_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1659,7 +1684,7 @@ CREATE TABLE `job_interview_design_screen` (
 
 LOCK TABLES `job_interview_design_screen` WRITE;
 /*!40000 ALTER TABLE `job_interview_design_screen` DISABLE KEYS */;
-INSERT INTO `job_interview_design_screen` VALUES (1,'PL0001','RQ0001','','Python','',2,0,'','');
+INSERT INTO `job_interview_design_screen` VALUES (1,'PL0001','RQ0001','','Python','',2,0,'',''),(2,'','RQ0006','','Java','',2,0,'',''),(3,'PL0003','RQ0008','','CRM, Salesforce','',2,0,'','');
 /*!40000 ALTER TABLE `job_interview_design_screen` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1695,7 +1720,7 @@ CREATE TABLE `job_interview_planning` (
   `no_of_interviewer_need` int NOT NULL DEFAULT '0',
   `leave_adjustment` float NOT NULL DEFAULT '0',
   PRIMARY KEY (`interview_plan_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1704,7 +1729,7 @@ CREATE TABLE `job_interview_planning` (
 
 LOCK TABLES `job_interview_planning` WRITE;
 /*!40000 ALTER TABLE `job_interview_planning` DISABLE KEYS */;
-INSERT INTO `job_interview_planning` VALUES (8,'PL0001','RQ0001',10,0,8,10,20,0,10,10,10,10,10,40,200,0,200,2000,20000,500,2000,4500);
+INSERT INTO `job_interview_planning` VALUES (8,'PL0001','RQ0001',10,0,8,10,20,0,2,1,2,5,10,40,200,0,200,200,400,10,40,45),(9,'','RQ0006',10,0,8,12,21,0,231,231,2312,23123,213,40,252,0,252,58212,134586144,3364654,13458614,898614000000),(10,'PL0003','RQ0008',10,0,8,6,25,0,4,3,1,3,2,40,150,0,150,450,450,11,45,52);
 /*!40000 ALTER TABLE `job_interview_planning` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1798,7 +1823,7 @@ CREATE TABLE `jobrequisition` (
   UNIQUE KEY `RequisitionID` (`RequisitionID`),
   KEY `fk_hiring_manager` (`HiringManagerID`),
   KEY `plan_id_fk` (`Planning_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1807,7 +1832,7 @@ CREATE TABLE `jobrequisition` (
 
 LOCK TABLES `jobrequisition` WRITE;
 /*!40000 ALTER TABLE `jobrequisition` DISABLE KEYS */;
-INSERT INTO `jobrequisition` VALUES (15,'RQ0001','24','Software Engineer',1,'PixelREQ',10,'0','B.Tech','good','Accenture','CL0001','Approved','2025-08-27 08:25:42','2025-08-27 08:30:40','2025-08-27','2025-09-27'),(16,'RQ0002','25','Not Provided',1,'Not Assigned',100,'0','B.Tech','','Abc','CL0002','Incomplete form','2025-08-29 02:14:20','2025-08-29 02:14:20','2025-08-29','2025-09-29');
+INSERT INTO `jobrequisition` VALUES (15,'RQ0001','24','Software Engineer',1,'PixelREQ',10,'0','B.Tech','good','Accenture','CL0001','Approved','2025-08-27 08:25:42','2025-08-30 06:17:21','2025-08-27','2025-09-27'),(16,'RQ0002','25','Project Manager',1,'PixelREQ',100,'0','B.Tech','Approve','Abc','CL0002','Approved','2025-08-29 02:14:20','2025-08-30 12:12:49','2025-08-29','2025-09-29'),(17,'RQ0003','24','Project Manager',1,'PixelREQ,Pixelvendor',10,'0','B.Tech','Approve','Dell Emc',NULL,'Approved','2025-08-30 05:22:27','2025-08-30 12:12:49','2025-09-06','2025-10-31'),(20,'RQ0005','25','Not Provided',1,'Not Assigned',100,'0','B.Tech','','Abc','CL0002','Incomplete form','2025-08-30 06:24:49','2025-08-30 06:24:49','2025-09-07','2025-10-03'),(22,'RQ0007','25','Not Provided',1,'Not Assigned',45,'0','B.Tech','','Hp',NULL,'Incomplete form','2025-08-30 08:05:03','2025-08-30 08:05:03','2025-09-22','2025-12-22'),(23,'RQ0008','26','Sales Analyst',1,'PixelREQ',6,'0','B.Tech','approve, Pls add Abhik as Recruiter here','Sales Inc',NULL,'Approved','2025-08-30 08:16:39','2025-08-30 08:55:04','2025-09-08','2025-11-30');
 /*!40000 ALTER TABLE `jobrequisition` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1873,7 +1898,7 @@ CREATE TABLE `offer_negotiation` (
   UNIQUE KEY `id` (`id`),
   KEY `fk_candidate_offer` (`candidate_id`),
   CONSTRAINT `fk_candidate_offer` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`CandidateID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1882,7 +1907,7 @@ CREATE TABLE `offer_negotiation` (
 
 LOCK TABLES `offer_negotiation` WRITE;
 /*!40000 ALTER TABLE `offer_negotiation` DISABLE KEYS */;
-INSERT INTO `offer_negotiation` VALUES (8,'RQ0001','Accenture','CL0001','CandidateFirst7882','CandidateLast7882','Software Engineer',10000000.00,10000000.00,'developer','developer','bangalore','bangalore','2025-08-30','2025-08-30','Hybrid','Hybrid','Successful','good','2025-08-27 12:06:11','2025-08-29 02:16:37',16);
+INSERT INTO `offer_negotiation` VALUES (11,'RQ0001','Accenture','CL0001','Aravind','Kumar','Software Engineer',20000000.00,20000000.00,'Developer','Developer','Bangalore','Bangalore','2025-09-26','2025-09-26','Remote','Remote','Successful','good','2025-08-30 14:19:58','2025-08-30 14:21:35',22);
 /*!40000 ALTER TABLE `offer_negotiation` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1928,7 +1953,7 @@ CREATE TABLE `offer_salary_component` (
   PRIMARY KEY (`id`),
   KEY `offer_id` (`offer_id`),
   CONSTRAINT `offer_salary_component_ibfk_1` FOREIGN KEY (`offer_id`) REFERENCES `generated_offer` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1937,7 +1962,7 @@ CREATE TABLE `offer_salary_component` (
 
 LOCK TABLES `offer_salary_component` WRITE;
 /*!40000 ALTER TABLE `offer_salary_component` DISABLE KEYS */;
-INSERT INTO `offer_salary_component` VALUES (5,3,'Base Salary','10000000.00');
+INSERT INTO `offer_salary_component` VALUES (10,6,'Base Salary','20000000.00');
 /*!40000 ALTER TABLE `offer_salary_component` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2051,7 +2076,7 @@ CREATE TABLE `posting_details` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2060,7 +2085,7 @@ CREATE TABLE `posting_details` (
 
 LOCK TABLES `posting_details` WRITE;
 /*!40000 ALTER TABLE `posting_details` DISABLE KEYS */;
-INSERT INTO `posting_details` VALUES (5,'RQ0001','2-5 years','senior_developer','','Asia','<p>🧾 Job Title: Python Developer</p><p>Location: Bangalore / Remote</p><p>Employment Type: Full-Time / Contract</p><p>Experience Level: 2–6 years</p><p>Compensation Range: ₹8–18 LPA (based on experience and skill depth)</p><p><br></p><p>🧠 Role Overview</p><p>We’re seeking a Python Developer who thrives on clean architecture, modular design, and scalable backend systems. You’ll be responsible for building and maintaining APIs, integrating with frontend components, and ensuring seamless data flow across CRM modules.</p><p><br></p><p>🔧 Key Responsibilities</p><p>• 	Design and develop RESTful APIs using FastAPI and Django</p><p>• 	Normalize schemas and build scalable models with SQLAlchemy, Alembic, and MySQL</p><p>• 	Integrate backend payloads with React-based frontend, ensuring dropdown-ready formatting</p><p>• 	Implement multi-tenant logic and modular expansion for travel, blog, booking, and global settings</p><p>• 	Automate environment setup and deployment pipelines using Docker, GitHub Actions, or CI/CD tools</p><p>• 	Rapidly diagnose and patch issues across Python, SQL, and API layers</p><p>• 	Collaborate with frontend and product teams to align endpoints with business logic</p><p><br></p><p>🧰 Required Skills</p><p>• 	Strong proficiency in Python 3.x, FastAPI, SQLAlchemy, and MySQL</p><p>• 	Experience with Django, Pydantic, and Alembic migrations</p><p>• 	Solid understanding of modular API design, schema normalization, and multi-tenant architecture</p><p>• 	Familiarity with Postman, Swagger, and iterative testing workflows</p><p>• 	DevOps instincts: environment setup, interpreter management, reproducible builds</p><p>• 	Bonus: Experience with n8n, OpenAI API, or workflow automation tools</p><p><br></p><p>🎯 Preferred Traits</p><p>• 	Methodical and persistent in debugging and optimization</p><p>• 	Passionate about clean, DRY, and production-grade code</p><p>• 	Energized by rapid iteration and frontend-backend harmony</p><p>• 	Strong communicator with a bias for clarity and precision</p>','<p>🧾 Job Title: Python Developer</p><p>Location: Bangalore / Remote</p><p>Employment Type: Full-Time / Contract</p><p>Experience Level: 2–6 years</p><p>Compensation Range: ₹8–18 LPA (based on experience and skill depth)</p><p><br></p><p>🧠 Role Overview</p><p>We’re seeking a Python Developer who thrives on clean architecture, modular design, and scalable backend systems. You’ll be responsible for building and maintaining APIs, integrating with frontend components, and ensuring seamless data flow across CRM modules.</p><p><br></p><p>🔧 Key Responsibilities</p><p>• 	Design and develop RESTful APIs using FastAPI and Django</p><p>• 	Normalize schemas and build scalable models with SQLAlchemy, Alembic, and MySQL</p><p>• 	Integrate backend payloads with React-based frontend, ensuring dropdown-ready formatting</p><p>• 	Implement multi-tenant logic and modular expansion for travel, blog, booking, and global settings</p><p>• 	Automate environment setup and deployment pipelines using Docker, GitHub Actions, or CI/CD tools</p><p>• 	Rapidly diagnose and patch issues across Python, SQL, and API layers</p><p>• 	Collaborate with frontend and product teams to align endpoints with business logic</p><p><br></p><p>🧰 Required Skills</p><p>• 	Strong proficiency in Python 3.x, FastAPI, SQLAlchemy, and MySQL</p><p>• 	Experience with Django, Pydantic, and Alembic migrations</p><p>• 	Solid understanding of modular API design, schema normalization, and multi-tenant architecture</p><p>• 	Familiarity with Postman, Swagger, and iterative testing workflows</p><p>• 	DevOps instincts: environment setup, interpreter management, reproducible builds</p><p>• 	Bonus: Experience with n8n, OpenAI API, or workflow automation tools</p><p><br></p><p>🎯 Preferred Traits</p><p>• 	Methodical and persistent in debugging and optimization</p><p>• 	Passionate about clean, DRY, and production-grade code</p><p>• 	Energized by rapid iteration and frontend-backend harmony</p><p>• 	Strong communicator with a bias for clarity and precision</p>','mtech','2025-08-27 08:27:19','2025-08-27 08:27:19');
+INSERT INTO `posting_details` VALUES (5,'RQ0001','2-5 years','senior_developer','','Asia','<p>🧾 Job Title: Python Developer</p><p>Location: Bangalore / Remote</p><p>Employment Type: Full-Time / Contract</p><p>Experience Level: 2–6 years</p><p>Compensation Range: ₹8–18 LPA (based on experience and skill depth)</p><p><br></p><p>🧠 Role Overview</p><p>We’re seeking a Python Developer who thrives on clean architecture, modular design, and scalable backend systems. You’ll be responsible for building and maintaining APIs, integrating with frontend components, and ensuring seamless data flow across CRM modules.</p><p><br></p><p>🔧 Key Responsibilities</p><p>• Design and develop RESTful APIs using FastAPI and Django</p><p>• Normalize schemas and build scalable models with SQLAlchemy, Alembic, and MySQL</p><p>• Integrate backend payloads with React-based frontend, ensuring dropdown-ready formatting</p><p>• Implement multi-tenant logic and modular expansion for travel, blog, booking, and global settings</p><p>• Automate environment setup and deployment pipelines using Docker, GitHub Actions, or CI/CD tools</p><p>• Rapidly diagnose and patch issues across Python, SQL, and API layers</p><p>• Collaborate with frontend and product teams to align endpoints with business logic</p><p><br></p><p>🧰 Required Skills</p><p>• Strong proficiency in Python 3.x, FastAPI, SQLAlchemy, and MySQL</p><p>• Experience with Django, Pydantic, and Alembic migrations</p><p>• Solid understanding of modular API design, schema normalization, and multi-tenant architecture</p><p>• Familiarity with Postman, Swagger, and iterative testing workflows</p><p>• DevOps instincts: environment setup, interpreter management, reproducible builds</p><p>• Bonus: Experience with n8n, OpenAI API, or workflow automation tools</p><p><br></p><p>🎯 Preferred Traits</p><p>• Methodical and persistent in debugging and optimization</p><p>• Passionate about clean, DRY, and production-grade code</p><p>• Energized by rapid iteration and frontend-backend harmony</p><p>• Strong communicator with a bias for clarity and precision</p>','<p>🧾 Job Title: Python Developer</p><p>Location: Bangalore / Remote</p><p>Employment Type: Full-Time / Contract</p><p>Experience Level: 2–6 years</p><p>Compensation Range: ₹8–18 LPA (based on experience and skill depth)</p><p><br></p><p>🧠 Role Overview</p><p>We’re seeking a Python Developer who thrives on clean architecture, modular design, and scalable backend systems. You’ll be responsible for building and maintaining APIs, integrating with frontend components, and ensuring seamless data flow across CRM modules.</p><p><br></p><p>🔧 Key Responsibilities</p><p>• Design and develop RESTful APIs using FastAPI and Django</p><p>• Normalize schemas and build scalable models with SQLAlchemy, Alembic, and MySQL</p><p>• Integrate backend payloads with React-based frontend, ensuring dropdown-ready formatting</p><p>• Implement multi-tenant logic and modular expansion for travel, blog, booking, and global settings</p><p>• Automate environment setup and deployment pipelines using Docker, GitHub Actions, or CI/CD tools</p><p>• Rapidly diagnose and patch issues across Python, SQL, and API layers</p><p>• Collaborate with frontend and product teams to align endpoints with business logic</p><p><br></p><p>🧰 Required Skills</p><p>• Strong proficiency in Python 3.x, FastAPI, SQLAlchemy, and MySQL</p><p>• Experience with Django, Pydantic, and Alembic migrations</p><p>• Solid understanding of modular API design, schema normalization, and multi-tenant architecture</p><p>• Familiarity with Postman, Swagger, and iterative testing workflows</p><p>• DevOps instincts: environment setup, interpreter management, reproducible builds</p><p>• Bonus: Experience with n8n, OpenAI API, or workflow automation tools</p><p><br></p><p>🎯 Preferred Traits</p><p>• Methodical and persistent in debugging and optimization</p><p>• Passionate about clean, DRY, and production-grade code</p><p>• Energized by rapid iteration and frontend-backend harmony</p><p>• Strong communicator with a bias for clarity and precision</p>','mtech','2025-08-27 08:27:19','2025-08-30 06:17:21'),(6,'RQ0002','2-5 years','Senior Developer','','Asia','<p>Sample</p>','<p>Sample</p>','B Tech','2025-08-30 07:05:48','2025-08-30 07:08:40'),(7,'RQ0003','2-5 years','Software Engineer I','','Asia','<p>Sample</p>','<p>Sample</p>','B Tech','2025-08-30 07:07:52','2025-08-30 07:07:52'),(9,'RQ0008','2-5 years, 10+ years','Sales Analyst','','Asia','<p>NA</p>','<p>NA</p>','B Tech, MBA','2025-08-30 08:27:43','2025-08-30 08:30:03');
 /*!40000 ALTER TABLE `posting_details` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2199,7 +2224,7 @@ CREATE TABLE `requisition_details` (
   `requisition_date` date DEFAULT NULL,
   `due_requisition_date` date DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2208,7 +2233,7 @@ CREATE TABLE `requisition_details` (
 
 LOCK TABLES `requisition_details` WRITE;
 /*!40000 ALTER TABLE `requisition_details` DISABLE KEYS */;
-INSERT INTO `requisition_details` VALUES (5,'RQ0001','Software Engineer I','Software Engineer I','Software Engineer','Finance','Banking','Banking','Banking','Bangalore','ASIA','General Employee Group','General Sub Group',NULL,NULL,'L4','Accenture','','M1','M1.1','Design, UI','aws, docker','Remote','Part Time','Yes',0,'Not Assigned','No Team Assigned','No ISG Team Assigned','Not Available','2025-08-27 08:27:19','2025-08-27 08:27:19',NULL,NULL);
+INSERT INTO `requisition_details` VALUES (5,'RQ0001','Software Engineer I','Software Engineer I','Software Engineer','Finance','Banking','Banking','Banking','Bangalore','ASIA','General Employee Group','General Sub Group',NULL,NULL,'L4','Accenture','','M1','M1.1','Design, UI','aws, docker','Remote','Part Time','Yes',0,'Not Assigned','No Team Assigned','No ISG Team Assigned','Not Available','2025-08-27 08:27:19','2025-08-30 06:17:21',NULL,NULL),(6,'RQ0002','Product Owner I','Product Owner I','Project Manager','Finance','Banking','Banking','Banking','Bangalore','ASIA','General Employee Group','General Sub Group',NULL,NULL,'L4','Abc','','P3','P3.1','Design, java','docker, graphql','Remote','Full Time','Yes',0,'Not Assigned','No Team Assigned','No ISG Team Assigned','Not Available','2025-08-30 07:05:48','2025-08-30 07:08:40',NULL,NULL),(7,'RQ0003','Product Owner I','Product Owner I','Project Manager','Finance','Banking','Banking','Banking','Bangalore','ASIA','General Employee Group','General Sub Group',NULL,NULL,'L4','Dell Emc','','P3','P3.1','Design, java','aws','Remote','Full Time','No',0,'Not Assigned','No Team Assigned','No ISG Team Assigned','Not Available','2025-08-30 07:07:52','2025-08-30 07:07:52',NULL,NULL),(9,'RQ0008','Sr Director, Engineering','Sr Director, Engineering','Sales Analyst','SWE','Insurance','Insurance','Insurance','Bangalore, Pune','ASIA','General Employee Group','General Sub Group',NULL,NULL,'P4, M3','Sales Inc','','P4','P4.1','Automation','kubernetes','Remote','Part Time','No',0,'Not Assigned','No Team Assigned','No ISG Team Assigned','Not Available','2025-08-30 08:27:43','2025-08-30 08:30:03',NULL,NULL);
 /*!40000 ALTER TABLE `requisition_details` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2320,7 +2345,7 @@ CREATE TABLE `users_details` (
 
 LOCK TABLES `users_details` WRITE;
 /*!40000 ALTER TABLE `users_details` DISABLE KEYS */;
-INSERT INTO `users_details` VALUES (1,'PixelHR',1,'pixelhr@gmail.com','pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=',NULL,'2025-05-26 05:10:52'),(2,'PixelREQ',2,'pixelreq@gmail.com','pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=',NULL,'2025-05-26 05:10:52'),(3,'PixelBO',3,'pixelbo@gmail.com','pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=',NULL,'2025-05-26 05:10:52'),(4,'PixelCan',4,'pixelint@gmail.com','pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=',NULL,'2025-05-26 05:10:52'),(5,'ANAND',1,'anand040593@gmail.com','pbkdf2_sha256$1000000$s5wZjZTM19ND2LpAqQOOzD$lNsk5Rxt9kUB3yHXp0c9EUo3ZmW7CB/BsddEbUcQWSA=','KulesSJQnXgQqCyZOhoE71udhj6ukHnz','2025-05-26 05:10:52'),(6,'Kumar',4,'kumar.sachidanand@gmail.com','pbkdf2_sha256$1000000$s5wZjZTM19ND2LpAqQOOzD$lNsk5Rxt9kUB3yHXp0c9EUo3ZmW7CB/BsddEbUcQWSA=',NULL,'2025-05-26 05:10:52'),(7,'Pixelvendor',5,'pixelven@gmail.com','pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=',NULL,'2025-05-26 05:10:52');
+INSERT INTO `users_details` VALUES (1,'PixelHR',1,'pixelhr@gmail.com','pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=',NULL,'2025-05-26 05:10:52'),(2,'PixelREQ',2,'pixelreq@gmail.com','pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=',NULL,'2025-05-26 05:10:52'),(3,'PixelBO',3,'pixelbo@gmail.com','pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=',NULL,'2025-05-26 05:10:52'),(4,'PixelInt',4,'pixelint@gmail.com','pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=',NULL,'2025-05-26 05:10:52'),(5,'ANAND',1,'anand040593@gmail.com','pbkdf2_sha256$1000000$s5wZjZTM19ND2LpAqQOOzD$lNsk5Rxt9kUB3yHXp0c9EUo3ZmW7CB/BsddEbUcQWSA=','KulesSJQnXgQqCyZOhoE71udhj6ukHnz','2025-05-26 05:10:52'),(6,'Kumar',4,'kumar.sachidanand@gmail.com','pbkdf2_sha256$1000000$s5wZjZTM19ND2LpAqQOOzD$lNsk5Rxt9kUB3yHXp0c9EUo3ZmW7CB/BsddEbUcQWSA=',NULL,'2025-05-26 05:10:52'),(7,'Pixelvendor',5,'pixelven@gmail.com','pbkdf2_sha256$1000000$N1sbu22wbKw9gJTFmbpq4R$vpDXvWtFyAzqayvxGYm7EM54rRst5xNuRJMOFbmPlVg=',NULL,'2025-05-26 05:10:52');
 /*!40000 ALTER TABLE `users_details` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -2333,4 +2358,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-29  9:43:13
+-- Dump completed on 2025-08-31  7:55:20
