@@ -907,32 +907,37 @@ class JobRequisitionDetailSerializer(serializers.ModelSerializer):
 #         fields = '__all__'
 
 class InterviewDesignParametersSerializer(serializers.ModelSerializer):
-    score_card_name = serializers.CharField(source='score_card')
-    
+    score_card_name = serializers.CharField(source='score_card', read_only=True)
+
+    weightage = serializers.IntegerField(source='Weightage')
+    skills = serializers.JSONField()
+
     class Meta:
         model = InterviewDesignParameters
         fields = [
-            'score_card_name','interview_design_id', 'options', 'guideline', 'min_questions',
-            'screen_type', 'duration', 'Weightage', 'mode',
-            'feedback','duration_metric'
+            'score_card_name','score_card', 'interview_design_id', 'options', 'guideline', 'min_questions',
+            'screen_type', 'duration', 'weightage', 'mode',
+            'feedback', 'duration_metric', 'skills'
         ]
+
 
 class InterviewDesignScreenSerializer(serializers.ModelSerializer):
     plan_id = serializers.CharField(source='hiring_plan_id', allow_blank=True, required=False)
     params = serializers.SerializerMethodField()
 
-
     class Meta:
         model = InterviewDesignScreen
         fields = [
-            'plan_id', 'req_id','interview_design_id', 'tech_stacks', 'screening_type',
-            'no_of_interview_round', 'final_rating', 'status',
+            'plan_id', 'req_id', 'interview_design_id', 'tech_stacks',
+            'screening_type', 'no_of_interview_round', 'final_rating', 'status',
             'feedback', 'params'
         ]
 
     def get_params(self, obj):
         param_qs = InterviewDesignParameters.objects.filter(interview_design_id=obj.interview_design_id)
         return InterviewDesignParametersSerializer(param_qs, many=True).data
+
+
 
 
 class StageAlertResponsibilitySerializer(serializers.ModelSerializer):

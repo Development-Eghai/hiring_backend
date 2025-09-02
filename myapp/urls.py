@@ -83,6 +83,7 @@ urlpatterns = [
     path("api/interviewer-context/", InterviewerContextAPIView.as_view(), name="interviewer_context"),
 
     path("candidates/detail/", CandidateDetailView.as_view(), name="candidate-detail"),
+    path("get-reviews-by-candidate/", get_reviews_by_candidate, name="get-reviews-by-candidate"),
     path("candidates/screening/", CandidateScreeningView.as_view(), name="candidate-screening"),#TODO screen to develop and integrated
     path("candidates/screening/view/", CandidateScreening.as_view(), name="candidate-screening-view"),#TODO screen to develop and integrated
     path('api/approve-decision', CandidateApprovalDecisionView.as_view(), name='candidate_approval_decision'),

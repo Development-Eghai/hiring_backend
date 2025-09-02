@@ -582,7 +582,7 @@ class CandidateReview(models.Model):
     )
     ParameterDefined = models.CharField(max_length=100, null=True, blank=True)
     Guidelines = models.CharField(max_length=100, null=True, blank=True)
-    MinimumQuestions = models.IntegerField(null=True, blank=True)
+    MinimumQuestions = models.TextField(null=True, blank=True)
     ActualRating = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
     Feedback = models.TextField(null=True, blank=True)
     Created_at = models.DateTimeField(auto_now_add=True)
@@ -636,8 +636,6 @@ class InterviewSchedule(models.Model):
     durations = models.CharField(max_length=50, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         db_table = 'interview_schedule'
 
@@ -684,6 +682,7 @@ class InterviewDesignParameters(models.Model):
     guideline = models.CharField(max_length=255,blank=True)
     min_questions = models.IntegerField(default=0)
     screen_type = models.CharField(max_length=255,blank=True)
+    skills = models.JSONField(blank=True, default=list)
     duration = models.IntegerField(default=0)
     mode = models.CharField(max_length=255,blank=True)
     Weightage = models.IntegerField(default=0)
