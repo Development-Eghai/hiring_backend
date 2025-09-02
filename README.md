@@ -88,6 +88,39 @@ If your API requires environment variables (such as authentication keys, base UR
 - Enter required parameters or body content.
 - Click Send to execute the API request.
 
+# Deployment SOP (Standard Operating Procedure)
+
+## 🔹 Server Access
+1. Open **PuTTY**.
+2. Enter the IP address
+3. Click **Open**.
+4. Login`
+
+---
+
+## 🔹 Backend Deployment
+1. Navigate to the backend project folder:  
+   ```bash
+   cd project/hiring_backend/
+   ```
+2. Pull the latest code:  
+   ```bash
+   git pull
+   ```
+3. Stop existing containers:  
+   ```bash
+   docker compose down
+   ```
+4. Build and start new containers in detached mode:  
+   ```bash
+   docker compose up -d --build
+   ```
+5. Exit the server:  
+   ```bash
+   exit
+   ```
+
+---
   
   
   
