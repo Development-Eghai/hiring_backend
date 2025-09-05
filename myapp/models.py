@@ -585,6 +585,8 @@ class CandidateReview(models.Model):
     MinimumQuestions = models.TextField(null=True, blank=True)
     ActualRating = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
     Feedback = models.TextField(null=True, blank=True)
+    Weightage = models.IntegerField(null=True, blank=True)
+    ScreeningDate = models.DateField(null=True, blank=True)
     Created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -677,6 +679,7 @@ class InterviewDesignParameters(models.Model):
     interview_desing_params_id = models.AutoField(primary_key=True)
     hiring_plan_id = models.CharField(max_length=50,blank=True)
     interview_design_id = models.IntegerField(null=False)
+    round_no = models.CharField(max_length=255,blank=True)
     score_card = models.CharField(max_length=255,blank=True)
     options = models.CharField(max_length=255,blank=True)
     guideline = models.CharField(max_length=255,blank=True)

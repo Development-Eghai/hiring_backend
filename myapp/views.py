@@ -1983,12 +1983,19 @@ class ScheduleContextAPIView(APIView):
         design_screen = InterviewDesignScreen.objects.filter(req_id=req_id).first()
         interview_design_id = design_screen.interview_design_id if design_screen else None
 
-        round_names = []
+        round_metadata = []
         if interview_design_id:
             design_params = InterviewDesignParameters.objects.filter(
                 interview_design_id=interview_design_id
             ).order_by("interview_desing_params_id")
-            round_names = [param.score_card for param in design_params]
+            round_metadata = [
+                {
+                    "score_card": param.score_card,
+                    "round_no": param.round_no.strip() if param.round_no else ""
+                }
+                for param in design_params
+            ]
+
 
         candidate = instance.candidates.first()
         if not candidate:
@@ -2016,12 +2023,20 @@ class ScheduleContextAPIView(APIView):
                     "time": slot.start_time.strftime("%I:%M %p")
                 } for slot in slot_qs
             ]
+
+            round_info = round_metadata[i] if i < len(round_metadata) else {}
+            round_name = round_info.get("score_card", f"Round {i+1}")
+            round_no = round_info.get("round_no", "").strip()
+            round_no_suffix = f" R{round_no}" if round_no.isdigit() else ""
+
+
             interviewer_payload.append({
-                "name": f"{interviewer.first_name} {interviewer.last_name}",
+                "name": f"{interviewer.first_name} {interviewer.last_name}{round_no_suffix}",
                 "mode": interviewer.interview_mode if interviewer.interview_mode else "Not Specified",
-                "round_name": round_names[i] if i < len(round_names) else f"Round {i+1}",
+                "round_name": round_name,
                 "slots": slots
             })
+
 
         # 🎯 Final payload
         response_payload = {
@@ -2114,7 +2129,9 @@ class InterviewerListCreateAPIView(generics.ListCreateAPIView):
 
     def list(self, request, *args, **kwargs):
         try:
-            serializer = self.get_serializer(self.get_queryset(), many=True)
+            queryset = Interviewer.objects.prefetch_related('slots').order_by('-created_at')
+            serializer = self.get_serializer(queryset, many=True)
+        
             return Response(api_json_response_format(True, "Interviewer list retrieved successfully", 200, serializer.data), status=200)
         except Exception as e:
             return Response(api_json_response_format(False, str(e), 500, []), status=200)
@@ -3961,15 +3978,37 @@ class InterviewerListByRequisitionView(APIView):
             if not requisition_id:
                 return Response(api_json_response_format(False, "Missing requisition_id", 400, {}), status=200)
 
+            # Step 1: Get interview_design_id from InterviewDesignScreen
+            design_screen = InterviewDesignScreen.objects.filter(req_id=requisition_id).first()
+            interview_design_id = design_screen.interview_design_id if design_screen else None
+
+            # Step 2: Build score_card → round_no map
+            round_map = {}
+            if interview_design_id:
+                design_params = InterviewDesignParameters.objects.filter(interview_design_id=interview_design_id)
+                round_map = {
+                    param.score_card.strip(): param.round_no.strip()
+                    for param in design_params
+                    if param.score_card and param.round_no
+                }
+
+            # Step 3: Fetch interviewers and append round suffix
             candidates = Interviewer.objects.filter(req_id__RequisitionID=requisition_id)
-            data = [
-                {"id": c.interviewer_id, "name": f"{c.first_name} {c.last_name}"}
-                for c in candidates
-            ]
+            data = []
+            for c in candidates:
+                stage = c.interviewer_stage.strip() if c.interviewer_stage else ""
+                round_no = round_map.get(stage, "")
+                round_suffix = f" R{round_no}" if round_no.isdigit() else ""
+                full_name = f"{c.first_name} {c.last_name}{round_suffix}".strip()
+                data.append({
+                    "id": c.interviewer_id,
+                    "name": full_name
+                })
+
             return Response(api_json_response_format(True, "interviewer fetched successfully", 200, data), status=200)
+
         except Exception as e:
             return Response(api_json_response_format(False, str(e), 500, {}), status=200)
-
 
 class CandidateScreening(APIView):
     def post(self, request):
@@ -4154,35 +4193,47 @@ class CandidateScreeningView(APIView):
         final_feedback = request.data.get("final_feedback")
         result = request.data.get("result")
 
+        # Parse screening date
+        screening_date_str = request.data.get("screeningDate")
+        screening_date = None
+        if screening_date_str:
+            try:
+                screening_date = datetime.strptime(screening_date_str, "%d/%m/%Y").date()
+            except ValueError:
+                return Response(api_json_response_format(
+                    False, "Invalid screeningDate format. Expected DD/MM/YYYY.", 400, {}
+                ), status=200)
+
         try:
             with transaction.atomic():
                 for review in reviews_data:
-                    review_id = review.get("id")  # 🔍 Expecting review ID from frontend
+                    review_id = review.get("id")
 
                     if review_id:
-                        # 🔄 Update existing review
                         try:
                             existing_review = CandidateReview.objects.get(pk=review_id, CandidateID=candidate)
-                            existing_review.ParameterDefined = review.get("ParameterDefined", existing_review.ParameterDefined)
+                            existing_review.ParameterDefined = review.get("parameterDefined", existing_review.ParameterDefined)
                             existing_review.Guidelines = review.get("Guidelines", existing_review.Guidelines)
-                            existing_review.MinimumQuestions = review.get("MinimumQuestions", existing_review.MinimumQuestions)
+                            existing_review.MinimumQuestions = review.get("Skills", existing_review.MinimumQuestions)
                             existing_review.ActualRating = review.get("ActualRating", existing_review.ActualRating)
                             existing_review.Feedback = review.get("Feedback", existing_review.Feedback)
+                            existing_review.Weightage = review.get("weightage", existing_review.Weightage)
+                            existing_review.ScreeningDate = screening_date
                             existing_review.save()
                         except CandidateReview.DoesNotExist:
-                            continue  # Or optionally create a new one if not found
+                            continue
                     else:
-                        # ➕ Create new review if no ID is provided
                         CandidateReview.objects.create(
                             CandidateID=candidate,
-                            ParameterDefined=review.get("ParameterDefined"),
+                            ParameterDefined=review.get("parameterDefined"),
                             Guidelines=review.get("Guidelines"),
-                            MinimumQuestions=review.get("MinimumQuestions"),
+                            MinimumQuestions=review.get("Skills"),
                             ActualRating=review.get("ActualRating"),
-                            Feedback=review.get("Feedback")
+                            Feedback=review.get("Feedback"),
+                            Weightage=review.get("weightage"),
+                            ScreeningDate=screening_date
                         )
 
-                # 🎯 Update candidate-level fields
                 if final_rating is not None:
                     candidate.Final_rating = final_rating
                 if final_feedback:
@@ -4227,15 +4278,29 @@ class CandidateScreeningView(APIView):
         final_rating = request.data.get("final_rating")
         final_feedback = request.data.get("final_feedback")
         result = request.data.get("result")
+        screening_date_str = request.data.get("screeningDate")
+        screening_date = None
+        if screening_date_str:
+            try:
+                screening_date = datetime.strptime(screening_date_str, "%d/%m/%Y").date()
+            except ValueError:
+                return Response(api_json_response_format(
+                    False, "Invalid screeningDate format. Expected DD/MM/YYYY.", 400, {}
+                ), status=200)
+
+
 
         review_instances = [
             CandidateReview(
                 CandidateID=candidate,
                 ParameterDefined=review.get("parameterDefined"),
                 Guidelines=review.get("Guidelines"),
-                MinimumQuestions=review.get("MinimumQuestions"),
+                MinimumQuestions=review.get("Skills"),
+                Weightage=review.get("weightage"),
                 ActualRating=review.get("ActualRating"),
-                Feedback=review.get("Feedback")
+                Feedback=review.get("Feedback"),
+                ScreeningDate=screening_date
+
             )
             for review in reviews_data
         ]
@@ -4361,11 +4426,13 @@ def get_reviews_by_candidate(request):
 
     try:
         reviews = CandidateReview.objects.filter(CandidateID=candidate).values(
+            id=F("ReviewID"),
             score_card=F("ParameterDefined"),
             guideline=F("Guidelines"),
             min_questions=F("MinimumQuestions"),
             actual_rating=F("ActualRating"),
-            feedback=F("Feedback")
+            feedback=F("Feedback"),
+            weightage=F("Weightage"),
         )
 
         formatted_reviews = []
@@ -4373,12 +4440,21 @@ def get_reviews_by_candidate(request):
             review["skills"] = review["min_questions"]
             formatted_reviews.append(review)
 
+        response_payload = {
+            "candidate_summary": {
+                "final_rating": candidate.Final_rating,
+                "final_feedback": candidate.Feedback,
+                "result": candidate.Result
+            },
+            "reviews": formatted_reviews
+        }
+
         return Response(
             api_json_response_format(
                 True,
                 "Candidate reviews retrieved successfully.",
                 200,
-                formatted_reviews
+                response_payload
             ),
             status=200
         )
@@ -4393,6 +4469,7 @@ def get_reviews_by_candidate(request):
             ),
             status=200
         )
+
 
         
 @api_view(['POST'])
@@ -5094,6 +5171,16 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             instance = get_object_or_404(JobRequisition, RequisitionID=requisition_id)
 
             fixed_payload = request.data.copy()
+            position_title_raw = fixed_payload.get("PositionTitle")
+            if isinstance(position_title_raw, list):
+                fixed_payload["PositionTitle"] = ", ".join([item.get("value", "") for item in position_title_raw if isinstance(item, dict)])
+            elif isinstance(position_title_raw, dict):
+                fixed_payload["PositionTitle"] = position_title_raw.get("value", "")
+            elif isinstance(position_title_raw, str):
+                fixed_payload["PositionTitle"] = position_title_raw
+            else:
+                fixed_payload["PositionTitle"] = ""
+
 
             # 🔧 Normalize posting_details
             posting_block = fixed_payload.get("posting_details", {})
@@ -5381,7 +5468,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
             response_payload = {
                 "Planning_id": getattr(instance.Planning_id, "hiring_plan_id", "Not Provided") if instance.Planning_id else "Not Provided",
                 "HiringManager": getattr(instance.HiringManager, "Name", "Unknown") if instance.HiringManager else "Unknown",
-                "PositionTitle": instance.PositionTitle or "Not Provided",
+                "PositionTitle": to_label_value_list(instance.PositionTitle),
                 "requisition_id": instance.RequisitionID or "Not Provided",
 
                 "position_information": {
@@ -5395,7 +5482,7 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                     "department": to_label_value_list(getattr(details, "department", "")),
                     "location": to_label_value_list(getattr(details, "location", "") or (getattr(plan, "location", "") if plan else "")),
                     "geo_zone": to_label_value_list(getattr(details, "geo_zone", "")),
-                    "career_level": details.career_level or "Not Provided",
+                    "career_level": getattr(details, "career_level", "Not Provided"),
                     "band": to_label_value_list(getattr(details, "band", "")),
                     "sub_band": to_label_value_list(getattr(details, "sub_band", "")),
                     "working_model": to_label_value_list(getattr(details, "working_model", "") or (getattr(plan, "working_model", "") if plan else "")),
@@ -5775,7 +5862,7 @@ class InterviewPlannerCalculation(APIView):
             total_interviews_needed = total_candidate_pipline * interview_round
             total_interview_hrs = total_interviews_needed * interview_time_per_round
             total_interview_weeks = total_interview_hrs / working_hrs_per_week
-            no_of_interviewer_need = total_interview_hrs / dead_line_days
+            no_of_interviewer_need = round(total_interview_hrs / dead_line_days)
             leave_adjustment = round(
                 no_of_interviewer_need + (
                     ((interviewer_leave_days * avg_interviewer_time_per_week_hrs) /
@@ -5854,7 +5941,7 @@ class InterviewPlannerCalculation(APIView):
             total_interviews_needed = total_candidate_pipline * interview_round
             total_interview_hrs = total_interviews_needed * interview_time_per_round
             total_interview_weeks = total_interview_hrs / working_hrs_per_week
-            no_of_interviewer_need = total_interview_hrs / dead_line_days
+            no_of_interviewer_need = round(total_interview_hrs / dead_line_days)
             leave_adjustment = round(
                 no_of_interviewer_need + (
                     ((interviewer_leave_days * avg_interviewer_time_per_week_hrs) /
@@ -6877,6 +6964,7 @@ class InterviewDesignScreenView(APIView):
                         "screen_type": obj.get("screen_type", ""),
                         "duration": obj.get("duration", 0),
                         "weightage": obj.get("weightage", 0),
+                        "round_no": obj.get("roundno", 0),
                         "mode": obj.get("mode", ""),
                         "feedback": obj.get("feedback", ""),
                         "duration_metric": obj.get("duration_metric", ""),
@@ -6967,6 +7055,7 @@ class InterviewDesignScreenView(APIView):
                         "duration": obj.get("duration", ""),
                         "duration_metric": obj.get("duration_metric", ""),
                         "weightage": obj.get("weightage") or obj.get("Weightage", 0),
+                        "round_no": obj.get("roundno", 0),
                         "feedback": obj.get("feedback", ""),
                         "skills": obj.get("skills", ""),
                         "mode": obj.get("mode", ""),
@@ -7873,14 +7962,17 @@ def job_metadata_lookup(request):
         design_params = InterviewDesignParameters.objects.filter(interview_design_id=interview_design_id).order_by("interview_desing_params_id")
 
         # 💡 Map score_card = stage, screen_type = mode
-        stages = [param.score_card for param in design_params]
-        modes = [param.screen_type for param in design_params]
+        interview_design = [
+            {
+                "interviewer_stage": param.score_card,
+                "interview_mode": param.screen_type
+            }
+            for param in design_params
+        ]
 
         data = {
             "job_position": requisition.PositionTitle or "Not Provided",
-            "interview_mode": list(set(modes)) if modes else [],
-            "interviewer_stage": list(set(stages)) if stages else []
-
+            "interview_design": interview_design
         }
 
         return Response(api_json_response_format(
