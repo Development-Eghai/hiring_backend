@@ -3992,7 +3992,7 @@ class InterviewerListByRequisitionView(APIView):
                     if param.score_card and param.round_no
                 }
 
-            # Step 3: Fetch interviewers and append round suffix
+            # Step 3: Fetch interviewers and exclude those with scheduled rounds
             candidates = Interviewer.objects.filter(req_id__RequisitionID=requisition_id)
             data = []
             for c in candidates:
@@ -4000,15 +4000,24 @@ class InterviewerListByRequisitionView(APIView):
                 round_no = round_map.get(stage, "")
                 round_suffix = f" R{round_no}" if round_no.isdigit() else ""
                 full_name = f"{c.first_name} {c.last_name}{round_suffix}".strip()
-                data.append({
-                    "id": c.interviewer_id,
-                    "name": full_name
-                })
+
+                # Step 4: Check if this interviewer already has a schedule for this round
+                is_scheduled = InterviewSchedule.objects.filter(
+                    interviewer=c,
+                    round_name=stage
+                ).exists()
+
+                if not is_scheduled:
+                    data.append({
+                        "id": c.interviewer_id,
+                        "name": full_name
+                    })
 
             return Response(api_json_response_format(True, "interviewer fetched successfully", 200, data), status=200)
 
         except Exception as e:
             return Response(api_json_response_format(False, str(e), 500, {}), status=200)
+
 
 class CandidateScreening(APIView):
     def post(self, request):
