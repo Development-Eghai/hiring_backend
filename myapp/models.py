@@ -569,7 +569,7 @@ class CandidateFeedback(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = 'CandidateFeedback'
+        db_table = 'candidatefeedback'
 
 
 class CandidateReview(models.Model):

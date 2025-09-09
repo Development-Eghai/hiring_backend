@@ -4,205 +4,176 @@
   <meta charset="UTF-8">
   <title>Configuration</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css">
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-
-  
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Bootstrap CSS -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<!-- Bootstrap Icons -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-
-
-<!-- <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script> -->
-
-<!-- <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script> -->
-
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css">
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<!-- Bootstrap 5 Bundle JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- Bootstrap Select JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
-
-
-
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
 
   <script>
     $(document).ready(function() {
       $('.selectpicker').selectpicker();
-      // get_config_table_data("");
-    // $('#example').DataTable({
-    //   responsive: true
-    // });
-  });
+    });
 
-  function get_config_table_data(category_name)
-  {
-    
-    if(category_name === "")
-    {
-      alert("select Configuration Name");return;
+    function get_config_table_data(category_name) {
+      if (category_name === "") {
+        alert("Select Configuration Name");
+        return;
+      }
+      $("#field_value").val("");
+      $("#config_tbl_data tbody").empty();
+
+      $.ajax({
+        url: "/admin_configuration/",
+        type: 'GET',
+        data: { category_name: category_name },
+        success: function(result) {
+          for (var i = 0; i < result.data.length; i++) {
+            var tbody = "<tr>\n" +
+              "  <td>" + (i + 1) + "</td>\n" +
+              "  <td>" + result.data[i].category_values + "</td>\n" +
+              "  <td>\n" +
+              "    <i class=\"bi bi-trash-fill text-danger\" onclick=\"delete_record('" + category_name + "','" + result.data[i].id + "')\" style=\"font-size:20px;\"></i>\n" +
+              "  </td>\n" +
+              "</tr>";
+            $("#config_tbl_data tbody").append(tbody);
+          }
+        }
+      });
     }
-    $("#field_value").val("");
-    $("#config_tbl_data tbody").empty();
-    $.ajax({url: "/admin_configuration/",type: 'GET', data: {category_name: category_name},success: function(result)
-      {
-            console.log(result.data);console.log(category_name);
-            for(var i=0;i<result.data.length;i++)
-            {
-              
 
-              var tbody = "<tr>\n" +
-"          <td>"+(i+1)+"</td>          \n" +
-"          <td>"+result.data[i].category_values+"</td>\n" +
-"          <td >\n" +
-"            <i class=\"bi bi-trash-fill text-danger\" onclick=\"delete_record('"+category_name+"','"+result.data[i].id+"')\" style=\"font-size:20px;\"></i>\n" +
-// "            <i class=\"bi bi-pencil-fill text-primary\" style=\"font-size:20px;\"></i>&emsp;&emsp;<i class=\"bi bi-trash-fill text-danger\" onclick=\"delete_record('"+category_name+"','"+result.data[i].id+"')\" style=\"font-size:20px;\"></i>\n" +
+    function save_config_data() {
+      var category_name = $("#select_configuration").val();
+      var field_value = $("#field_value").val().trim();
 
-"          </td>\n" +
-"        </tr>";
-$("#config_tbl_data tbody").append(tbody);
+      if (category_name === "") {
+        alert("Select Configuration Name");
+        return;
+      }
 
-            }
-      }});
-  }
+      if (field_value === "") {
+        alert("Enter Value Name");
+        return;
+      }
 
-  function save_config_data()
-  {
-    var category_name = $("#select_configuration").val();
-    var field_value = $("#field_value").val();
-    
-    if(category_name === "")
-    {
-      alert("select Configuration Name");return;
+      // Check for duplicates
+      var isDuplicate = false;
+      $("#config_tbl_data tbody tr").each(function () {
+        var existingValue = $(this).find("td:eq(1)").text().trim().toLowerCase();
+        if (existingValue === field_value.toLowerCase()) {
+          isDuplicate = true;
+          return false;
+        }
+      });
+
+      if (isDuplicate) {
+        alert("Duplicate value. Already exists in this category.");
+        return;
+      }
+
+      var json_data = {
+        category_name: category_name,
+        category_values: field_value
+      };
+
+      $.ajax({
+        url: "/admin_configuration/",
+        type: 'POST',
+        data: json_data,
+        success: function(result) {
+          if (result.success) {
+            get_config_table_data(category_name);
+          }
+        }
+      });
     }
-    
-    if(field_value === "")
-    {
-      alert("Enter  Value Name");return;
+
+    function delete_record(category_name, id) {
+      $.ajax({
+        url: "/admin_configuration/",
+        type: 'DELETE',
+        data: { id: id },
+        success: function(result) {
+          if (result.success) {
+            get_config_table_data(category_name);
+          }
+        }
+      });
     }
-    json_data = {category_name:category_name,category_values: field_value};
-    console.log(json_data)
-    $.ajax({url: "/admin_configuration/",type: 'POST',data: json_data,success: function(result)
-      {
-            if(result.success)
-            {
-              get_config_table_data(category_name)
-            }
-      }});
-  }
-
-  function delete_record(category_name,id)
-  {  
-    
-    // json_data = {id: id}
-    $.ajax({url: "/admin_configuration/",type: 'DELETE',data: {id: id},success: function(result)
-      {
-            if(result.success)
-            {
-              get_config_table_data(category_name);
-            }
-      }});
-  }
-
-  
   </script>
 </head>
 <body><br/><br/>
   <h3 class="text-center text-primary">Configuration</h3>
   <div class="container mt-5">
-    
-      <div class="row mb-3">
-        <div class="col-md-4">
-          &nbsp;
-        </div> 
-        <div class="col-md-4">
-          <label for="working_hours_per_day" class="form-label">Configuraiton  Name</label>
-          <select id="select_configuration" class="form-control selectpicker" data-live-search="true"    onchange="get_config_table_data(this.value)">
-            <option value=""></option>
-            <option value="Position Role">Position Role</option>
-            <option value="Screening Type">Screening Type</option>
-            <option value="Score Card">Score Card</option>
-            <option value="Designation">Designation</option>
-            <option value="Tech Stack">Tech Stack</option>
-            <option value="Target Companies">Target Companies</option>
-            <option value="Working Model">Working Model</option>
-            <option value="Role Type">Role Type</option>
-            <option value="Job Type">Job Type</option>
-            <option value="Mode of Working">Mode of Working</option>
-            <option value="Shift Timings">Shift Timings</option>
-            <option value="Education Qualification">Education Qualification</option>
-            <option value="Communication Language">Communication Language</option>
-            <option value="Location">Location</option>
-            <option value="Domain Name">Domain Name</option>
-            <option data-divider="true"></option>
-            <option value="Internal Job Title">Internal Job Title</option>
-            <option value="External Job Title">External Job Title</option>
-            <option value="Position">Position</option>
-            <option value="Business Line">Business Line</option>
-            <option value="Business Unit">Business Unit</option>
-            <option value="Division">Division</option>
-            <option value="Department">Department</option>
-            <option value="Location">Location</option>
-            <option value="Geo Zone">Geo Zone</option>
-            <option value="Band">Band</option>
-            <option value="Sub Band">Sub Band</option>            
-            <option value="Client Interview">Client Interview</option>
-            <option value="Requisition Type">Requisition Type</option>
-            <option value="Primary Skills">Primary Skills</option>
-            <option value="Secondary Skills">Secondary Skills</option>
-            <option value="Experience">Experience</option>
-            <option value="Qualification">Qualification</option>
-            <option value="Job Region">Job Region</option>       
-            <option value="planning_templates">planning_templates</option>
-
-          </select>
-        </div>  
-        <div class="col-md-4">
-            &nbsp;
-        </div>     
+    <div class="row mb-3">
+      <div class="col-md-4">&nbsp;</div>
+      <div class="col-md-4">
+        <label for="select_configuration" class="form-label">Configuration Name</label>
+        <select id="select_configuration" class="form-control selectpicker" data-live-search="true" onchange="get_config_table_data(this.value)">
+          <option value=""></option>
+          <option value="Position Role">Position Role</option>
+          <option value="Screening Type">Screening Type</option>
+          <option value="Score Card">Score Card</option>
+          <option value="Designation">Designation</option>
+          <option value="Tech Stack">Tech Stack</option>
+          <option value="Target Companies">Target Companies</option>
+          <option value="Working Model">Working Model</option>
+          <option value="Role Type">Role Type</option>
+          <option value="Job Type">Job Type</option>
+          <option value="Mode of Working">Mode of Working</option>
+          <option value="Shift Timings">Shift Timings</option>
+          <option value="Education Qualification">Education Qualification</option>
+          <option value="Communication Language">Communication Language</option>
+          <option value="Location">Location</option>
+          <option value="Domain Name">Domain Name</option>
+          <option data-divider="true"></option>
+          <option value="Internal Job Title">Internal Job Title</option>
+          <option value="External Job Title">External Job Title</option>
+          <option value="Position">Position</option>
+          <option value="Business Line">Business Line</option>
+          <option value="Business Unit">Business Unit</option>
+          <option value="Division">Division</option>
+          <option value="Department">Department</option>
+          <option value="Geo Zone">Geo Zone</option>
+          <option value="Band">Band</option>
+          <option value="Sub Band">Sub Band</option>
+          <option value="Client Interview">Client Interview</option>
+          <option value="Requisition Type">Requisition Type</option>
+          <option value="Primary Skills">Primary Skills</option>
+          <option value="Secondary Skills">Secondary Skills</option>
+          <option value="Experience">Experience</option>
+          <option value="Qualification">Qualification</option>
+          <option value="Job Region">Job Region</option>
+          <option value="planning_templates">planning_templates</option>
+        </select>
       </div>
-      <div class="row mb-3">
-        <div class="col-md-4">
-          &nbsp;
-        </div> 
-        <div class="col-md-4">
-          <label for="field_value" class="form-label"> Name</label>
-          <input type="text" class="form-control" id="field_value" value="" />
-        </div>  
-        <div class="col-md-4"><br/>
-           <button class="btn btn-primary" onclick="save_config_data();">Save</button>
-        </div>     
-      </div>      
+      <div class="col-md-4">&nbsp;</div>
+    </div>
 
+    <div class="row mb-3">
+      <div class="col-md-4">&nbsp;</div>
+      <div class="col-md-4">
+        <label for="field_value" class="form-label">Name</label>
+        <input type="text" class="form-control" id="field_value" value="" />
+      </div>
+      <div class="col-md-4"><br/>
+        <button class="btn btn-primary" onclick="save_config_data();">Save</button>
+      </div>
+    </div>
   </div>
+
   <div class="container mt-4">
     <table id="config_tbl_data" class="table table-striped table-bordered dt-responsive nowrap" style="width:100%">
       <thead>
         <tr>
           <th>Serial No</th>
           <th>Name</th>
-          <th>&nbsp;</th>        
+          <th>&nbsp;</th>
         </tr>
       </thead>
-      <tbody>
-        
-      </tbody>
+      <tbody></tbody>
     </table>
   </div>
-  
-
-  
 </body>
 </html>

@@ -1850,7 +1850,7 @@ class SubmitInterviewReviewView(APIView):
 
                     defaults={
                         "Guidelines": review.get("Guidelines", ""),
-                        "MinimumQuestions": review.get("MinimumQuestions", 0),
+                        "MinimumQuestions": review.get("MinimumQuestions", ""),
                         "Weightage": review.get("weightage", 0),
                         "ActualRating": review.get("ActualRating", 0),
                         "Feedback_param": review.get("Feedback", "")
@@ -1905,7 +1905,7 @@ class SubmitInterviewReviewView(APIView):
                     ParameterDefined=review.get("parameterDefined", ""),
                     defaults={
                         "Guidelines": review.get("Guidelines", ""),
-                        "MinimumQuestions": int(review.get("MinimumQuestions", 0)),
+                        "MinimumQuestions": review.get("MinimumQuestions", ""),
                         "Weightage": int(review.get("weightage", 0)),
                         "ActualRating": int(review.get("ActualRating", 0)),
                         "Feedback_param": review.get("Feedback", "")
@@ -2027,7 +2027,7 @@ class ScheduleContextAPIView(APIView):
             round_info = round_metadata[i] if i < len(round_metadata) else {}
             round_name = round_info.get("score_card", f"Round {i+1}")
             round_no = round_info.get("round_no", "").strip()
-            round_no_suffix = f" R{round_no}" if round_no.isdigit() else ""
+            round_no_suffix = f" R-{round_no}" if round_no.isdigit() else ""
 
 
             interviewer_payload.append({
@@ -2129,12 +2129,32 @@ class InterviewerListCreateAPIView(generics.ListCreateAPIView):
 
     def list(self, request, *args, **kwargs):
         try:
-            queryset = Interviewer.objects.prefetch_related('slots').order_by('-created_at')
+            queryset = Interviewer.objects.select_related('req_id').prefetch_related('slots').order_by('-created_at')
             serializer = self.get_serializer(queryset, many=True)
-        
-            return Response(api_json_response_format(True, "Interviewer list retrieved successfully", 200, serializer.data), status=200)
+            data = serializer.data
+
+            for idx, interviewer in enumerate(queryset):
+                requisition_id = interviewer.req_id.RequisitionID
+                job_req = JobRequisition.objects.filter(RequisitionID=requisition_id).select_related('Planning_id').first()
+                planning_id = job_req.Planning_id.hiring_plan_id if job_req and job_req.Planning_id else None
+                data[idx]['planning_id'] = planning_id
+
+            return Response(api_json_response_format(
+                True,
+                "Interviewer list retrieved successfully",
+                200,
+                data
+            ), status=200)
+
+
         except Exception as e:
-            return Response(api_json_response_format(False, str(e), 500, []), status=200)
+            return Response(api_json_response_format(
+                False,
+                str(e),
+                500,
+                []
+            ), status=200)
+
 
     def create(self, request, *args, **kwargs):
         try:
@@ -3992,31 +4012,26 @@ class InterviewerListByRequisitionView(APIView):
                     if param.score_card and param.round_no
                 }
 
-            # Step 3: Fetch interviewers and exclude those with scheduled rounds
+            # Step 3: Fetch all interviewers for the requisition
             candidates = Interviewer.objects.filter(req_id__RequisitionID=requisition_id)
             data = []
             for c in candidates:
                 stage = c.interviewer_stage.strip() if c.interviewer_stage else ""
                 round_no = round_map.get(stage, "")
-                round_suffix = f" R{round_no}" if round_no.isdigit() else ""
+                round_suffix = f" R-{round_no}" if round_no.isdigit() else ""
                 full_name = f"{c.first_name} {c.last_name}{round_suffix}".strip()
 
-                # Step 4: Check if this interviewer already has a schedule for this round
-                is_scheduled = InterviewSchedule.objects.filter(
-                    interviewer=c,
-                    round_name=stage
-                ).exists()
-
-                if not is_scheduled:
-                    data.append({
-                        "id": c.interviewer_id,
-                        "name": full_name
-                    })
+                # No InterviewSchedule check — include all interviewers
+                data.append({
+                    "id": c.interviewer_id,
+                    "name": full_name
+                })
 
             return Response(api_json_response_format(True, "interviewer fetched successfully", 200, data), status=200)
 
         except Exception as e:
             return Response(api_json_response_format(False, str(e), 500, {}), status=200)
+
 
 
 class CandidateScreening(APIView):
@@ -5092,6 +5107,7 @@ class JobRequisitionPublicViewSet(viewsets.ViewSet):
             ), status=200)
 
 
+# Mapping of payload keys to configuration categories
 JOB_REQUISITION_CONFIG_MAP = {
     # position_information block
     "internal_title": "Internal Job Title",
@@ -5118,9 +5134,10 @@ JOB_REQUISITION_CONFIG_MAP = {
     # skills_required block
     "primary_skills": "Primary Skills",
     "secondary_skills": "Secondary Skills",
-
 }
 
+# Simulated config store (replace with DB or persistent store)
+CONFIG_STORE = {}
 
 def extract_values(raw):
     if isinstance(raw, list):
@@ -5135,17 +5152,31 @@ def extract_values(raw):
         return [v.strip() for v in raw.split(",") if v.strip()]
     return []
 
+def config_value_exists(category, value):
+    """Check if a value already exists in the config store for a category."""
+    existing = CONFIG_STORE.get(category, set())
+    return value.strip().lower() in (v.lower() for v in existing)
+
+def ensure_config_value(category, value):
+    """Insert value into config store if not already present."""
+    if category not in CONFIG_STORE:
+        CONFIG_STORE[category] = set()
+    CONFIG_STORE[category].add(value.strip())
+
 def process_job_requisition_config(payload):
+    # Merge all relevant blocks
     combined = {
         **payload.get("position_information", {}),
         **payload.get("posting_details", {}),
         **payload.get("skills_required", {})
     }
 
+    # Iterate through mapped keys and ingest values
     for key, category in JOB_REQUISITION_CONFIG_MAP.items():
         values = extract_values(combined.get(key))
         for val in values:
-            ensure_config_value(category, val)
+            if val and not config_value_exists(category, val):
+                ensure_config_value(category, val)
 
 
 class JobRequisitionViewSet(viewsets.ModelViewSet):
@@ -5491,11 +5522,11 @@ class JobRequisitionViewSet(viewsets.ModelViewSet):
                     "department": to_label_value_list(getattr(details, "department", "")),
                     "location": to_label_value_list(getattr(details, "location", "") or (getattr(plan, "location", "") if plan else "")),
                     "geo_zone": to_label_value_list(getattr(details, "geo_zone", "")),
-                    "career_level": getattr(details, "career_level", "Not Provided"),
+                    "career_level": getattr(details, "career_level", ""),
                     "band": to_label_value_list(getattr(details, "band", "")),
                     "sub_band": to_label_value_list(getattr(details, "sub_band", "")),
                     "working_model": to_label_value_list(getattr(details, "working_model", "") or (getattr(plan, "working_model", "") if plan else "")),
-                    "client_interview": to_label_value_list("Yes" if getattr(details, "client_interview", "") == "Yes" else "No"),
+                    "client_interview": to_label_value_list("Yes" if getattr(details, "client_interview", "") == "Yes" else ""),
                     "requisition_type": to_label_value_list(getattr(details, "requisition_type", "")),
                     "date_of_requisition": instance.requisition_date,
                     "due_date_of_requisition": instance.due_requisition_date
@@ -6234,34 +6265,64 @@ CONFIG_MAP = {
 
 def ensure_config_value(category_name, category_value):
     if category_name and category_value:
+        category_name = category_name.strip()
+        category_value = category_value.strip()
         exists = ConfigHiringData.objects.filter(
-            category_name=category_name.strip(),
-            category_values=category_value.strip()
+            category_name=category_name,
+            category_values__iexact=category_value
         ).exists()
         if not exists:
             ConfigHiringData.objects.create(
-                category_name=category_name.strip(),
-                category_values=category_value.strip()
+                category_name=category_name,
+                category_values=category_value
             )
 
-def process_config_from_payload(payload):
-    def extract_values(raw):
-        if isinstance(raw, list):
-            return [
-                item.get("value") or item.get("label") if isinstance(item, dict)
-                else item.strip()
-                for item in raw if item
-            ]
-        elif isinstance(raw, dict):
-            return [raw.get("value") or raw.get("label")]
-        elif isinstance(raw, str):
-            return [v.strip() for v in raw.split(",") if v.strip()]
-        return []
+def extract_values(raw):
+    if isinstance(raw, list):
+        return [
+            item.get("value") or item.get("label") if isinstance(item, dict)
+            else item.strip()
+            for item in raw if item
+        ]
+    elif isinstance(raw, dict):
+        return [raw.get("value") or raw.get("label")]
+    elif isinstance(raw, str):
+        return [v.strip() for v in raw.split(",") if v.strip()]
+    return []
 
+def process_config_from_payload(payload):
     for key, category in CONFIG_MAP.items():
-        values = extract_values(payload.get(key))
+        raw_value = payload.get(key)
+
+        # Special handling for communication_language
+        if key == "communication_language":
+            # Case 1: List of dicts with nested language objects
+            if isinstance(raw_value, list):
+                for entry in raw_value:
+                    lang = entry.get("language", {})
+                    lang_val = lang.get("value") or lang.get("label")
+                    if lang_val:
+                        lang_val = lang_val.strip()
+                        if lang_val:
+                            ensure_config_value(category, lang_val)
+                continue
+
+            # Case 2: Colon-separated string like "English:Advanced, Tamil:Intermediate"
+            elif isinstance(raw_value, str):
+                parts = [item.split(":")[0].strip() for item in raw_value.split(",") if ":" in item]
+                for lang in parts:
+                    if lang:
+                        ensure_config_value(category, lang)
+                continue
+
+        # Standard extraction and ingestion
+        values = extract_values(raw_value)
         for val in values:
-            ensure_config_value(category, val)
+            val = val.strip()
+            if val:
+                ensure_config_value(category, val)
+
+
 
 
 class HiringPlanOverviewDetails(APIView):
@@ -7847,6 +7908,39 @@ class MappedAdminConfigView(APIView):
                 500,
                 {}
             ), status=200)
+
+
+
+@api_view(['GET'])
+def get_report_dropdowns(request):
+    try:
+        # 🔹 Clients
+        clients = JobRequisition.objects.values_list('company_client_name', flat=True).distinct()
+        client_dropdown = [{"label": c, "value": c} for c in clients if c]
+
+        # 🔹 Recruiters
+        recruiters = JobRequisition.objects.values_list('Recruiter', flat=True).distinct()
+        recruiter_dropdown = [{"label": r, "value": r} for r in recruiters if r and r != "Not Assigned"]
+
+        # 🔹 Positions
+        positions = ConfigHiringData.objects.filter(category_name="Position Role").values_list('category_values', flat=True).distinct()
+        position_dropdown = [{"label": p, "value": p} for p in positions if p]
+
+        # 🔹 Locations
+        locations = ConfigHiringData.objects.filter(category_name="Location").values_list('category_values', flat=True).distinct()
+        location_dropdown = [{"label": l, "value": l} for l in locations if l]
+
+        dropdowns = {
+            "client_name": client_dropdown,
+            "recruiter_name": recruiter_dropdown,
+            "position_offered": position_dropdown,
+            "location": location_dropdown
+        }
+
+        return Response(api_json_response_format(True, "Dropdown values fetched", 200, dropdowns), status=200)
+
+    except Exception as e:
+        return Response(api_json_response_format(False, f"Error fetching dropdowns: {e}", 500, {}), status=200)
 
 
 @api_view(['GET'])

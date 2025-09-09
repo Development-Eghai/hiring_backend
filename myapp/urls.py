@@ -183,6 +183,9 @@ urlpatterns = [
     path('api/declined-offer-report/', get_declined_offer_report, name='declined_offer_report'),
     path('api/yet-to-join-report/', get_yet_to_join_offer_report, name='yet_to_join_report'),
 
+    path('report/dropdowns/', get_report_dropdowns, name='get-report-dropdowns'),
+
+
 ]
 
 
