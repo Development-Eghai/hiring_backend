@@ -157,6 +157,7 @@ urlpatterns = [
 
     path("bg-package-setup/", BgPackageSetupView.as_view(), name="bg-package-setup"),
     path("initiate-bg-check/", BgCheckRequestView.as_view(), name="initiate-bg-check"),
+    path('api/bg-check-dashboard/', BgCheckDashboardView.as_view(), name='bg-check-dashboard'),
     # path("bg-check-request/", BgCheckRequestView.as_view(), name="bg-check-request"),
     path('api/bg-check/contextual-data/', BgCheckContextualDetailsView.as_view(), name='bg-check-contextual-data'),
     path('bg/contextual/checks/', BgAddonChecksView.as_view(),name='bg-addon-checks'),
@@ -180,8 +181,14 @@ urlpatterns = [
     path('api/candidate-feedback/export/', views.export_candidate_feedback_excel, name='export_candidate_feedback_excel'),
     path('api/candidate-feedback/', get_all_candidate_feedback, name='get_all_candidate_feedback'),
     path("api/offer-report/", get_candidate_offer_report, name="get_candidate_offer_report"),
+    path('report/export-offer/', export_candidate_offer_excel, name='export-candidate-offer-excel'),
+
     path('api/declined-offer-report/', get_declined_offer_report, name='declined_offer_report'),
+    path('report/export-declined/', export_declined_offer_excel, name='export-declined-offer-excel'),
+
     path('api/yet-to-join-report/', get_yet_to_join_offer_report, name='yet_to_join_report'),
+     path('report/export-yet-to-join/', export_yet_to_join_offer_excel, name='export-yet-to-join-offer-excel'),
+
 
     path('report/dropdowns/', get_report_dropdowns, name='get-report-dropdowns'),
 

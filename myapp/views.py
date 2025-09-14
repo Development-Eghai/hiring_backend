@@ -932,6 +932,53 @@ class BgCheckRequestView(APIView):
             200,
             data
         ), status=200)
+    
+
+class BgCheckDashboardView(APIView):
+    def post(self, request):
+        candidate_id = request.data.get("candidate_id")
+        requisition_id = request.data.get("requisition_id")
+
+        if not candidate_id or not requisition_id:
+            return Response(api_json_response_format(
+                False,
+                "candidate_id and requisition_id are required.",
+                400,
+                []
+            ), status=status.HTTP_400_BAD_REQUEST)
+
+        bg_requests = BgCheckRequest.objects.select_related(
+            "requisition", "candidate"
+        ).prefetch_related("selected_packages").filter(
+            candidate__CandidateID=candidate_id,
+            requisition__RequisitionID=requisition_id
+        )
+
+        seen = set()
+        data = []
+
+        for req in bg_requests:
+            key = (req.requisition.RequisitionID, req.candidate.CandidateID)
+            if key in seen:
+                continue
+            seen.add(key)
+
+            data.append({
+                "req_id": req.requisition.RequisitionID,
+                "candidate_id": req.candidate.CandidateID,
+                "first_name": req.candidate.candidate_first_name,
+                "last_name": req.candidate.candidate_last_name,
+                "email_id": req.candidate.Email,
+                "location": getattr(req.requisition.position_information, "location", "Not Provided")
+            })
+
+        return Response(api_json_response_format(
+            True,
+            "Filtered dashboard fields loaded.",
+            200,
+            data
+        ), status=status.HTTP_200_OK)
+
 
 class BgCheckContextualDetailsView(APIView):
     def post(self, request):
@@ -1720,16 +1767,15 @@ class GetInterviewScheduleAPIView(APIView):
 class InterviewReportAPIView(APIView):
     def get(self, request):
         try:
-            interviewers = Interviewer.objects.all()
-            data = []
+            interviewers = Interviewer.objects.select_related("req_id").all()
+            grouped_data = {}
 
             for interviewer in interviewers:
                 req_id = interviewer.req_id.RequisitionID if interviewer.req_id else ""
 
-                # 🔄 Sort interviews by date and start_time descending
                 interviews = InterviewSchedule.objects.filter(interviewer=interviewer)\
-                    .select_related('candidate')\
-                    .order_by('-created_at')
+                    .select_related('candidate', 'candidate__Req_id_fk')\
+                    .order_by('-created_at', '-date', '-start_time')
 
                 for interview in interviews:
                     candidate = interview.candidate
@@ -1741,10 +1787,10 @@ class InterviewReportAPIView(APIView):
                         interview_stage=interview.round_name
                     ).first()
 
-                    data.append({
+                    entry = {
                         "Schedule ID": interview.id,
                         "Req ID": req_id,
-                        "Client ID": requisition.client_id if requisition and requisition.client_id else "",
+                        "Client ID": requisition.client_id if requisition else "",
                         "First Name": interviewer.first_name,
                         "Last Name": interviewer.last_name,
                         "Job Title": interviewer.job_title,
@@ -1759,14 +1805,24 @@ class InterviewReportAPIView(APIView):
                         "Interview Results": stage.result if stage else "",
                         "Contact Number": interviewer.contact_number,
                         "Round Name": interview.round_name,
-                        "Interview Date": interview.date.strftime("%Y-%m-%d"),
-                        "Start Time": interview.start_time.strftime("%H:%M"),
-                        "End Time": interview.end_time.strftime("%H:%M"),
+                        "Interview Date": interview.date.strftime("%Y-%m-%d") if interview.date else "",
+                        "Start Time": interview.start_time.strftime("%H:%M") if interview.start_time else "",
+                        "End Time": interview.end_time.strftime("%H:%M") if interview.end_time else "",
                         "Meet Link": interview.meet_link
-                    })
+                    }
+
+                    cid = candidate.CandidateID
+                    if cid not in grouped_data:
+                        grouped_data[cid] = []
+                    grouped_data[cid].append(entry)
+
+            # Flatten grouped data into a single list
+            final_data = []
+            for interviews in grouped_data.values():
+                final_data.extend(interviews)
 
             return Response(api_json_response_format(
-                True, "Fetched full interview report", 200, data
+                True, "Fetched full interview report", 200, final_data
             ), status=200)
 
         except Exception as e:
@@ -2848,6 +2904,207 @@ def export_candidate_feedback_excel(request):
     response['Content-Disposition'] = 'attachment; filename="candidate_feedback.xlsx"'
     wb.save(response)
     return response
+
+@api_view(['GET'])
+def export_candidate_offer_excel(request):
+    candidates = Candidate.objects.filter(offer_negotiations__isnull=False).select_related(
+        "Req_id_fk", "Req_id_fk__position_information"
+    ).prefetch_related("offer_negotiations").distinct()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Candidate Offers"
+
+    headers = [
+        "Client Name", "Candidate Name", "Position Offered", "Department",
+        "Recruiter Name", "Location", "Offer Date", "Offered Salary"
+    ]
+    ws.append(headers)
+
+    for candidate in candidates:
+        req = candidate.Req_id_fk
+        details = getattr(req, "position_information", None)
+        planning = getattr(req, "Planning_id", None)
+        offer = OfferNegotiation.objects.filter(candidate=candidate).order_by('-created_at').first()
+
+        row = [
+            req.company_client_name if req else "N/A",
+            f"{candidate.candidate_first_name} {candidate.candidate_last_name}",
+            req.PositionTitle if req else "N/A",
+            getattr(details, "department", "N/A") if details else "N/A",
+            req.Recruiter if req else "N/A",
+            getattr(planning, "location", "N/A") if planning else "N/A",
+            offer.offered_doj.strftime("%Y-%m-%d") if offer and offer.offered_doj else "N/A",
+            str(offer.offered_salary) if offer and offer.offered_salary else "N/A"
+        ]
+        ws.append(row)
+
+    for col in ws.columns:
+        max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
+        ws.column_dimensions[get_column_letter(col[0].column)].width = max_length + 2
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="candidate_offer_report.xlsx"'
+    wb.save(response)
+    return response
+
+
+@api_view(['GET'])
+def export_declined_offer_excel(request):
+    feedbacks = CandidateFeedback.objects.filter(status='Declined').select_related(
+        'candidate',
+        'candidate__Req_id_fk',
+        'candidate__Req_id_fk__Planning_id'
+    ).prefetch_related(
+        'candidate__offer_negotiations', 'candidate__generated_offers'
+    )
+
+    def get_offer_negotiation(candidate):
+        return candidate.offer_negotiations.first()
+
+    def get_department(candidate):
+        details = getattr(candidate.Req_id_fk, "position_information", None)
+        return getattr(details, "department", "N/A") if details else "N/A"
+
+    def get_recruiter_name(candidate):
+        return candidate.Req_id_fk.Recruiter if candidate.Req_id_fk else "N/A"
+
+    def get_location(candidate):
+        planning = getattr(candidate.Req_id_fk, "Planning_id", None)
+        return getattr(planning, "location", "N/A") if planning else "N/A"
+
+    def get_offer_date(candidate):
+        offer = candidate.generated_offers.first()
+        return offer.created_at.strftime("%Y-%m-%d") if offer and offer.created_at else "N/A"
+
+    def get_offered_salary(candidate):
+        offer = get_offer_negotiation(candidate)
+        return str(offer.offered_salary) if offer and offer.offered_salary else "N/A"
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Declined Offers"
+
+    headers = [
+        "Client Name", "Candidate Name", "Position Offered", "Department",
+        "Recruiter Name", "Offer Date", "Decline Date", "Assessment Score / Rating",
+        "Interviewer Feedback", "Reason for Decline", "Current Employer",
+        "Location", "CTC Offered"
+    ]
+    ws.append(headers)
+
+    for fb in feedbacks:
+        candidate = fb.candidate
+        requisition = candidate.Req_id_fk
+
+        row = [
+            requisition.company_client_name if requisition else "N/A",
+            f"{candidate.candidate_first_name} {candidate.candidate_last_name}",
+            requisition.PositionTitle if requisition else "N/A",
+            get_department(candidate),
+            get_recruiter_name(candidate),
+            get_offer_date(candidate),
+            fb.created_at.strftime("%Y-%m-%d") if fb.created_at else "N/A",
+            fb.assessment_score,
+            fb.interviewer_feedback,
+            fb.reason_not_selected,
+            fb.current_employer,
+            get_location(candidate),
+            get_offered_salary(candidate)
+        ]
+        ws.append(row)
+
+    for col in ws.columns:
+        max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
+        ws.column_dimensions[get_column_letter(col[0].column)].width = max_length + 2
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="declined_offer_report.xlsx"'
+    wb.save(response)
+    return response
+
+
+@api_view(['GET'])
+def export_yet_to_join_offer_excel(request):
+    today = timezone.now().date()
+
+    offers = GeneratedOffer.objects.filter(
+        estimated_start_date__gt=today
+    ).select_related(
+        'candidate',
+        'requisition',
+        'requisition__Planning_id'
+    ).prefetch_related(
+        'candidate__offer_negotiations'
+    )
+
+    def get_department(requisition):
+        details = getattr(requisition, "position_information", None)
+        return getattr(details, "department", "N/A") if details else "N/A"
+
+    def get_location(requisition):
+        planning = getattr(requisition, "Planning_id", None)
+        return getattr(planning, "location", "N/A") if planning else "N/A"
+
+    def get_offer_negotiation(candidate):
+        return candidate.offer_negotiations.first()
+
+    def get_offered_salary(candidate):
+        offer = get_offer_negotiation(candidate)
+        return str(offer.offered_salary) if offer and offer.offered_salary else "N/A"
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Yet to Join Offers"
+
+    headers = [
+        "Client Name", "Candidate Name", "Position Offered", "Department",
+        "Recruiter Name", "Offer Date", "Expected Date Of Joining",
+        "Current Employer", "Location", "CTC Offered", "Status",
+        "Assessment Score / Rating", "Interviewer Feedback", "Recruiter Comments"
+    ]
+    ws.append(headers)
+
+    for offer in offers:
+        candidate = offer.candidate
+        requisition = offer.requisition
+
+        review = InterviewReview.objects.filter(
+            schedule__candidate=candidate,
+            candidate=candidate
+        ).order_by('-created_at').first()
+
+        assessment_score = str(review.ActualRating) if review and review.ActualRating is not None else "N/A"
+        interviewer_feedback = review.Feedback_param if review and review.Feedback_param else "N/A"
+        recruiter_comments = candidate.Result if candidate.Result else "N/A"
+
+        row = [
+            requisition.company_client_name if requisition else "N/A",
+            f"{candidate.candidate_first_name} {candidate.candidate_last_name}",
+            requisition.PositionTitle if requisition else "N/A",
+            get_department(requisition),
+            requisition.Recruiter if requisition else "N/A",
+            offer.created_at.strftime("%Y-%m-%d") if offer.created_at else "N/A",
+            offer.estimated_start_date.strftime("%d-%m-%Y") if offer.estimated_start_date else "N/A",
+            getattr(candidate, "current_employer", "N/A"),
+            get_location(requisition),
+            get_offered_salary(candidate),
+            "Yet to join",
+            assessment_score,
+            interviewer_feedback,
+            recruiter_comments
+        ]
+        ws.append(row)
+
+    for col in ws.columns:
+        max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
+        ws.column_dimensions[get_column_letter(col[0].column)].width = max_length + 2
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="yet_to_join_offer_report.xlsx"'
+    wb.save(response)
+    return response
+
 class ScheduleCandidateRecruiterMeetView(APIView):
     def post(self, request):
         try:
@@ -4645,7 +4902,7 @@ class OfferDetailsViewSet(APIView):
 
             for offer in negotiations:
                 requisition = offer.requisition
-                candidate = Candidate.objects.filter(Req_id_fk=requisition.RequisitionID).first()
+                candidate = offer.candidate
                 approvals = offer.approvals.select_related("approver")
 
                 approvers_data = []
