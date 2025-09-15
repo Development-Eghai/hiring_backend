@@ -4997,7 +4997,9 @@ class GenerateOfferPrefillView(APIView):
 
             requisition = JobRequisition.objects.filter(RequisitionID=req_id).first()
             candidate = Candidate.objects.filter(CandidateID=candidate_id).first()
-            negotiation = OfferNegotiation.objects.filter(requisition=requisition).first()
+
+            negotiation = OfferNegotiation.objects.filter(requisition=requisition, candidate=candidate).first()
+
             # Get recruiter name from requisition
             recruiter_name = requisition.Recruiter if requisition and requisition.Recruiter else None
             if "," in recruiter_name:
@@ -5073,7 +5075,7 @@ class GenerateOfferView(APIView):
                     "recruiter_email": data.get("recruiter_email"),
                     "job_title": data.get("job_title"),
                     "job_city": data.get("job_city"),
-                    "job_country": data.get("job_country"),
+                    "job_country": data.get("job_country") or "India",
                     "currency": data.get("currency"),
                     "estimated_start_date": data.get("estimated_start_date"),
                     "negotiation_status": "Generated"
