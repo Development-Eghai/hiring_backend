@@ -3124,7 +3124,7 @@ class ScheduleCandidateRecruiterMeetView(APIView):
                 return Response(api_json_response_format(False, "Missing required fields", 400, {}), status=200)
 
             tz = pytz.timezone("Asia/Kolkata")
-            start = tz.localize(datetime.strptime(f"{date} {time}", "%Y-%m-%d %I:%M %p"))
+            start = tz.localize(datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M"))
             end = start + timedelta(minutes=duration_mins)
 
             # Meeting Link Generation
