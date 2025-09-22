@@ -87,8 +87,7 @@ class ApproverCreateListView(generics.ListCreateAPIView):
 
     def list(self, request, *args, **kwargs):
         try:
-            queryset = self.get_queryset().select_related("requisition", "hiring_plan").order_by("requisition__RequisitionID")
-
+            queryset = self.get_queryset().select_related("requisition", "hiring_plan").order_by("-created_at")
             if not queryset.exists():
                 return Response(api_json_response_format(False, "No approvers found.", 404, {}), status=200)
 
@@ -1164,7 +1163,7 @@ def compute_overall_status1(approvals, expected_roles):
 class CandidateApprovalStatusView(APIView):
     def get(self, request):
         try:
-            candidates = Candidate.objects.select_related('Req_id_fk').all()
+            candidates = Candidate.objects.select_related('Req_id_fk').order_by('-CandidateID').all()
             grouped_results = {}
 
             for candidate in candidates:
@@ -1384,7 +1383,8 @@ class OfferApprovalStatusView(APIView):
         try:
             negotiations = OfferNegotiation.objects.filter(
                 negotiation_status="Successful"
-            ).select_related("requisition").prefetch_related("approvals__approver")
+            ).select_related("requisition").prefetch_related("approvals__approver").order_by("-created_at")
+
 
             grouped_results = {}
 
@@ -1479,7 +1479,7 @@ class ApproverFilterView(APIView):
             ), status=200)
 
 class OfferNegotiationViewSet(viewsets.ModelViewSet):
-    queryset = OfferNegotiation.objects.prefetch_related('benefits').all()
+    queryset = OfferNegotiation.objects.prefetch_related('benefits').order_by('-created_at')
     serializer_class = OfferNegotiationSerializer
 
     def list(self, request, *args, **kwargs):
@@ -2347,7 +2347,7 @@ class InterviewerListCreateAPIView(generics.ListCreateAPIView):
 class ScheduleMeetView(APIView):
     def get(self, request):
         try:
-            schedules = InterviewSchedule.objects.select_related("candidate", "interviewer").all().order_by("-date", "-start_time")
+            schedules = InterviewSchedule.objects.select_related("candidate", "interviewer").all().order_by("-created_at")
             result = []
 
             for schedule in schedules:
@@ -4896,7 +4896,8 @@ class OfferDetailsViewSet(APIView):
         try:
             negotiations = OfferNegotiation.objects.filter(
                 negotiation_status__in=["Pending", "Generated", "Approved", "Successful", "open", "In progress"]
-            ).select_related("requisition").prefetch_related("approvals__approver")
+            ).select_related("requisition").prefetch_related("approvals__approver").order_by("-created_at")
+
 
             data = []
 
@@ -6341,7 +6342,7 @@ class InterviewerBandwidthDashboard(APIView):
                 if virtual_field not in requested_fields:
                     requested_fields.append(virtual_field)
 
-            queryset = InterviewPlanner.objects.all()
+            queryset = InterviewPlanner.objects.all().order_by('-interview_plan_id')
             result = []
 
             for obj in queryset:
@@ -7535,7 +7536,7 @@ class CandidateInterviewStagesView(APIView):
     def get(self, request):
         try:
             stage_groups = defaultdict(list)
-            for stage in CandidateInterviewStages.objects.all():
+            for stage in CandidateInterviewStages.objects.all().order_by('-interview_stage_id'):
                 key = (stage.candidate_id, stage.Req_id_id)
                 stage_groups[key].append(stage)
 
@@ -7785,7 +7786,8 @@ def get_plan_id_position_role(request):
 class InterviewScreenDashboardView(APIView):
     def get(self, request):
         try:
-            model_data = InterviewDesignScreen.objects.all()
+            # Order by latest first
+            model_data = InterviewDesignScreen.objects.all().order_by('-interview_design_id')  # or '-interview_design_id'
             design_screen_dashboard_data = []
 
             for design in model_data:
@@ -7795,11 +7797,10 @@ class InterviewScreenDashboardView(APIView):
                 score_cards = [param.score_card for param in score_card_qs]
                 screening_type = score_card_qs.first().screen_type if score_card_qs.exists() else "Not Found"
 
-                # 🔍 Get requisition info
                 requisition = JobRequisition.objects.filter(RequisitionID=design.req_id).first()
 
                 design_screen_data = {
-                    "interview_design_id":design.interview_design_id,
+                    "interview_design_id": design.interview_design_id,
                     "plan_id": design.hiring_plan_id,
                     "position_role": requisition.PositionTitle if requisition else "Not Found",
                     "tech_stacks": design.tech_stacks,
@@ -7823,6 +7824,7 @@ class InterviewScreenDashboardView(APIView):
                 api_json_response_format(False, f"Error in InterviewScreenDashboardView get method: {str(e)}", 500, {}),
                 status=200
             )
+
 
 @api_view(["POST"])
 def filter_candidates_dashboard(request):
@@ -8558,7 +8560,7 @@ def submit_pre_onboarding_form(request):
 
 @api_view(['GET'])
 def get_all_pre_onboarding_forms(request):
-    candidates = CandidateProfile.objects.all()
+    candidates = CandidateProfile.objects.all().order_by('-id')  # Latest first
     all_data = []
 
     for candidate_obj in candidates:

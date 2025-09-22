@@ -34,7 +34,7 @@ EMAIL_USE_TLS = True
 
  # Use SSL for port 465
 EMAIL_HOST_USER = 'pixeladvant@gmail.com'
-EMAIL_HOST_PASSWORD ='bgaq ummh wxqp nbiu' # Use an app-specific password if 2FA is enabled
+EMAIL_HOST_PASSWORD ='rkws tubr sfjr idqw' # Use an app-specific password if 2FA is enabled
 DEFAULT_FROM_EMAIL = 'pixeladvant@gmail.com'
 
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
